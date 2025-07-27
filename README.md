@@ -15,15 +15,16 @@ Notebook LMのAudio Overview機能を使用して自動でポッドキャスト�
 
 このリポジトリをGitHubでフォークします。
 
-### 2. 環境変数の設定
+### 2. Googleアプリパスワードの生成
 
-GitHubリポジトリの Settings > Secrets and variables > Actions で以下を設定:
+**📋 詳細手順は [APP_PASSWORD_SETUP.md](APP_PASSWORD_SETUP.md) を参照**
 
-```
-GOOGLE_ACCOUNT_EMAIL=your-email@gmail.com
-GOOGLE_ACCOUNT_PASSWORD=your-password  
-PODCAST_BASE_URL=https://your-username.github.io/auto-podcast
-```
+1. Googleアカウントで2段階認証を有効化
+2. アプリパスワードを生成（16桁）
+3. GitHub Secretsに設定:
+   - `GOOGLE_ACCOUNT_EMAIL`: Gmailアドレス
+   - `GOOGLE_ACCOUNT_PASSWORD`: 16桁のアプリパスワード
+   - `PODCAST_BASE_URL`: `https://necoha.github.io/auto-podcast`
 
 ### 3. GitHub Pagesの有効化
 

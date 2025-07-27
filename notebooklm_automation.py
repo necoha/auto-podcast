@@ -1,6 +1,7 @@
 """
 Notebook LMのAudio Overview機能を自動化するモジュール
 Seleniumを使用してWebインターフェースを操作
+アプリパスワード方式で安全に認証
 """
 
 import time
@@ -33,7 +34,7 @@ class NotebookLMAutomator:
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
     
     def login_to_google(self):
-        """Googleアカウントにログイン"""
+        """Googleアカウントにログイン（アプリパスワード使用）"""
         try:
             self.driver.get("https://accounts.google.com/signin")
             
@@ -47,7 +48,7 @@ class NotebookLMAutomator:
             next_button = self.driver.find_element(By.ID, "identifierNext")
             next_button.click()
             
-            # パスワード入力
+            # パスワード入力（アプリパスワード）
             password_input = WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.NAME, "password"))
             )
