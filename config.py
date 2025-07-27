@@ -3,17 +3,37 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# NotebookLM関連設定
+# NotebookLM関連設定 (OAuth対応)
 NOTEBOOKLM_URL = "https://notebooklm.google.com"
+
+# OAuth認証設定
+GOOGLE_OAUTH_CREDENTIALS = os.getenv("GOOGLE_OAUTH_CREDENTIALS")
+OAUTH_SESSION_DATA = os.getenv("OAUTH_SESSION_DATA")
+
+# Legacy: アプリパスワード方式（非推奨）
 GOOGLE_ACCOUNT_EMAIL = os.getenv("GOOGLE_ACCOUNT_EMAIL")
 GOOGLE_ACCOUNT_PASSWORD = os.getenv("GOOGLE_ACCOUNT_PASSWORD")
 
 # コンテンツソース設定
 RSS_FEEDS = [
-    "https://rss.cnn.com/rss/edition.rss",
-    "https://feeds.feedburner.com/TechCrunch",
-    # 他のRSSフィードを追加
+    # 日本語ニュース
+    "https://www3.nhk.or.jp/rss/news/cat0.xml",  # NHKニュース
+    "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia
+    
+    # 英語テクノロジーニュース
+    "https://feeds.feedburner.com/TechCrunch",  # TechCrunch
+    "https://feeds.arstechnica.com/arstechnica/index",  # Ars Technica
+    
+    # GitHub・開発関連
+    "https://github.blog/feed/",  # GitHub Blog
+    
+    # カスタムRSSフィード（必要に応じて追加）
+    # os.getenv("CUSTOM_RSS_FEEDS", "").split(",") if os.getenv("CUSTOM_RSS_FEEDS") else []
 ]
+
+# 環境変数からカスタムRSSフィードを追加
+if os.getenv("CUSTOM_RSS_FEEDS"):
+    RSS_FEEDS.extend(os.getenv("CUSTOM_RSS_FEEDS").split(","))
 
 # ファイル管理設定
 AUDIO_OUTPUT_DIR = "./audio_files"
