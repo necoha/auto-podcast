@@ -27,26 +27,43 @@ class OAuthNotebookLMAutomator:
         """Chromeドライバーの設定"""
         chrome_options = Options()
         
-        # CI環境でのみヘッドレス
+        # GitHub Actions環境での設定
         if os.getenv('GITHUB_ACTIONS'):
             chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--remote-debugging-port=9222')
             
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
-        
-        # より安全なブラウザ設定
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option('useAutomationExtension', False)
         
-        # セッション永続化のためのユーザーデータディレクトリ
-        user_data_dir = os.path.abspath("chrome_oauth_profile")
-        chrome_options.add_argument(f'--user-data-dir={user_data_dir}')
+        # GitHub Actions環境ではユーザーデータディレクトリを無効化
+        if not os.getenv('GITHUB_ACTIONS'):
+            user_data_dir = os.path.abspath("chrome_oauth_profile")
+            chrome_options.add_argument(f'--user-data-dir={user_data_dir}')
         
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            # ChromeDriverManagerの設定を改善
+            service = Service(
+                ChromeDriverManager(
+                    version="latest",
+                    path="/tmp"
+                ).install()
+            )
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            print(f"ChromeDriver設定エラー: {e}")
+            # フォールバック: システムのChromeDriverを使用
+            try:
+                service = Service("/usr/bin/chromedriver")
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            except:
+                raise Exception("ChromeDriverの初期化に失敗しました")
         
         # WebDriver検出回避
         self.driver.execute_script(
