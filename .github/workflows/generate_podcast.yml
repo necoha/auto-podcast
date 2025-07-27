@@ -76,41 +76,21 @@ jobs:
     
     - name: Generate podcast episode
       if: steps.check_limit.outputs.skip_generation == 'false'
+      env:
+        GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
+        OAUTH_SESSION_DATA: ${{ secrets.OAUTH_SESSION_DATA }}
+        PODCAST_BASE_URL: ${{ secrets.PODCAST_BASE_URL }}
+        KEYWORDS: ${{ github.event.inputs.topic_keywords || 'AI,Technology,Programming,Startup' }}
+        CUSTOM_PROMPT: ${{ github.event.inputs.custom_prompt }}
       run: |
-        export GOOGLE_OAUTH_CREDENTIALS="${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}"
-        export OAUTH_SESSION_DATA="${{ secrets.OAUTH_SESSION_DATA }}"
-        export PODCAST_BASE_URL="${{ secrets.PODCAST_BASE_URL }}"
-        
-        if [ -n "${{ github.event.inputs.topic_keywords }}" ]; then
-          KEYWORDS="${{ github.event.inputs.topic_keywords }}"
-        else
-          KEYWORDS="AI,Technology,Programming,Startup"
-        fi
-        
-        CUSTOM_PROMPT="${{ github.event.inputs.custom_prompt }}"
-        
-        python -m podcast_generator
+        python podcast_generator.py
     
     - name: Generate RSS feed
       if: steps.check_limit.outputs.skip_generation == 'false'
+      env:
+        PODCAST_BASE_URL: ${{ secrets.PODCAST_BASE_URL }}
       run: |
-        python -c "
-        import sys
-        sys.path.append('.')
-        from rss_feed_generator import RSSFeedGenerator
-        
-        rss_gen = RSSFeedGenerator()
-        success = rss_gen.generate_rss_feed()
-        
-        if success:
-            print('RSS feed generated successfully')
-            is_valid, message = rss_gen.validate_feed()
-            print(f'Validation: {message}')
-            exit(0)
-        else:
-            print('Failed to generate RSS feed')
-            exit(1)
-        "
+        python rss_feed_generator.py
     
     - name: Upload audio artifacts
       if: steps.check_limit.outputs.skip_generation == 'false'

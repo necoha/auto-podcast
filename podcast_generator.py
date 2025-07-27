@@ -194,14 +194,27 @@ class PodcastGenerator:
 if __name__ == "__main__":
     generator = PodcastGenerator()
     
-    # 手動実行の例
-    print("手動でポッドキャストエピソードを生成します...")
-    result = generator.generate_podcast_episode(['AI', 'テクノロジー'])
+    # 環境変数からパラメータを取得
+    keywords_str = os.getenv('KEYWORDS', 'AI,Technology,Programming')
+    custom_prompt = os.getenv('CUSTOM_PROMPT', None)
+    
+    # キーワードをリストに変換
+    keywords = [k.strip() for k in keywords_str.split(',') if k.strip()] if keywords_str else None
+    
+    print(f"ポッドキャストエピソードを生成します...")
+    print(f"キーワード: {keywords}")
+    print(f"カスタムプロンプト: {custom_prompt if custom_prompt else 'なし'}")
+    
+    result = generator.generate_podcast_episode(keywords, custom_prompt)
     
     if result:
         print(f"生成完了!")
         print(f"音声ファイル: {result['audio_file']}")
         print(f"エピソード番号: {result['episode_number']}")
+        exit(0)
+    else:
+        print("ポッドキャスト生成に失敗しました")
+        exit(1)
     
     # スケジューラー実行（コメントアウトして必要に応じて有効化）
     # generator.start_scheduler()
