@@ -68,7 +68,7 @@ jobs:
         
         # 今日既に生成されたファイル数をチェック
         TODAY=$(date +%Y%m%d)
-        COUNT=$(find audio_files -name "*${TODAY}*.mp3" | wc -l)
+        COUNT=$(find audio_files -name "*${TODAY}*.mp3" 2>/dev/null | wc -l)
         
         if [ $COUNT -ge 3 ]; then
           echo "skip_generation=true" >> $GITHUB_OUTPUT
@@ -163,7 +163,7 @@ else:
         git config --local user.name "GitHub Action"
         
         # 新しいファイルを追加
-        git add audio_files/ content/ podcast_feed.xml
+        git add audio_files/ content/ podcast_feed.xml 2>/dev/null || true
         
         # 変更があるかチェック
         if git diff --staged --quiet; then
@@ -176,21 +176,21 @@ else:
     - name: Cleanup old files
       run: |
         # 30日以上古いファイルを削除
-        find audio_files -name "*.mp3" -mtime +30 -delete
-        find content -name "*.txt" -mtime +30 -delete
-        find content -name "*.json" -mtime +30 -delete
+        find audio_files -name "*.mp3" -mtime +30 -delete 2>/dev/null || true
+        find content -name "*.txt" -mtime +30 -delete 2>/dev/null || true
+        find content -name "*.json" -mtime +30 -delete 2>/dev/null || true
     
     - name: Report status
       run: |
         echo "Podcast generation completed!"
         echo "Audio files:"
-        ls -la audio_files/ || echo "No audio files found"
+        ls -la audio_files/ 2>/dev/null || echo "No audio files found"
         echo ""
         echo "RSS feed:"
-        ls -la podcast_feed.xml || echo "No RSS feed found"
+        ls -la podcast_feed.xml 2>/dev/null || echo "No RSS feed found"
         echo ""
         echo "Content files:"
-        ls -la content/ || echo "No content files found"
+        ls -la content/ 2>/dev/null || echo "No content files found"
 
   # GitHub Pagesでホスティングする場合
   deploy-to-pages:
