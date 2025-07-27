@@ -104,11 +104,11 @@ static/          - Deployed web files
 
 ### Required Secrets (GitHub Actions)
 
-- `GOOGLE_ACCOUNT_EMAIL` - Gmail account for Notebook LM
-- `GOOGLE_ACCOUNT_PASSWORD` - 16-digit Google App Password (not regular password)
+- `GOOGLE_OAUTH_CREDENTIALS` - OAuth credentials from Google Cloud Console (Base64 encoded)
 - `PODCAST_BASE_URL` - GitHub Pages URL for hosting
+- `OAUTH_SESSION_DATA` - Pre-authenticated session data (optional, for CI/CD)
 
-**Important**: Must use Google App Password with 2FA enabled. See APP_PASSWORD_SETUP.md for detailed instructions.
+**Important**: Uses secure OAuth authentication. See OAUTH_SETUP.md for detailed setup instructions.
 
 ## Free Service Limits
 

@@ -8,7 +8,7 @@ import schedule
 import time
 from datetime import datetime
 from content_manager import ContentManager
-from notebooklm_automation import NotebookLMAutomator
+from oauth_automation import OAuthNotebookLMAutomator
 import config
 
 
@@ -82,8 +82,8 @@ class PodcastGenerator:
                 長さ：10-15分程度のポッドキャスト
                 """
             
-            # NotebookLM自動化実行
-            automator = NotebookLMAutomator()
+            # OAuth NotebookLM自動化実行
+            automator = OAuthNotebookLMAutomator()
             success = automator.create_audio_from_content(
                 content_text=content_text,
                 output_path=audio_path,

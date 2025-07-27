@@ -15,8 +15,8 @@ on:
         required: false
 
 env:
-  GOOGLE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_ACCOUNT_EMAIL }}
-  GOOGLE_ACCOUNT_PASSWORD: ${{ secrets.GOOGLE_ACCOUNT_PASSWORD }}
+  GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
+  OAUTH_SESSION_DATA: ${{ secrets.OAUTH_SESSION_DATA }}
   PODCAST_BASE_URL: ${{ secrets.PODCAST_BASE_URL }}
 
 jobs:
@@ -82,8 +82,8 @@ jobs:
       if: steps.check_limit.outputs.skip_generation == 'false'
       run: |
         # 環境変数設定
-        export GOOGLE_ACCOUNT_EMAIL="${{ secrets.GOOGLE_ACCOUNT_EMAIL }}"
-        export GOOGLE_ACCOUNT_PASSWORD="${{ secrets.GOOGLE_ACCOUNT_PASSWORD }}"
+        export GOOGLE_OAUTH_CREDENTIALS="${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}"
+        export OAUTH_SESSION_DATA="${{ secrets.OAUTH_SESSION_DATA }}"
         export PODCAST_BASE_URL="${{ secrets.PODCAST_BASE_URL }}"
         
         # トピックキーワードの設定
