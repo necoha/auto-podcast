@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎙️ AI Auto Podcast System</title>
+    
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 20px auto;
+            padding: 40px;
+            max-width: 1200px;
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 40px;
+        }
+        
+        h3 {
+            color: #34495e;
+            font-size: 1.3rem;
+            margin-top: 25px;
+        }
+        
+        .mermaid {
+            text-align: center;
+            margin: 30px 0;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .feature-box {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #3498db;
+        }
+        
+        .badge-custom {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin: 5px;
+            display: inline-block;
+        }
+        
+        .cost-zero {
+            background: linear-gradient(45deg, #00c851, #1e7e34);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+        
+        code {
+            background: #34495e;
+            color: #e74c3c;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .table thead {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        ul li {
+            margin: 8px 0;
+        }
+        
+        .section-divider {
+            height: 3px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 2px;
+            margin: 40px 0;
+        }
+        
+        .emoji {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="emoji">🎙️</span>AI Auto Podcast System</h1>
+        <h2>Notebook LM Audio Overview を活用した自動ポッドキャスト配信システム</h2>
+        
+        <div class="feature-box text-center">
+            <h3><strong>完全無料 × 自動化 × 高品質音声</strong></h3>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">📋</span>システム概要</h2>
+
+        <h3><span class="emoji">🎯</span>目的</h3>
+        <ul>
+            <li>RSSフィードから最新ニュースを自動収集</li>
+            <li>Notebook LMのAudio Overview機能で高品質な対話音声を生成</li>
+            <li>RSS配信でポッドキャストアプリに自動配信</li>
+        </ul>
+
+        <h3><span class="emoji">💰</span>コスト</h3>
+        <div class="cost-zero">
+            <span class="emoji">💰</span>完全無料で運用可能<br>
+            GitHub Actions + GitHub Pages + Notebook LM無料版
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🏗️</span>システム構成図</h2>
+
+        <div class="mermaid">
+graph TB
+    subgraph "コンテンツ収集"
+        A1[NHKニュース<br/>RSS]
+        A2[ITmedia<br/>RSS]
+        A3[TechCrunch<br/>RSS]
+        A4[GitHub Blog<br/>RSS]
+        A1 --> B[Content Manager]
+        A2 --> B
+        A3 --> B
+        A4 --> B
+    end
+    
+    subgraph "音声生成"
+        B --> C[Podcast Generator]
+        C --> D[OAuth認証]
+        D --> E[Notebook LM<br/>Audio Overview]
+        E --> F[MP3音声ファイル]
+    end
+    
+    subgraph "配信システム"
+        F --> G[RSS Feed Generator]
+        G --> H[GitHub Pages<br/>ホスティング]
+        H --> I1[Apple Podcasts]
+        H --> I2[Spotify]
+        H --> I3[Google Podcasts]
+    end
+    
+    subgraph "自動化"
+        J[GitHub Actions<br/>スケジューラー] --> C
+        K[GitHub Secrets] --> D
+    end
+    
+    style A1 fill:#e1f5fe
+    style A2 fill:#e1f5fe
+    style A3 fill:#e1f5fe
+    style A4 fill:#e1f5fe
+    style E fill:#f3e5f5
+    style H fill:#e8f5e8
+    style J fill:#fff3e0
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">📊</span>データフロー</h2>
+
+        <div class="mermaid">
+sequenceDiagram
+    participant GHA as GitHub Actions
+    participant CM as Content Manager
+    participant RSS as RSS Sources
+    participant NLM as Notebook LM
+    participant GHP as GitHub Pages
+    
+    Note over GHA: 毎日9時に自動実行
+    GHA->>CM: コンテンツ収集開始
+    CM->>RSS: RSS記事取得
+    RSS-->>CM: 最新記事データ
+    CM->>CM: テキスト処理・要約
+    
+    Note over CM,NLM: OAuth認証
+    CM->>NLM: 処理済みテキスト送信
+    NLM->>NLM: Audio Overview生成
+    NLM-->>GHA: MP3音声ファイル
+    
+    GHA->>GHA: RSS Feed生成
+    GHA->>GHP: 静的ファイルデプロイ
+    
+    Note over GHP: ポッドキャスト配信開始
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🔄</span>自動化ワークフロー</h2>
+
+        <h3><span class="emoji">⏰</span>スケジュール実行</h3>
+        <pre><code># 毎日日本時間9時に自動実行
+schedule:
+  - cron: '0 0 * * *'</code></pre>
+
+        <h3><span class="emoji">🔧</span>実行ステップ</h3>
+        <ol>
+            <li><strong>コンテンツ収集</strong> - RSS記事取得</li>
+            <li><strong>OAuth認証</strong> - Notebook LMアクセス</li>
+            <li><strong>音声生成</strong> - Audio Overview作成</li>
+            <li><strong>RSS更新</strong> - 配信フィード更新</li>
+            <li><strong>GitHub Pages</strong> - 自動デプロイ</li>
+        </ol>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🎵</span>コンテンツソース</h2>
+
+        <h3><span class="emoji">📰</span>現在の設定</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <ul>
+                    <li><span class="badge-custom">NHKニュース</span> - 一般ニュース</li>
+                    <li><span class="badge-custom">ITmedia</span> - テクノロジー</li>
+                    <li><span class="badge-custom">TechCrunch</span> - スタートアップ</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <ul>
+                    <li><span class="badge-custom">Ars Technica</span> - 技術詳細</li>
+                    <li><span class="badge-custom">GitHub Blog</span> - 開発者情報</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3><span class="emoji">⚙️</span>カスタマイズ可能</h3>
+        <pre><code>RSS_FEEDS = [
+    "https://your-favorite-news.com/rss",
+    "https://custom-blog.com/feed.xml"
+]</code></pre>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🔐</span>認証システム</h2>
+
+        <h3><span class="emoji">🎫</span>OAuth 2.0 認証</h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant GA as GitHub Actions
+    participant GC as Google Cloud
+    participant NL as Notebook LM
+    
+    GA->>GC: OAuth認証情報
+    GC->>GA: アクセストークン
+    GA->>NL: 認証済みアクセス
+    NL->>GA: Audio Overview
+        </div>
+
+        <h3><span class="emoji">🔑</span>セキュリティ</h3>
+        <ul>
+            <li>GitHub Secretsで認証情報を安全に管理</li>
+            <li>OAuth認証でアプリパスワード不要</li>
+            <li>セッション永続化で効率的な認証</li>
+        </ul>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">📁</span>ファイル構成</h2>
+
+        <div class="mermaid">
+graph LR
+    subgraph "Repository Root"
+        A[auto-podcast/]
+    end
+    
+    subgraph "Python Scripts 🐍"
+        B1[podcast_generator.py<br/>メイン生成ロジック]
+        B2[oauth_automation.py<br/>OAuth + Selenium]
+        B3[content_manager.py<br/>RSS収集・処理]
+        B4[rss_feed_generator.py<br/>RSS配信]
+    end
+    
+    subgraph "Configuration ⚙️"
+        C1[config.py<br/>設定ファイル]
+        C2[requirements.txt<br/>依存関係]
+    end
+    
+    subgraph "GitHub Actions 🚀"
+        D1[.github/workflows/<br/>generate_podcast.yml]
+    end
+    
+    subgraph "Generated Content 📁"
+        E1[audio_files/<br/>音声ファイル]
+        E2[content/<br/>メタデータ]
+        E3[static/<br/>配信用ファイル]
+    end
+    
+    A --> B1
+    A --> B2
+    A --> B3
+    A --> B4
+    A --> C1
+    A --> C2
+    A --> D1
+    A --> E1
+    A --> E2
+    A --> E3
+    
+    style B1 fill:#e3f2fd
+    style B2 fill:#e3f2fd
+    style B3 fill:#e3f2fd
+    style B4 fill:#e3f2fd
+    style C1 fill:#f3e5f5
+    style C2 fill:#f3e5f5
+    style D1 fill:#e8f5e8
+    style E1 fill:#fff3e0
+    style E2 fill:#fff3e0
+    style E3 fill:#fff3e0
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🌐</span>配信システム</h2>
+
+        <h3><span class="emoji">📡</span>RSS配信</h3>
+        <pre><code>&lt;rss version="2.0"&gt;
+  &lt;channel&gt;
+    &lt;title&gt;AI Auto Podcast&lt;/title&gt;
+    &lt;link&gt;https://necoha.github.io/auto-podcast/&lt;/link&gt;
+    &lt;item&gt;
+      &lt;title&gt;第1話 - AI Auto Podcast&lt;/title&gt;
+      &lt;enclosure url="https://.../episode_001.mp3" 
+                 type="audio/mpeg"/&gt;
+    &lt;/item&gt;
+  &lt;/channel&gt;
+&lt;/rss&gt;</code></pre>
+
+        <h3><span class="emoji">📱</span>ポッドキャストアプリ対応</h3>
+        <ul>
+            <li>Apple Podcasts、Spotify、Google Podcasts</li>
+            <li>RSS URL: <code>https://necoha.github.io/auto-podcast/feed.xml</code></li>
+        </ul>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">💰</span>無料サービス活用</h2>
+
+        <div class="mermaid">
+pie title 無料サービス構成比
+    "Notebook LM" : 25
+    "GitHub Actions" : 25
+    "GitHub Pages" : 25
+    "RSS収集" : 25
+        </div>
+
+        <h3><span class="emoji">📊</span>サービス制限とコスト</h3>
+
+        <div class="mermaid">
+graph TB
+    subgraph "Notebook LM 🎵"
+        A1[音声生成: 1日3回まで]
+        A2[コスト: 無料]
+    end
+    
+    subgraph "GitHub Actions 🔄"
+        B1[CI/CD: 月2000分]
+        B2[コスト: 無料]
+    end
+    
+    subgraph "GitHub Pages 🌐"
+        C1[ホスティング: 1GB]
+        C2[転送量: 100GB/月]
+        C3[コスト: 無料]
+    end
+    
+    subgraph "RSS収集 📡"
+        D1[記事取得: 無制限]
+        D2[コスト: 無料]
+    end
+    
+    E[月額運用コスト: 0円] 
+    
+    A2 --> E
+    B2 --> E
+    C3 --> E
+    D2 --> E
+    
+    style E fill:#4caf50,color:#fff
+    style A1 fill:#f3e5f5
+    style B1 fill:#e3f2fd
+    style C1 fill:#e8f5e8
+    style C2 fill:#e8f5e8
+    style D1 fill:#fff3e0
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🔧</span>技術スタック</h2>
+
+        <div class="mermaid">
+mindmap
+  root((AI Auto<br/>Podcast))
+    Backend 🐍
+      Python 3.11+
+      Selenium
+      feedgen
+      feedparser
+    Infrastructure ☁️
+      GitHub Actions
+      GitHub Pages
+      OAuth 2.0
+    Audio Processing 🎵
+      Notebook LM
+      MP3 Format
+    Frontend 🌐
+      HTML/CSS
+      JavaScript
+      RSS Feed
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🚀</span>セットアップフロー</h2>
+
+        <div class="mermaid">
+flowchart LR
+    A[1. Repository準備] --> B[2. OAuth設定]
+    B --> C[3. GitHub Pages有効化]
+    C --> D[4. Secrets設定]
+    D --> E[5. 自動実行開始]
+    
+    style A fill:#e3f2fd
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#4caf50,color:#fff
+        </div>
+
+        <h3>セットアップステップ詳細</h3>
+
+        <div class="mermaid">
+flowchart TD
+    A[リポジトリクローン] --> B[Google Cloud Console設定]
+    B --> C[OAuth認証情報作成]
+    C --> D[GitHub Secrets設定]
+    D --> E[GitHub Pages有効化]
+    E --> F[ワークフロー実行テスト]
+    F --> G[ポッドキャスト配信開始]
+    
+    D1[GOOGLE_OAUTH_CREDENTIALS]
+    D2[PODCAST_BASE_URL]
+    D3[OAUTH_SESSION_DATA]
+    
+    D --> D1
+    D --> D2
+    D --> D3
+    
+    style G fill:#4caf50,color:#fff
+    style C fill:#f3e5f5
+    style E fill:#e3f2fd
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">📈</span>システムの利点</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="feature-box">
+                    <h3><span class="emoji">✅</span>完全自動化</h3>
+                    <ul>
+                        <li>人手不要で継続的なポッドキャスト配信</li>
+                        <li>スケジュール実行で安定運用</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-box">
+                    <h3><span class="emoji">✅</span>高品質音声</h3>
+                    <ul>
+                        <li>Notebook LMの自然な対話形式</li>
+                        <li>プロフェッショナルなポッドキャスト品質</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="feature-box">
+                    <h3><span class="emoji">✅</span>無料運用</h3>
+                    <ul>
+                        <li>全サービス無料枠内で運用</li>
+                        <li>スケールアップ時も低コスト</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-box">
+                    <h3><span class="emoji">✅</span>カスタマイズ性</h3>
+                    <ul>
+                        <li>RSS源、生成頻度、プロンプト調整可能</li>
+                        <li>オープンソースで完全カスタマイズ</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🔄</span>運用フロー（日次）</h2>
+
+        <div class="mermaid">
+gantt
+    title Daily Podcast Generation Flow
+    dateFormat HH:mm
+    axisFormat %H:%M
+    
+    section Morning
+    RSS収集        :active, rss, 09:00, 09:05
+    コンテンツ処理   :content, after rss, 09:10
+    
+    section Generation
+    OAuth認証      :auth, after content, 09:12
+    音声生成       :audio, after auth, 09:25
+    
+    section Publishing
+    RSS更新       :feed, after audio, 09:27
+    Pages配信     :deploy, after feed, 09:30
+        </div>
+
+        <div class="text-center cost-zero">
+            <span class="emoji">⏰</span>毎朝9時に自動実行 → 30分以内にポッドキャスト配信完了
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🎯</span>今後の拡張可能性</h2>
+
+        <div class="mermaid">
+graph TB
+    subgraph "現在のシステム"
+        A[AI Auto Podcast<br/>基本機能]
+    end
+    
+    subgraph "コンテンツ強化 📊"
+        B1[多言語対応]
+        B2[専門分野別]
+        B3[ユーザー投稿]
+    end
+    
+    subgraph "AI機能向上 🤖"
+        C1[プロンプト最適化]
+        C2[感情表現向上]
+        C3[話者個性設定]
+    end
+    
+    subgraph "配信チャネル拡大 📱"
+        D1[YouTube連携]
+        D2[SNS自動投稿]
+        D3[専用Webアプリ]
+    end
+    
+    A --> B1
+    A --> B2
+    A --> B3
+    A --> C1
+    A --> C2
+    A --> C3
+    A --> D1
+    A --> D2
+    A --> D3
+    
+    style A fill:#4caf50,color:#fff
+    style B1 fill:#e3f2fd
+    style B2 fill:#e3f2fd
+    style B3 fill:#e3f2fd
+    style C1 fill:#f3e5f5
+    style C2 fill:#f3e5f5
+    style C3 fill:#f3e5f5
+    style D1 fill:#fff3e0
+    style D2 fill:#fff3e0
+    style D3 fill:#fff3e0
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h2><span class="emoji">🏁</span>まとめ</h2>
+
+        <h3><span class="emoji">🎪</span>実現できること</h3>
+        <ul>
+            <li><strong>完全無料</strong>でプロ品質のポッドキャスト自動配信</li>
+            <li><strong>Notebook LM</strong>の最新AI技術活用</li>
+            <li><strong>GitHub</strong>エコシステムでの安定運用</li>
+        </ul>
+
+        <h3><span class="emoji">🚀</span>次のステップ</h3>
+        <ol>
+            <li>OAuth認証情報設定</li>
+            <li>初回手動実行テスト</li>
+            <li>RSS配信確認</li>
+            <li>ポッドキャストアプリで購読</li>
+        </ol>
+
+        <div class="text-center cost-zero">
+            <span class="emoji">🎙️</span><strong>Let's start your AI-powered podcast journey!</strong>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Mermaid initialization -->
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            },
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35
+            },
+            gantt: {
+                titleTopMargin: 25,
+                barHeight: 20,
+                fontsize: 11,
+                sidePadding: 75,
+                gridLineStartPadding: 35,
+                fontSize: 11,
+                numberSectionStyles: 4
+            }
+        });
+    </script>
+</body>
+</html>
