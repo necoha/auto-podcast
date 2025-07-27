@@ -62,11 +62,7 @@ jobs:
     - name: Check daily generation limit
       id: check_limit
       run: |
-        # GitHub Actionsの実行回数制限チェック
-        # 無料プランでは月2000分まで
         echo "Checking generation limits..."
-        
-        # 今日既に生成されたファイル数をチェック
         TODAY=$(date +%Y%m%d)
         COUNT=$(find audio_files -name "*${TODAY}*.mp3" 2>/dev/null | wc -l)
         
@@ -81,64 +77,40 @@ jobs:
     - name: Generate podcast episode
       if: steps.check_limit.outputs.skip_generation == 'false'
       run: |
-        # 環境変数設定
         export GOOGLE_OAUTH_CREDENTIALS="${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}"
         export OAUTH_SESSION_DATA="${{ secrets.OAUTH_SESSION_DATA }}"
         export PODCAST_BASE_URL="${{ secrets.PODCAST_BASE_URL }}"
         
-        # トピックキーワードの設定
         if [ -n "${{ github.event.inputs.topic_keywords }}" ]; then
           KEYWORDS="${{ github.event.inputs.topic_keywords }}"
         else
           KEYWORDS="AI,Technology,Programming,Startup"
         fi
         
-        # カスタムプロンプトの設定
         CUSTOM_PROMPT="${{ github.event.inputs.custom_prompt }}"
         
-        # ポッドキャスト生成実行
-        python -c "
-import os
-import sys
-sys.path.append('.')
-from podcast_generator import PodcastGenerator
-
-generator = PodcastGenerator()
-keywords = '$KEYWORDS'.split(',') if '$KEYWORDS' else None
-custom_prompt = '$CUSTOM_PROMPT' if '$CUSTOM_PROMPT' else None
-
-print(f'Generating podcast with keywords: {keywords}')
-result = generator.generate_podcast_episode(keywords, custom_prompt)
-
-if result:
-    print(f'Episode generated successfully: {result[\"audio_file\"]}')
-    print(f'Episode number: {result[\"episode_number\"]}')
-    exit(0)
-else:
-    print('Failed to generate episode')
-    exit(1)
-"
+        python -m podcast_generator
     
     - name: Generate RSS feed
       if: steps.check_limit.outputs.skip_generation == 'false'
       run: |
         python -c "
-import sys
-sys.path.append('.')
-from rss_feed_generator import RSSFeedGenerator
-
-rss_gen = RSSFeedGenerator()
-success = rss_gen.generate_rss_feed()
-
-if success:
-    print('RSS feed generated successfully')
-    is_valid, message = rss_gen.validate_feed()
-    print(f'Validation: {message}')
-    exit(0)
-else:
-    print('Failed to generate RSS feed')
-    exit(1)
-"
+        import sys
+        sys.path.append('.')
+        from rss_feed_generator import RSSFeedGenerator
+        
+        rss_gen = RSSFeedGenerator()
+        success = rss_gen.generate_rss_feed()
+        
+        if success:
+            print('RSS feed generated successfully')
+            is_valid, message = rss_gen.validate_feed()
+            print(f'Validation: {message}')
+            exit(0)
+        else:
+            print('Failed to generate RSS feed')
+            exit(1)
+        "
     
     - name: Upload audio artifacts
       if: steps.check_limit.outputs.skip_generation == 'false'
@@ -162,10 +134,8 @@ else:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # 新しいファイルを追加
         git add audio_files/ content/ podcast_feed.xml 2>/dev/null || true
         
-        # 変更があるかチェック
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
@@ -175,7 +145,6 @@ else:
     
     - name: Cleanup old files
       run: |
-        # 30日以上古いファイルを削除
         find audio_files -name "*.mp3" -mtime +30 -delete 2>/dev/null || true
         find content -name "*.txt" -mtime +30 -delete 2>/dev/null || true
         find content -name "*.json" -mtime +30 -delete 2>/dev/null || true
@@ -185,14 +154,11 @@ else:
         echo "Podcast generation completed!"
         echo "Audio files:"
         ls -la audio_files/ 2>/dev/null || echo "No audio files found"
-        echo ""
         echo "RSS feed:"
         ls -la podcast_feed.xml 2>/dev/null || echo "No RSS feed found"
-        echo ""
         echo "Content files:"
         ls -la content/ 2>/dev/null || echo "No content files found"
 
-  # GitHub Pagesでホスティングする場合
   deploy-to-pages:
     needs: generate-podcast
     runs-on: ubuntu-latest
@@ -223,59 +189,55 @@ else:
       run: |
         mkdir -p static
         
-        # RSSフィードをコピー
         if [ -f podcast_feed.xml ]; then
           cp podcast_feed.xml static/feed.xml
         fi
         
-        # 音声ファイルをコピー
         if [ -d audio_files ]; then
           mkdir -p static/audio
           cp audio_files/*.mp3 static/audio/ 2>/dev/null || true
         fi
         
-        # 簡単なindex.htmlを作成
         cat > static/index.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>AI Auto Podcast</title>
-    <meta charset="utf-8">
-</head>
-<body>
-    <h1>AI Auto Podcast</h1>
-    <p>Notebook LMのAudio Overview機能を使った自動生成ポッドキャスト</p>
-    <p><a href="feed.xml">RSS Feed</a></p>
-    
-    <h2>Latest Episodes</h2>
-    <div id="episodes"></div>
-    
-    <script>
-        // 音声ファイル一覧を表示
-        fetch('./audio/')
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const links = doc.querySelectorAll('a[href$=".mp3"]');
-                const episodesDiv = document.getElementById('episodes');
-                
-                links.forEach(link => {
-                    const episode = document.createElement('div');
-                    episode.innerHTML = `
-                        <h3>${link.textContent}</h3>
-                        <audio controls>
-                            <source src="./audio/${link.textContent}" type="audio/mpeg">
-                        </audio>
-                    `;
-                    episodesDiv.appendChild(episode);
-                });
-            })
-            .catch(err => console.log('Episodes loading failed:', err));
-    </script>
-</body>
-</html>
-EOF
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AI Auto Podcast</title>
+            <meta charset="utf-8">
+        </head>
+        <body>
+            <h1>AI Auto Podcast</h1>
+            <p>Notebook LMのAudio Overview機能を使った自動生成ポッドキャスト</p>
+            <p><a href="feed.xml">RSS Feed</a></p>
+            
+            <h2>Latest Episodes</h2>
+            <div id="episodes"></div>
+            
+            <script>
+                fetch('./audio/')
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const links = doc.querySelectorAll('a[href$=".mp3"]');
+                        const episodesDiv = document.getElementById('episodes');
+                        
+                        links.forEach(link => {
+                            const episode = document.createElement('div');
+                            episode.innerHTML = `
+                                <h3>${link.textContent}</h3>
+                                <audio controls>
+                                    <source src="./audio/${link.textContent}" type="audio/mpeg">
+                                </audio>
+                            `;
+                            episodesDiv.appendChild(episode);
+                        });
+                    })
+                    .catch(err => console.log('Episodes loading failed:', err));
+            </script>
+        </body>
+        </html>
+        EOF
     
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v2
