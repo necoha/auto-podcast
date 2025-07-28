@@ -149,21 +149,33 @@ jobs:
         
         if [ -n "$GECKODRIVER_VERSION" ]; then
             echo "Installing GeckoDriver version: $GECKODRIVER_VERSION"
-            wget -q "https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-${GECKODRIVER_VERSION#v}-linux64.tar.gz" -O geckodriver.tar.gz
-            tar -xzf geckodriver.tar.gz
-            sudo mv geckodriver /usr/local/bin/
-            sudo chmod +x /usr/local/bin/geckodriver
-            rm geckodriver.tar.gz
-            echo "GeckoDriver installation successful"
-            /usr/local/bin/geckodriver --version
+            # URLを修正 - v接頭辞を削除
+            GECKODRIVER_URL="https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-${GECKODRIVER_VERSION#v}-linux64.tar.gz"
+            echo "Downloading from: $GECKODRIVER_URL"
+            if wget -q "$GECKODRIVER_URL" -O geckodriver.tar.gz; then
+                tar -xzf geckodriver.tar.gz
+                sudo mv geckodriver /usr/local/bin/
+                sudo chmod +x /usr/local/bin/geckodriver
+                rm geckodriver.tar.gz
+                echo "GeckoDriver installation successful"
+                /usr/local/bin/geckodriver --version
+            else
+                echo "Download failed, trying fallback URL"
+                wget -q "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-linux64.tar.gz" -O geckodriver.tar.gz
+                tar -xzf geckodriver.tar.gz
+                sudo mv geckodriver /usr/local/bin/
+                sudo chmod +x /usr/local/bin/geckodriver
+                rm geckodriver.tar.gz
+                echo "GeckoDriver fallback installation successful"
+            fi
         else
-            echo "Failed to get GeckoDriver version, trying direct download"
+            echo "Failed to get GeckoDriver version, using fixed version"
             wget -q "https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-linux64.tar.gz" -O geckodriver.tar.gz
             tar -xzf geckodriver.tar.gz
             sudo mv geckodriver /usr/local/bin/
             sudo chmod +x /usr/local/bin/geckodriver
             rm geckodriver.tar.gz
-            echo "GeckoDriver fallback installation successful"
+            echo "GeckoDriver fixed version installation successful"
         fi
         
         # Verify Firefox and GeckoDriver installation
