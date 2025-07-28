@@ -47,13 +47,37 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-        # Chrome for Selenium
+        # Chrome and ChromeDriver for Selenium
         sudo apt-get update
         sudo apt-get install -y wget unzip
+        
+        # Install Google Chrome
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
         sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
+        
+        # Verify Chrome installation
+        google-chrome --version
+        
+        # Install ChromeDriver manually as backup
+        CHROME_VERSION=$(google-chrome --version | cut -d' ' -f3 | cut -d'.' -f1)
+        echo "Chrome major version: $CHROME_VERSION"
+        
+        # Download and install ChromeDriver
+        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+        echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
+        
+        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        unzip -q chromedriver_linux64.zip
+        sudo mv chromedriver /usr/local/bin/
+        sudo chmod +x /usr/local/bin/chromedriver
+        
+        # Verify ChromeDriver installation
+        chromedriver --version || echo "ChromeDriver manual installation failed"
+        
+        # Clean up
+        rm -f chromedriver_linux64.zip
     
     - name: Create required directories
       run: |

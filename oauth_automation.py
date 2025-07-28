@@ -60,23 +60,75 @@ class OAuthNotebookLMAutomator:
             chrome_options.add_argument(f'--user-data-dir={user_data_dir}')
         
         try:
-            # ChromeDriverManagerの設定を改善
             if os.getenv('GITHUB_ACTIONS'):
-                # GitHub Actions環境では最新バージョンを使用
-                service = Service(ChromeDriverManager().install())
+                # GitHub Actions環境での改善されたChromeDriver設定
+                print("GitHub Actions環境でのChromeDriverセットアップ")
+                
+                # ChromeDriverManagerでパスを取得
+                chromedriver_path = ChromeDriverManager().install()
+                print(f"ChromeDriverパス: {chromedriver_path}")
+                
+                # パスの検証と修正
+                if 'THIRD_PARTY_NOTICES' in chromedriver_path:
+                    # 正しいchromedriverファイルを探す
+                    import glob
+                    driver_dir = os.path.dirname(chromedriver_path)
+                    possible_drivers = glob.glob(os.path.join(driver_dir, '**/chromedriver*'), recursive=True)
+                    
+                    for path in possible_drivers:
+                        if os.path.isfile(path) and 'THIRD_PARTY_NOTICES' not in path and os.access(path, os.X_OK):
+                            chromedriver_path = path
+                            print(f"修正されたChromeDriverパス: {chromedriver_path}")
+                            break
+                
+                # 実行権限を確認・設定
+                if os.path.exists(chromedriver_path):
+                    import stat
+                    current_permissions = os.stat(chromedriver_path).st_mode
+                    os.chmod(chromedriver_path, current_permissions | stat.S_IEXEC)
+                    print(f"ChromeDriver実行権限設定完了: {oct(os.stat(chromedriver_path).st_mode)}")
+                
+                service = Service(chromedriver_path)
             else:
-                # ローカル環境では特定パスを指定
+                # ローカル環境
                 service = Service(ChromeDriverManager(path="/tmp").install())
             
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            print("ChromeDriver初期化成功")
+            
         except Exception as e:
             print(f"ChromeDriver設定エラー: {e}")
             # フォールバック: システムのChromeDriverを使用
             try:
-                service = Service("/usr/bin/chromedriver")
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                print("システムChromeDrawerを試行中...")
+                # 複数の可能なパスを試行
+                possible_paths = [
+                    "/usr/bin/chromedriver", 
+                    "/usr/local/bin/chromedriver",
+                    "/snap/bin/chromium.chromedriver"
+                ]
+                
+                for path in possible_paths:
+                    if os.path.exists(path) and os.access(path, os.X_OK):
+                        print(f"システムChromeDriver使用: {path}")
+                        service = Service(path)
+                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                        print("システムChromeDriver初期化成功")
+                        return
+                
+                raise Exception("利用可能なChromeDriverが見つかりません")
+                
             except Exception as e2:
                 print(f"フォールバックも失敗: {e2}")
+                
+                # 最終手段：Chrome自体の問題をチェック
+                try:
+                    import subprocess
+                    result = subprocess.run(['google-chrome', '--version'], capture_output=True, text=True)
+                    print(f"Chrome version: {result.stdout}")
+                except:
+                    print("Google Chromeが正しくインストールされていない可能性があります")
+                
                 raise Exception("ChromeDriverの初期化に失敗しました")
         
         # WebDriver検出回避
