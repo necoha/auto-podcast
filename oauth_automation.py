@@ -33,22 +33,37 @@ class OAuthNotebookLMAutomator:
         # GitHub Actions環境での設定
         if os.getenv('GITHUB_ACTIONS'):
             print("GitHub Actions環境用のChrome設定を適用中...")
-            # Chrome 137以下では古いheadlessオプションを使用
+            # Chrome/Chromiumバージョン検出とheadlessオプション設定
             try:
                 import subprocess
-                chrome_version_result = subprocess.run(['google-chrome', '--version'], 
-                                                     capture_output=True, text=True)
-                chrome_version = chrome_version_result.stdout.strip()
-                print(f"検出されたChrome: {chrome_version}")
+                chrome_version = None
+                chrome_command = None
                 
-                # バージョン137以下の場合は古いheadlessオプション
-                if '137.' in chrome_version or '136.' in chrome_version or '135.' in chrome_version:
-                    print("Chrome 137以下検出: 古いheadlessオプションを使用")
-                    chrome_options.add_argument('--headless')  # 古い形式
+                # Chrome or Chromium を検出
+                for cmd in ['google-chrome', 'chromium-browser', 'chromium']:
+                    try:
+                        result = subprocess.run([cmd, '--version'], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            chrome_version = result.stdout.strip()
+                            chrome_command = cmd
+                            print(f"検出されたブラウザ: {chrome_command} - {chrome_version}")
+                            break
+                    except:
+                        continue
+                
+                if chrome_version:
+                    # バージョン137以下またはChromiumの場合は古いheadlessオプション
+                    if ('137.' in chrome_version or '136.' in chrome_version or 
+                        '135.' in chrome_version or 'chromium' in chrome_command.lower()):
+                        print("古いheadlessオプションを使用")
+                        chrome_options.add_argument('--headless')  # 古い形式
+                    else:
+                        chrome_options.add_argument('--headless=new')  # 新しい形式
                 else:
-                    chrome_options.add_argument('--headless=new')  # 新しい形式
+                    print("ブラウザバージョン検出失敗: デフォルトheadlessを使用")
+                    chrome_options.add_argument('--headless')
             except:
-                print("Chromeバージョン検出失敗: デフォルトheadlessを使用")
+                print("ブラウザ検出エラー: デフォルトheadlessを使用")
                 chrome_options.add_argument('--headless')
                 
             chrome_options.add_argument('--no-sandbox')
