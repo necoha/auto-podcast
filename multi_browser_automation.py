@@ -99,18 +99,65 @@ class MultiBrowserNotebookLMAutomator:
         
         # CI環境では事前にインストールしたChromeDriverを使用
         if os.getenv('GITHUB_ACTIONS'):
-            chromedriver_path = '/usr/local/bin/chromedriver'
-            if os.path.exists(chromedriver_path) and os.access(chromedriver_path, os.X_OK):
+            # 優先順位でChromeDriverパスを試行
+            possible_paths = [
+                '/usr/local/bin/chromedriver',
+                '/usr/bin/chromedriver',
+                '/snap/bin/chromedriver'
+            ]
+            
+            chromedriver_path = None
+            for path in possible_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    chromedriver_path = path
+                    print(f"システムChromeDriver発見: {chromedriver_path}")
+                    break
+            
+            if chromedriver_path:
                 service = ChromeService(chromedriver_path)
                 print(f"システムChromeDriver使用: {chromedriver_path}")
             else:
-                print("システムChromeDriverが見つかりません")
-                return False
+                print("システムChromeDriverが見つかりません - WebDriverManagerを使用")
+                try:
+                    driver_path = ChromeDriverManager().install()
+                    # THIRD_PARTY_NOTICESファイル問題の修正
+                    if driver_path.endswith('THIRD_PARTY_NOTICES.chromedriver'):
+                        # THIRD_PARTY_NOTICESファイルではなく実際のchromedriverを探す
+                        driver_dir = os.path.dirname(driver_path)
+                        actual_driver = os.path.join(driver_dir, 'chromedriver')
+                        if os.path.exists(actual_driver):
+                            driver_path = actual_driver
+                            os.chmod(actual_driver, 0o755)
+                            print(f"WebDriverManager修正パス使用: {driver_path}")
+                        elif 'chromedriver-linux64' in driver_dir:
+                            # Chrome for Testing API形式のディレクトリ構造
+                            alt_driver = os.path.join(driver_dir, 'chromedriver-linux64', 'chromedriver')
+                            if os.path.exists(alt_driver):
+                                driver_path = alt_driver
+                                os.chmod(alt_driver, 0o755)
+                                print(f"Chrome for Testing修正パス使用: {driver_path}")
+                        else:
+                            print(f"WebDriverManager実行可能ファイルが見つかりません: {driver_path}")
+                            return False
+                    
+                    service = ChromeService(driver_path)
+                    print(f"WebDriverManager ChromeDriver使用: {driver_path}")
+                except Exception as e:
+                    print(f"WebDriverManager ChromeDriver取得失敗: {e}")
+                    return False
         else:
-            service = ChromeService(ChromeDriverManager().install())
+            try:
+                service = ChromeService(ChromeDriverManager().install())
+            except Exception as e:
+                print(f"ローカル環境ChromeDriver取得失敗: {e}")
+                return False
         
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        return self.test_browser_basic_functionality()
+        try:
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            return self.test_browser_basic_functionality()
+        except Exception as e:
+            print(f"Chrome WebDriver起動失敗: {e}")
+            return False
     
     def setup_firefox_driver(self):
         """Firefox WebDriverセットアップ"""
@@ -132,18 +179,44 @@ class MultiBrowserNotebookLMAutomator:
         
         # CI環境では事前にインストールしたGeckoDriverを使用
         if os.getenv('GITHUB_ACTIONS'):
-            geckodriver_path = '/usr/local/bin/geckodriver'
-            if os.path.exists(geckodriver_path) and os.access(geckodriver_path, os.X_OK):
+            # 優先順位でGeckoDriverパスを試行
+            possible_paths = [
+                '/usr/local/bin/geckodriver',
+                '/usr/bin/geckodriver',
+                '/snap/bin/geckodriver'
+            ]
+            
+            geckodriver_path = None
+            for path in possible_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    geckodriver_path = path
+                    print(f"システムGeckoDriver発見: {geckodriver_path}")
+                    break
+            
+            if geckodriver_path:
                 service = FirefoxService(geckodriver_path)
                 print(f"システムGeckoDriver使用: {geckodriver_path}")
             else:
-                print("システムGeckoDriverが見つかりません")
-                return False
+                print("システムGeckoDriverが見つかりません - WebDriverManagerを使用")
+                try:
+                    service = FirefoxService(GeckoDriverManager().install())
+                    print("WebDriverManager GeckoDriver使用")
+                except Exception as e:
+                    print(f"WebDriverManager GeckoDriver取得失敗: {e}")
+                    return False
         else:
-            service = FirefoxService(GeckoDriverManager().install())
+            try:
+                service = FirefoxService(GeckoDriverManager().install())
+            except Exception as e:
+                print(f"ローカル環境GeckoDriver取得失敗: {e}")
+                return False
         
-        self.driver = webdriver.Firefox(service=service, options=firefox_options)
-        return self.test_browser_basic_functionality()
+        try:
+            self.driver = webdriver.Firefox(service=service, options=firefox_options)
+            return self.test_browser_basic_functionality()
+        except Exception as e:
+            print(f"Firefox WebDriver起動失敗: {e}")
+            return False
     
     def setup_chromium_driver(self):
         """Chromium WebDriverセットアップ"""
@@ -180,18 +253,63 @@ class MultiBrowserNotebookLMAutomator:
         
         # CI環境では事前にインストールしたChromeDriverを使用
         if os.getenv('GITHUB_ACTIONS'):
-            chromedriver_path = '/usr/local/bin/chromedriver'
-            if os.path.exists(chromedriver_path) and os.access(chromedriver_path, os.X_OK):
+            # 優先順位でChromeDriverパスを試行
+            possible_paths = [
+                '/usr/local/bin/chromedriver',
+                '/usr/bin/chromedriver',
+                '/snap/bin/chromedriver'
+            ]
+            
+            chromedriver_path = None
+            for path in possible_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    chromedriver_path = path
+                    print(f"Chromium用システムChromeDriver発見: {chromedriver_path}")
+                    break
+            
+            if chromedriver_path:
                 service = ChromeService(chromedriver_path)
                 print(f"Chromium用システムChromeDriver使用: {chromedriver_path}")
             else:
-                print("Chromium用システムChromeDriverが見つかりません")
-                return False
+                print("Chromium用システムChromeDriverが見つかりません - WebDriverManagerを使用")
+                try:
+                    driver_path = ChromeDriverManager().install()
+                    # THIRD_PARTY_NOTICESファイル問題の修正
+                    if driver_path.endswith('THIRD_PARTY_NOTICES.chromedriver'):
+                        driver_dir = os.path.dirname(driver_path)
+                        actual_driver = os.path.join(driver_dir, 'chromedriver')
+                        if os.path.exists(actual_driver):
+                            driver_path = actual_driver
+                            os.chmod(actual_driver, 0o755)
+                            print(f"Chromium用WebDriverManager修正パス使用: {driver_path}")
+                        elif 'chromedriver-linux64' in driver_dir:
+                            alt_driver = os.path.join(driver_dir, 'chromedriver-linux64', 'chromedriver')
+                            if os.path.exists(alt_driver):
+                                driver_path = alt_driver
+                                os.chmod(alt_driver, 0o755)
+                                print(f"Chromium用Chrome for Testing修正パス使用: {driver_path}")
+                        else:
+                            print(f"Chromium用WebDriverManager実行可能ファイルが見つかりません: {driver_path}")
+                            return False
+                    
+                    service = ChromeService(driver_path)
+                    print(f"Chromium用WebDriverManager ChromeDriver使用: {driver_path}")
+                except Exception as e:
+                    print(f"Chromium用WebDriverManager ChromeDriver取得失敗: {e}")
+                    return False
         else:
-            service = ChromeService(ChromeDriverManager().install())
+            try:
+                service = ChromeService(ChromeDriverManager().install())
+            except Exception as e:
+                print(f"Chromium用ローカル環境ChromeDriver取得失敗: {e}")
+                return False
         
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        return self.test_browser_basic_functionality()
+        try:
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            return self.test_browser_basic_functionality()
+        except Exception as e:
+            print(f"Chromium WebDriver起動失敗: {e}")
+            return False
     
     def setup_edge_driver(self):
         """Edge WebDriverセットアップ"""
