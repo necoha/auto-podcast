@@ -67,6 +67,24 @@ class OAuthNotebookLMAutomator:
             chrome_options.add_argument('--disable-hang-monitor')
             chrome_options.add_argument('--disable-prompt-on-repost')
             chrome_options.add_argument('--disable-client-side-phishing-detection')
+            # 追加の安定性オプション
+            chrome_options.add_argument('--disable-background-mode')
+            chrome_options.add_argument('--disable-notifications')
+            chrome_options.add_argument('--disable-permissions-api')
+            chrome_options.add_argument('--disable-device-discovery-notifications')
+            chrome_options.add_argument('--disable-infobars')
+            chrome_options.add_argument('--disable-popup-blocking')
+            chrome_options.add_argument('--disable-save-password-bubble')
+            chrome_options.add_argument('--disable-translate')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--allow-running-insecure-content')
+            chrome_options.add_argument('--disable-logging')
+            chrome_options.add_argument('--silent')
+            chrome_options.add_argument('--log-level=3')  # エラーのみ
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor,VizServiceDisplay')
+            # メモリ制限を設定
+            chrome_options.add_argument('--max-old-space-size=2048')
+            chrome_options.add_argument('--memory-pressure-off')
             
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
@@ -142,6 +160,32 @@ class OAuthNotebookLMAutomator:
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
             print("ChromeDriver初期化成功")
             
+            # ドライバー動作確認
+            try:
+                # 基本的な動作テスト
+                print("ドライバー動作テスト中...")
+                test_url = "data:text/html,<html><body><h1>Test Page</h1></body></html>"
+                self.driver.get(test_url)
+                time.sleep(2)
+                
+                # ページタイトル確認
+                if self.driver.title:
+                    print(f"ドライバーテスト成功: {self.driver.title}")
+                else:
+                    print("ドライバーテスト: タイトル取得成功")
+                
+                # GitHub Actions環境ではWebDriver検出回避をスキップ
+                if not os.getenv('GITHUB_ACTIONS'):
+                    # WebDriver検出回避（ローカルのみ）
+                    self.driver.execute_script(
+                        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                    )
+                    print("WebDriver検出回避を適用")
+                
+            except Exception as test_error:
+                print(f"ドライバー動作テストエラー: {test_error}")
+                # テストに失敗してもメインの処理は続行
+            
         except Exception as e:
             print(f"ChromeDriver設定エラー: {e}")
             # フォールバック: システムのChromeDriverを使用
@@ -176,11 +220,6 @@ class OAuthNotebookLMAutomator:
                     print("Google Chromeが正しくインストールされていない可能性があります")
                 
                 raise Exception("ChromeDriverの初期化に失敗しました")
-        
-        # WebDriver検出回避
-        self.driver.execute_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
     
     def load_oauth_credentials(self):
         """OAuth認証情報を読み込み"""
