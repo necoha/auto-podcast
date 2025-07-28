@@ -44,6 +44,38 @@ class ContentManager:
         
         return all_articles
     
+    def get_latest_article_urls(self, limit=5):
+        """最新記事のURLを取得（Notebook LM用）"""
+        article_urls = []
+        
+        for feed_url in config.RSS_FEEDS:
+            try:
+                feed = feedparser.parse(feed_url)
+                feed_title = feed.feed.get('title', 'Unknown Feed')
+                
+                # 各フィードから1-2記事を取得
+                articles_per_feed = min(2, limit // len(config.RSS_FEEDS) + 1)
+                
+                for entry in feed.entries[:articles_per_feed]:
+                    if hasattr(entry, 'link') and entry.link:
+                        article_info = {
+                            'url': entry.link,
+                            'title': entry.get('title', 'No Title'),
+                            'source': feed_title,
+                            'published': entry.get('published', '')
+                        }
+                        article_urls.append(article_info)
+                        
+                        if len(article_urls) >= limit:
+                            break
+                
+                print(f"URL取得: {feed_title} - {min(articles_per_feed, len(feed.entries))}記事")
+                
+            except Exception as e:
+                print(f"URL取得エラー ({feed_url}): {e}")
+        
+        return article_urls[:limit]
+    
     def fetch_web_content(self, url):
         """Webページからコンテンツを取得"""
         try:

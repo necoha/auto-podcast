@@ -71,24 +71,34 @@ class RSSFeedGenerator:
         except:
             description_parts.append(f"配信日: {datetime.now().strftime('%Y年%m月%d日')}")
         
-        # トピックキーワード
-        if metadata.get('topic_keywords'):
-            keywords = ', '.join(metadata['topic_keywords'])
-            description_parts.append(f"主要トピック: {keywords}")
-        
-        # コンテンツファイルの内容を一部読み込み
-        if metadata.get('content_file'):
-            content_path = os.path.join(self.content_dir, metadata['content_file'])
-            try:
-                with open(content_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    # 最初の段落を取得
-                    first_paragraph = content.split('\n\n')[0] if content else ""
-                    if len(first_paragraph) > 200:
-                        first_paragraph = first_paragraph[:200] + "..."
-                    description_parts.append(f"\n{first_paragraph}")
-            except:
-                pass
+        # URL基盤かコンテンツ基盤かで説明を分ける
+        if metadata.get('generation_method') == 'url_based':
+            # URL基盤の場合
+            if metadata.get('source_title'):
+                description_parts.append(f"記事タイトル: {metadata['source_title']}")
+            if metadata.get('source_name'):
+                description_parts.append(f"ソース: {metadata['source_name']}")
+            if metadata.get('source_url'):
+                description_parts.append(f"元記事: {metadata['source_url']}")
+        else:
+            # コンテンツ基盤の場合
+            if metadata.get('topic_keywords'):
+                keywords = ', '.join(metadata['topic_keywords'])
+                description_parts.append(f"主要トピック: {keywords}")
+            
+            # コンテンツファイルの内容を一部読み込み
+            if metadata.get('content_file'):
+                content_path = os.path.join(self.content_dir, metadata['content_file'])
+                try:
+                    with open(content_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        # 最初の段落を取得
+                        first_paragraph = content.split('\n\n')[0] if content else ""
+                        if len(first_paragraph) > 200:
+                            first_paragraph = first_paragraph[:200] + "..."
+                        description_parts.append(f"\n{first_paragraph}")
+                except:
+                    pass
         
         description_parts.append("\n\nNotebook LMのAudio Overview機能を使用して自動生成されたポッドキャストです。")
         

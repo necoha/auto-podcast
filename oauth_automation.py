@@ -8,6 +8,7 @@ import json
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
@@ -446,6 +447,135 @@ class OAuthNotebookLMAutomator:
         finally:
             if not os.getenv('GITHUB_ACTIONS'):
                 self.close()
+    
+    def create_audio_from_url(self, source_url, output_path, custom_prompt=None):
+        """URLから直接Audio Overviewを生成"""
+        try:
+            # CI環境ではモック音声ファイルを生成
+            if os.getenv('GITHUB_ACTIONS'):
+                return self.create_mock_audio(source_url, output_path)
+            
+            print(f"URL音声生成開始: {source_url}")
+            
+            # OAuth認証
+            if not self.oauth_login():
+                return False
+            
+            # 新しいノートブック作成
+            if not self.create_notebook():
+                return False
+            
+            # URLをソースとして追加
+            if not self.add_url_source(source_url):
+                return False
+            
+            # Audio Overview生成
+            if not self.generate_audio_overview(custom_prompt):
+                return False
+            
+            # 音声ダウンロード
+            if not self.download_audio(output_path):
+                return False
+            
+            print(f"URL音声生成完了: {output_path}")
+            return True
+            
+        except Exception as e:
+            print(f"URL音声生成エラー: {e}")
+            return False
+        finally:
+            if not os.getenv('GITHUB_ACTIONS'):
+                self.close()
+    
+    def add_url_source(self, source_url):
+        """ノートブックにURLソースを追加"""
+        try:
+            print(f"URLソース追加: {source_url}")
+            
+            # "Add source" ボタンを探す
+            add_source_selectors = [
+                "[data-testid='add-source']",
+                "button[aria-label*='Add source']",
+                "button:contains('Add source')",
+                ".add-source-button",
+                "[class*='add-source']"
+            ]
+            
+            add_source_btn = None
+            for selector in add_source_selectors:
+                try:
+                    add_source_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    break
+                except:
+                    continue
+            
+            if not add_source_btn:
+                # 代替方法：+ボタンやAddボタンを探す
+                possible_buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                for btn in possible_buttons:
+                    if any(keyword in btn.text.lower() for keyword in ['add', 'source', '+', 'upload']):
+                        add_source_btn = btn
+                        break
+            
+            if not add_source_btn:
+                print("Add sourceボタンが見つかりません")
+                return False
+            
+            add_source_btn.click()
+            time.sleep(2)
+            
+            # URL入力フィールドを探す
+            url_input_selectors = [
+                "input[placeholder*='URL']",
+                "input[placeholder*='url']",
+                "input[placeholder*='link']",
+                "input[type='url']",
+                "input[name*='url']"
+            ]
+            
+            url_input = None
+            for selector in url_input_selectors:
+                try:
+                    url_input = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                    )
+                    break
+                except:
+                    continue
+            
+            if not url_input:
+                print("URL入力フィールドが見つかりません")
+                return False
+            
+            # URLを入力
+            url_input.clear()
+            url_input.send_keys(source_url)
+            url_input.send_keys(Keys.RETURN)
+            
+            # ソース処理完了を待機
+            print("ソース処理を待機中...")
+            try:
+                # 処理完了の指標を複数パターンで待機
+                WebDriverWait(self.driver, 60).until(
+                    lambda driver: any([
+                        len(driver.find_elements(By.CSS_SELECTOR, "[data-testid='source-processed']")) > 0,
+                        len(driver.find_elements(By.CSS_SELECTOR, ".source-ready")) > 0,
+                        len(driver.find_elements(By.CSS_SELECTOR, "[class*='processed']")) > 0,
+                        "processed" in driver.page_source.lower(),
+                        "ready" in driver.page_source.lower()
+                    ])
+                )
+                print("ソース処理完了")
+                return True
+                
+            except:
+                print("ソース処理完了の確認タイムアウト - 継続")
+                time.sleep(10)  # 追加待機
+                return True
+            
+        except Exception as e:
+            print(f"URLソース追加エラー: {e}")
+            return False
     
     def create_mock_audio(self, content_text, output_path):
         """CI環境用のモック音声ファイル生成"""

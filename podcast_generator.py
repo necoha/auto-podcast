@@ -45,23 +45,21 @@ class PodcastGenerator:
             
             print("ポッドキャストエピソード生成を開始...")
             
-            # Step 1: コンテンツ収集
-            print("1. コンテンツを収集中...")
-            content_file = self.content_manager.create_daily_content(topic_keywords)
+            # Step 1: 最新記事URLを取得
+            print("1. 最新記事URLを取得中...")
+            article_urls = self.content_manager.get_latest_article_urls(limit=3)
             
-            if not content_file:
-                print("コンテンツの生成に失敗しました。")
-                return None
+            if not article_urls:
+                print("記事URLの取得に失敗しました。従来方式でコンテンツ生成します。")
+                return self.generate_from_content(topic_keywords, custom_prompt)
             
-            # Step 2: コンテンツ読み込み
-            content_text = self.content_manager.load_content(os.path.basename(content_file))
-            
-            if len(content_text) < 100:
-                print("コンテンツが短すぎます。")
-                return None
+            # Step 2: 最適な記事を選択（最初の記事を使用）
+            selected_article = article_urls[0]
+            print(f"選択記事: {selected_article['title']} - {selected_article['source']}")
+            print(f"URL: {selected_article['url']}")
             
             # Step 3: Audio Overview生成
-            print("2. Notebook LMでAudio Overviewを生成中...")
+            print("2. Notebook LMでURL音声生成中...")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             audio_filename = f"podcast_episode_{timestamp}.mp3"
@@ -70,19 +68,73 @@ class PodcastGenerator:
             # デフォルトのプロンプト
             if not custom_prompt:
                 custom_prompt = """
-                このコンテンツを基に、以下の形式でポッドキャストを作成してください：
+                このWebページの内容を基に、以下の形式でポッドキャストを作成してください：
                 
                 1. 親しみやすい挨拶で始める
-                2. 今日の主要なトピックを簡潔に紹介
-                3. 各ニュースを分かりやすく解説
+                2. 記事の要約を分かりやすく紹介
+                3. 重要なポイントを詳しく解説
                 4. 聞き手との対話を意識した自然な会話
-                5. 最後にまとめと次回予告
+                5. 今後の展望やまとめで終了
                 
                 トーン：友好的で親しみやすく、専門用語は分かりやすく説明
                 長さ：10-15分程度のポッドキャスト
                 """
             
-            # OAuth NotebookLM自動化実行
+            # OAuth NotebookLM自動化実行（URL指定）
+            automator = OAuthNotebookLMAutomator()
+            success = automator.create_audio_from_url(
+                source_url=selected_article['url'],
+                output_path=audio_path,
+                custom_prompt=custom_prompt
+            )
+            
+            if success and os.path.exists(audio_path):
+                print(f"3. 音声ファイル生成完了: {audio_path}")
+                
+                # 生成カウント更新
+                self.daily_generation_count += 1
+                
+                # メタデータ保存（URL情報も含める）
+                self.save_episode_metadata_from_url(audio_filename, selected_article, topic_keywords)
+                
+                return {
+                    'audio_file': audio_path,
+                    'source_article': selected_article,
+                    'timestamp': timestamp,
+                    'episode_number': self.get_next_episode_number()
+                }
+            else:
+                print("URL音声生成に失敗しました。従来方式を試します。")
+                return self.generate_from_content(topic_keywords, custom_prompt)
+                
+        except Exception as e:
+            print(f"ポッドキャスト生成エラー: {e}")
+            return None
+    
+    def generate_from_content(self, topic_keywords=None, custom_prompt=None):
+        """従来方式：テキストコンテンツから音声生成"""
+        try:
+            print("従来方式でコンテンツから音声生成...")
+            
+            # コンテンツ収集
+            content_file = self.content_manager.create_daily_content(topic_keywords)
+            
+            if not content_file:
+                print("コンテンツの生成に失敗しました。")
+                return None
+            
+            # コンテンツ読み込み
+            content_text = self.content_manager.load_content(os.path.basename(content_file))
+            
+            if len(content_text) < 100:
+                print("コンテンツが短すぎます。")
+                return None
+            
+            # 音声生成
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            audio_filename = f"podcast_episode_{timestamp}.mp3"
+            audio_path = os.path.join(config.AUDIO_OUTPUT_DIR, audio_filename)
+            
             automator = OAuthNotebookLMAutomator()
             success = automator.create_audio_from_content(
                 content_text=content_text,
@@ -91,7 +143,7 @@ class PodcastGenerator:
             )
             
             if success and os.path.exists(audio_path):
-                print(f"3. 音声ファイル生成完了: {audio_path}")
+                print(f"従来方式音声生成完了: {audio_path}")
                 
                 # 生成カウント更新
                 self.daily_generation_count += 1
@@ -106,11 +158,11 @@ class PodcastGenerator:
                     'episode_number': self.get_next_episode_number()
                 }
             else:
-                print("Audio Overview生成に失敗しました。")
+                print("従来方式音声生成も失敗しました。")
                 return None
                 
         except Exception as e:
-            print(f"ポッドキャスト生成エラー: {e}")
+            print(f"従来方式生成エラー: {e}")
             return None
     
     def save_episode_metadata(self, audio_filename, content_file, topic_keywords):
@@ -120,7 +172,8 @@ class PodcastGenerator:
             'content_file': os.path.basename(content_file),
             'generated_at': datetime.now().isoformat(),
             'topic_keywords': topic_keywords or [],
-            'episode_number': self.get_next_episode_number()
+            'episode_number': self.get_next_episode_number(),
+            'generation_method': 'content_based'
         }
         
         metadata_file = os.path.join(config.CONTENT_DIR, f"metadata_{audio_filename.replace('.mp3', '.json')}")
@@ -131,6 +184,29 @@ class PodcastGenerator:
                 json.dump(metadata, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"メタデータ保存エラー: {e}")
+    
+    def save_episode_metadata_from_url(self, audio_filename, article_info, topic_keywords):
+        """URL音声生成のメタデータを保存"""
+        metadata = {
+            'audio_file': audio_filename,
+            'source_url': article_info['url'],
+            'source_title': article_info['title'],
+            'source_name': article_info['source'],
+            'published_date': article_info.get('published', ''),
+            'generated_at': datetime.now().isoformat(),
+            'topic_keywords': topic_keywords or [],
+            'episode_number': self.get_next_episode_number(),
+            'generation_method': 'url_based'
+        }
+        
+        metadata_file = os.path.join(config.CONTENT_DIR, f"metadata_{audio_filename.replace('.mp3', '.json')}")
+        
+        try:
+            import json
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"URLメタデータ保存エラー: {e}")
     
     def get_next_episode_number(self):
         """次のエピソード番号を取得"""
