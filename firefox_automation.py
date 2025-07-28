@@ -68,6 +68,16 @@ class FirefoxNotebookLMAutomator:
                 firefox_options.set_preference("geo.enabled", False)
                 firefox_options.set_preference("dom.push.enabled", False)
                 firefox_options.set_preference("dom.webnotifications.enabled", False)
+                
+                # Marionette port timeout対策
+                firefox_options.set_preference("marionette.port", 2828)
+                firefox_options.set_preference("dom.disable_beforeunload", True)
+                firefox_options.set_preference("browser.tabs.warnOnClose", False)
+                firefox_options.set_preference("browser.sessionstore.resume_from_crash", False)
+                
+                # CI環境でのタイムアウト対策
+                firefox_options.add_argument('--new-instance')
+                firefox_options.add_argument('--safe-mode')
             
             # GeckoDriverの取得とサービス設定
             if os.getenv('GITHUB_ACTIONS'):
@@ -96,14 +106,44 @@ class FirefoxNotebookLMAutomator:
                         print(f"GeckoDriverManager失敗: {e}")
                         raise Exception("GeckoDriverのインストールに失敗")
                 
+                # CI環境用のサービス設定（タイムアウト延長）
                 service = FirefoxService(geckodriver_path)
+                service.service_args = ['--marionette-port', '2828', '--connect-existing']
             else:
                 # ローカル環境
                 service = FirefoxService(GeckoDriverManager().install())
             
-            # Firefoxドライバー初期化
-            self.driver = webdriver.Firefox(service=service, options=firefox_options)
-            print("Firefox WebDriver初期化成功")
+            # Firefoxドライバー初期化（タイムアウト設定付き）
+            print("Firefoxドライバーを初期化中...")
+            
+            # CI環境では追加の初期化待機時間を設定
+            if os.getenv('GITHUB_ACTIONS'):
+                import time
+                print("CI環境での初期化待機...")
+                time.sleep(3)
+            
+            # Firefox初期化をリトライ機能付きで実行
+            max_retries = 3 if os.getenv('GITHUB_ACTIONS') else 1
+            for attempt in range(max_retries):
+                try:
+                    print(f"Firefox初期化試行 {attempt + 1}/{max_retries}")
+                    self.driver = webdriver.Firefox(service=service, options=firefox_options)
+                    
+                    # CI環境では追加の安定化待機
+                    if os.getenv('GITHUB_ACTIONS'):
+                        time.sleep(5)
+                        print("Firefox初期化後の安定化完了")
+                    
+                    print("Firefox WebDriver初期化成功")
+                    break
+                    
+                except Exception as retry_error:
+                    print(f"Firefox初期化試行 {attempt + 1} 失敗: {retry_error}")
+                    if attempt < max_retries - 1:
+                        print(f"2秒後に再試行します...")
+                        time.sleep(2)
+                    else:
+                        raise retry_error
             
             # 動作テスト
             try:

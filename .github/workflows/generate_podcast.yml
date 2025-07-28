@@ -64,7 +64,11 @@ jobs:
         
         # Install Firefox and Geckodriver for alternative WebDriver
         echo "Installing Firefox and Geckodriver..."
-        sudo apt-get install -y firefox
+        sudo apt-get install -y firefox xvfb
+        
+        # Setup virtual display for headless Firefox
+        export DISPLAY=:99.0
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
         
         # Install Google Chrome with error handling
         if sudo apt-get install -y google-chrome-stable; then
