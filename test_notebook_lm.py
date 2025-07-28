@@ -18,8 +18,15 @@ def test_notebook_lm_access():
     print(f"Test Mode: {os.getenv('NOTEBOOK_LM_TEST_MODE', 'false')}")
     
     try:
-        # オートメーター初期化
+        # オートメーター初期化（GitHub Actions環境ではFirefox自動化を含む）
         automator = OAuthNotebookLMAutomator()
+        
+        # Firefox自動化の確認
+        if os.getenv('GITHUB_ACTIONS') and hasattr(automator, 'firefox_automator'):
+            if automator.firefox_automator:
+                print("✅ Firefox自動化が正常に初期化されました")
+            else:
+                print("⚠️ Firefox自動化の初期化に失敗しました")
         
         # 認証テスト
         print("\n--- 認証テスト ---")

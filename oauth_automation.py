@@ -22,8 +22,18 @@ class OAuthNotebookLMAutomator:
     def __init__(self):
         self.driver = None
         self.oauth_token = None
-        # CI環境ではドライバーセットアップをスキップ
-        if not os.getenv('GITHUB_ACTIONS'):
+        # GitHub Actions環境でFirefoxフォールバックを使用
+        if os.getenv('GITHUB_ACTIONS'):
+            print("GitHub Actions環境: Firefox自動化を使用")
+            try:
+                from firefox_automation import FirefoxNotebookLMAutomator
+                self.firefox_automator = FirefoxNotebookLMAutomator()
+                self.driver = self.firefox_automator.driver
+            except Exception as e:
+                print(f"Firefox自動化初期化エラー: {e}")
+                self.firefox_automator = None
+        else:
+            self.firefox_automator = None
             self.setup_driver()
     
     def setup_driver(self):
@@ -831,6 +841,11 @@ class OAuthNotebookLMAutomator:
     def create_audio_from_url(self, source_url, output_path, custom_prompt=None):
         """URLから直接Audio Overviewを生成"""
         try:
+            # GitHub Actions環境でFirefox自動化を使用
+            if os.getenv('GITHUB_ACTIONS') and self.firefox_automator:
+                print("GitHub Actions環境: Firefox自動化を使用してURL音声生成")
+                return self.firefox_automator.create_audio_from_url(source_url, output_path, custom_prompt)
+            
             # CI環境でのテストモード判定
             if os.getenv('GITHUB_ACTIONS') and os.getenv('SKIP_REAL_GENERATION', 'true') == 'true':
                 print("CI環境: テストモードのためモック音声を生成")
