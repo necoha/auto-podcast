@@ -102,6 +102,29 @@ class OAuthNotebookLMAutomator:
             # メモリ制限を設定
             chrome_options.add_argument('--max-old-space-size=2048')
             chrome_options.add_argument('--memory-pressure-off')
+            # 追加の軽量化オプション
+            chrome_options.add_argument('--single-process')
+            chrome_options.add_argument('--no-zygote')
+            chrome_options.add_argument('--disable-gpu-sandbox')
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--disable-background-timer-throttling')
+            chrome_options.add_argument('--disable-renderer-backgrounding')
+            chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+            chrome_options.add_argument('--disable-features=TranslateUI,VizDisplayCompositor')
+            chrome_options.add_argument('--force-color-profile=srgb')
+            chrome_options.add_argument('--disable-threaded-animation')
+            chrome_options.add_argument('--disable-threaded-scrolling')
+            chrome_options.add_argument('--disable-ipc-flooding-protection')
+            # メモリとプロセスの制限
+            chrome_options.add_argument('--max_old_space_size=512')
+            chrome_options.add_argument('--optimize-for-size')
+            # 不要なサービスを無効化
+            chrome_options.add_argument('--disable-component-extensions')
+            chrome_options.add_argument('--disable-default-apps')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--no-default-browser-check')
+            chrome_options.add_argument('--no-first-run')
+            chrome_options.add_argument('--disable-default-apps')
             
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')

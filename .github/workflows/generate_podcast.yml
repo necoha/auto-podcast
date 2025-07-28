@@ -51,31 +51,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y wget unzip
         
-        # Install specific Chrome version for stability
-        echo "Installing Chrome 137 for stability..."
+        # Install stable Chrome with fallback approach
+        echo "Installing stable Chrome version..."
         
-        # Download and install Chrome 137
-        CHROME_VERSION="137.0.6864.110-1"
-        wget -q "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb"
-        
-        # Install Chrome dependencies first
+        # First try to install latest stable Chrome
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
         sudo apt-get update
-        sudo apt-get install -y wget unzip fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libdrm2 libgtk-3-0 libnspr4 libnss3 libwayland-client0 libxcomposite1 libxdamage1 libxrandr2 xdg-utils
         
-        # Install the specific Chrome version
-        if sudo dpkg -i "google-chrome-stable_${CHROME_VERSION}_amd64.deb"; then
-            echo "Chrome 137 installation successful"
-        else
-            echo "Chrome 137 installation failed, trying latest stable"
-            sudo apt-get install -f -y
-            wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-            sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-            sudo apt-get update
-            sudo apt-get install -y google-chrome-stable
-        fi
+        # Install Chrome dependencies first  
+        sudo apt-get install -y fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libdrm2 libgtk-3-0 libnspr4 libnss3 libwayland-client0 libxcomposite1 libxdamage1 libxrandr2 xdg-utils
         
-        # Clean up
-        rm -f "google-chrome-stable_${CHROME_VERSION}_amd64.deb"
+        # Install Google Chrome with hold to prevent auto-updates during workflow
+        sudo apt-get install -y google-chrome-stable
+        
+        # Try to prevent Chrome from updating during the workflow
+        sudo apt-mark hold google-chrome-stable || echo "Could not hold Chrome package"
         
         # Verify Chrome installation
         google-chrome --version
@@ -86,33 +77,10 @@ jobs:
         CHROME_MAJOR=$(echo $CHROME_VERSION | cut -d'.' -f1)
         echo "Chrome major version: $CHROME_MAJOR"
         
-        # Get compatible ChromeDriver version for Chrome 137
-        if [ $CHROME_MAJOR -eq 137 ]; then
-            echo "Installing ChromeDriver for Chrome 137..."
-            # Use legacy API for Chrome 137
-            CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_137" 2>/dev/null | grep -v "<?xml" || echo "")
-            
-            if [ -n "$CHROMEDRIVER_VERSION" ]; then
-                echo "Found ChromeDriver version: $CHROMEDRIVER_VERSION"
-                if wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"; then
-                    unzip -q chromedriver_linux64.zip
-                    sudo mv chromedriver /usr/local/bin/
-                    sudo chmod +x /usr/local/bin/chromedriver
-                    rm -f chromedriver_linux64.zip
-                    echo "Chrome 137 ChromeDriver installation successful"
-                fi
-            else
-                echo "Chrome 137 ChromeDriver not found, using 114 as fallback"
-                CHROMEDRIVER_VERSION="114.0.5735.90"
-                if wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"; then
-                    unzip -q chromedriver_linux64.zip
-                    sudo mv chromedriver /usr/local/bin/
-                    sudo chmod +x /usr/local/bin/chromedriver
-                    rm -f chromedriver_linux64.zip
-                    echo "ChromeDriver 114 fallback installation successful"
-                fi
-            fi
-        elif [ $CHROME_MAJOR -ge 115 ]; then
+        # Get compatible ChromeDriver version with simplified approach
+        echo "Installing compatible ChromeDriver..."
+        
+        if [ $CHROME_MAJOR -ge 115 ]; then
             echo "Using new ChromeDriver API for Chrome $CHROME_MAJOR"
             # For Chrome 115+, try the new API
             CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data['channels']['Stable']['version'])" 2>/dev/null || echo "")
