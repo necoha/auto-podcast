@@ -97,7 +97,18 @@ class MultiBrowserNotebookLMAutomator:
             chrome_options.add_argument('--single-process')
             chrome_options.add_argument('--no-zygote')
         
-        service = ChromeService(ChromeDriverManager().install())
+        # CI環境では事前にインストールしたChromeDriverを使用
+        if os.getenv('GITHUB_ACTIONS'):
+            chromedriver_path = '/usr/local/bin/chromedriver'
+            if os.path.exists(chromedriver_path) and os.access(chromedriver_path, os.X_OK):
+                service = ChromeService(chromedriver_path)
+                print(f"システムChromeDriver使用: {chromedriver_path}")
+            else:
+                print("システムChromeDriverが見つかりません")
+                return False
+        else:
+            service = ChromeService(ChromeDriverManager().install())
+        
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         return self.test_browser_basic_functionality()
     
@@ -117,8 +128,20 @@ class MultiBrowserNotebookLMAutomator:
             firefox_options.set_preference("browser.download.dir", "/tmp")
             firefox_options.set_preference("dom.webdriver.enabled", False)
             firefox_options.set_preference("media.volume_scale", "0.0")
+            firefox_options.set_preference("marionette.port", 2828)
         
-        service = FirefoxService(GeckoDriverManager().install())
+        # CI環境では事前にインストールしたGeckoDriverを使用
+        if os.getenv('GITHUB_ACTIONS'):
+            geckodriver_path = '/usr/local/bin/geckodriver'
+            if os.path.exists(geckodriver_path) and os.access(geckodriver_path, os.X_OK):
+                service = FirefoxService(geckodriver_path)
+                print(f"システムGeckoDriver使用: {geckodriver_path}")
+            else:
+                print("システムGeckoDriverが見つかりません")
+                return False
+        else:
+            service = FirefoxService(GeckoDriverManager().install())
+        
         self.driver = webdriver.Firefox(service=service, options=firefox_options)
         return self.test_browser_basic_functionality()
     
@@ -155,7 +178,18 @@ class MultiBrowserNotebookLMAutomator:
             chrome_options.add_argument('--no-zygote')
             chrome_options.add_argument('--disable-web-security')
         
-        service = ChromeService(ChromeDriverManager().install())
+        # CI環境では事前にインストールしたChromeDriverを使用
+        if os.getenv('GITHUB_ACTIONS'):
+            chromedriver_path = '/usr/local/bin/chromedriver'
+            if os.path.exists(chromedriver_path) and os.access(chromedriver_path, os.X_OK):
+                service = ChromeService(chromedriver_path)
+                print(f"Chromium用システムChromeDriver使用: {chromedriver_path}")
+            else:
+                print("Chromium用システムChromeDriverが見つかりません")
+                return False
+        else:
+            service = ChromeService(ChromeDriverManager().install())
+        
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         return self.test_browser_basic_functionality()
     
@@ -182,18 +216,54 @@ class MultiBrowserNotebookLMAutomator:
         """ブラウザの基本機能テスト"""
         try:
             print("ブラウザ基本機能テスト中...")
-            test_url = "data:text/html,<html><body><h1>Browser Test</h1></body></html>"
             
+            # より安全なテストURL
+            test_url = "data:text/html,<html><head><title>Test</title></head><body><h1>Browser Test</h1></body></html>"
+            
+            # タイムアウト付きでページ読み込み
+            self.driver.set_page_load_timeout(10)
             self.driver.get(test_url)
-            time.sleep(2)
             
-            # ページタイトルまたはコンテンツの確認
-            if "Browser Test" in self.driver.page_source or self.driver.title:
-                print("✅ ブラウザ基本機能テスト成功")
+            # 短い待機
+            time.sleep(1)
+            
+            # ページの存在確認（複数の方法で）
+            tests_passed = 0
+            
+            # 1. ページソースチェック
+            try:
+                page_source = self.driver.page_source
+                if page_source and "Browser Test" in page_source:
+                    tests_passed += 1
+                    print("  ✓ ページソース確認")
+            except:
+                pass
+            
+            # 2. タイトルチェック
+            try:
+                title = self.driver.title
+                if title and ("Test" in title or title != ""):
+                    tests_passed += 1
+                    print("  ✓ ページタイトル確認")
+            except:
+                pass
+            
+            # 3. URLチェック
+            try:
+                current_url = self.driver.current_url
+                if current_url and "data:text/html" in current_url:
+                    tests_passed += 1
+                    print("  ✓ URL確認")
+            except:
+                pass
+            
+            # 少なくとも1つのテストが通過すれば成功
+            if tests_passed > 0:
+                print(f"✅ ブラウザ基本機能テスト成功 ({tests_passed}/3)")
                 return True
             else:
-                print("⚠️ ブラウザ基本機能テスト: 不完全")
-                return True  # 部分的でも動作する場合は継続
+                print("❌ 全てのテストが失敗")
+                return False
                 
         except Exception as e:
             print(f"❌ ブラウザ基本機能テスト失敗: {e}")
