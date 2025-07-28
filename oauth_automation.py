@@ -33,7 +33,24 @@ class OAuthNotebookLMAutomator:
         # GitHub Actions環境での設定
         if os.getenv('GITHUB_ACTIONS'):
             print("GitHub Actions環境用のChrome設定を適用中...")
-            chrome_options.add_argument('--headless=new')
+            # Chrome 137以下では古いheadlessオプションを使用
+            try:
+                import subprocess
+                chrome_version_result = subprocess.run(['google-chrome', '--version'], 
+                                                     capture_output=True, text=True)
+                chrome_version = chrome_version_result.stdout.strip()
+                print(f"検出されたChrome: {chrome_version}")
+                
+                # バージョン137以下の場合は古いheadlessオプション
+                if '137.' in chrome_version or '136.' in chrome_version or '135.' in chrome_version:
+                    print("Chrome 137以下検出: 古いheadlessオプションを使用")
+                    chrome_options.add_argument('--headless')  # 古い形式
+                else:
+                    chrome_options.add_argument('--headless=new')  # 新しい形式
+            except:
+                print("Chromeバージョン検出失敗: デフォルトheadlessを使用")
+                chrome_options.add_argument('--headless')
+                
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
