@@ -139,14 +139,148 @@ class OAuthNotebookLMAutomator:
             return False
     
     def ci_login(self):
-        """CI環境用の簡単ログイン"""
+        """CI環境用の認証テスト"""
         try:
-            # CI環境ではブラウザアクセスをスキップ
-            print("CI環境: ブラウザアクセスをスキップしてデモモードで実行")
-            return True
+            print("CI環境: Notebook LMアクセステスト開始...")
+            
+            # ドライバーが初期化されているかチェック
+            if not self.driver:
+                print("ドライバーが初期化されていません - セットアップを試行")
+                self.setup_driver()
+            
+            # Notebook LMに直接アクセスしてみる
+            print("Notebook LMにアクセス中...")
+            self.driver.get("https://notebooklm.google.com")
+            
+            # ページ読み込み待機
+            time.sleep(10)
+            
+            # ページタイトルとURLを確認
+            current_url = self.driver.current_url
+            page_title = self.driver.title
+            
+            print(f"現在のURL: {current_url}")
+            print(f"ページタイトル: {page_title}")
+            
+            # ページソースの一部を確認
+            page_source_preview = self.driver.page_source[:500] if self.driver.page_source else "Empty"
+            print(f"ページソース（最初の500文字）: {page_source_preview}")
+            
+            # アクセス可能かどうかの基本判定
+            if "notebooklm" in current_url.lower() or "notebooklm" in page_title.lower():
+                print("✅ Notebook LMへのアクセス成功")
+                
+                # ログイン状態をチェック
+                if self.check_login_status():
+                    print("✅ 認証済み状態を検出")
+                    return True
+                else:
+                    print("⚠️ 未認証状態 - 認証が必要")
+                    return self.attempt_ci_authentication()
+            else:
+                print("❌ Notebook LMへのアクセス失敗")
+                return False
             
         except Exception as e:
-            print(f"CI環境ログインエラー: {e}")
+            print(f"CI環境認証テストエラー: {e}")
+            import traceback
+            print(f"詳細エラー: {traceback.format_exc()}")
+            return False
+    
+    def check_login_status(self):
+        """ログイン状態をチェック"""
+        try:
+            # ログイン画面の要素があるかチェック
+            login_indicators = [
+                "//input[@type='email']",
+                "//input[@type='password']", 
+                "//button[contains(text(), 'Sign in')]",
+                "//button[contains(text(), 'ログイン')]",
+                "//*[contains(text(), 'Sign in to continue')]"
+            ]
+            
+            for indicator in login_indicators:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, indicator)
+                    if elements:
+                        print(f"ログイン要素を検出: {indicator}")
+                        return False
+                except:
+                    continue
+            
+            # ログイン済みの場合によく表示される要素をチェック
+            authenticated_indicators = [
+                "//button[contains(text(), 'New notebook')]",
+                "//button[contains(text(), '新しいノートブック')]",
+                "//*[contains(@class, 'notebook')]",
+                "//*[contains(text(), 'Create')]"
+            ]
+            
+            for indicator in authenticated_indicators:
+                try:
+                    elements = self.driver.find_elements(By.XPATH, indicator)
+                    if elements:
+                        print(f"認証済み要素を検出: {indicator}")
+                        return True
+                except:
+                    continue
+            
+            print("ログイン状態が不明確")
+            return False
+            
+        except Exception as e:
+            print(f"ログイン状態チェックエラー: {e}")
+            return False
+    
+    def attempt_ci_authentication(self):
+        """CI環境での認証試行"""
+        try:
+            print("CI環境での認証を試行中...")
+            
+            # GitHub Secretsから認証情報を取得
+            oauth_creds = self.load_oauth_credentials()
+            if not oauth_creds:
+                print("OAuth認証情報が見つかりません")
+                return False
+            
+            # 保存されたセッション情報があるかチェック
+            session_data = os.getenv('OAUTH_SESSION_DATA')
+            if session_data:
+                print("保存されたセッション情報を使用して認証試行...")
+                return self.restore_ci_session(session_data)
+            
+            print("CI環境では自動認証は困難です")
+            return False
+            
+        except Exception as e:
+            print(f"CI認証試行エラー: {e}")
+            return False
+    
+    def restore_ci_session(self, session_data_encoded):
+        """CI環境でセッション情報を復元"""
+        try:
+            import base64
+            session_json = base64.b64decode(session_data_encoded).decode()
+            session_data = json.loads(session_json)
+            
+            print("セッション情報を復元中...")
+            
+            # Cookieを復元
+            for cookie in session_data.get('cookies', []):
+                try:
+                    self.driver.add_cookie(cookie)
+                except Exception as e:
+                    print(f"Cookie復元警告: {e}")
+            
+            # ページを再読み込み
+            self.driver.refresh()
+            time.sleep(5)
+            
+            # 認証状態を再確認
+            return self.check_login_status()
+            
+        except Exception as e:
+            print(f"CI セッション復元エラー: {e}")
             return False
     
     def build_oauth_url(self):
@@ -414,9 +548,10 @@ class OAuthNotebookLMAutomator:
     
     def create_audio_from_content(self, content_text, output_path, custom_prompt=None):
         """コンテンツから音声を生成する完全なフロー"""
-        try:
-            # CI環境ではモック音声ファイルを生成
-            if os.getenv('GITHUB_ACTIONS'):
+        try:            
+            # CI環境でのテストモード判定
+            if os.getenv('GITHUB_ACTIONS') and os.getenv('SKIP_REAL_GENERATION', 'true') == 'true':
+                print("CI環境: テストモードのためモック音声を生成")
                 return self.create_mock_audio(content_text, output_path)
             
             # OAuth認証
@@ -451,8 +586,9 @@ class OAuthNotebookLMAutomator:
     def create_audio_from_url(self, source_url, output_path, custom_prompt=None):
         """URLから直接Audio Overviewを生成"""
         try:
-            # CI環境ではモック音声ファイルを生成
-            if os.getenv('GITHUB_ACTIONS'):
+            # CI環境でのテストモード判定
+            if os.getenv('GITHUB_ACTIONS') and os.getenv('SKIP_REAL_GENERATION', 'true') == 'true':
+                print("CI環境: テストモードのためモック音声を生成")
                 return self.create_mock_audio(source_url, output_path)
             
             print(f"URL音声生成開始: {source_url}")

@@ -18,6 +18,8 @@ env:
   GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
   OAUTH_SESSION_DATA: ${{ secrets.OAUTH_SESSION_DATA }}
   PODCAST_BASE_URL: ${{ secrets.PODCAST_BASE_URL }}
+  SKIP_REAL_GENERATION: ${{ vars.SKIP_REAL_GENERATION || 'true' }}
+  NOTEBOOK_LM_TEST_MODE: ${{ vars.NOTEBOOK_LM_TEST_MODE || 'false' }}
 
 jobs:
   generate-podcast:
@@ -58,6 +60,16 @@ jobs:
         mkdir -p audio_files
         mkdir -p content
         mkdir -p static
+    
+    - name: Test Notebook LM Connection
+      env:
+        GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
+        OAUTH_SESSION_DATA: ${{ secrets.OAUTH_SESSION_DATA }}
+        NOTEBOOK_LM_TEST_MODE: ${{ vars.NOTEBOOK_LM_TEST_MODE || 'false' }}
+        SKIP_REAL_GENERATION: 'false'
+      run: |
+        echo "=== Notebook LM 接続テスト ==="
+        python test_notebook_lm.py || echo "接続テストが失敗しましたが、処理を続行します"
     
     - name: Check daily generation limit
       id: check_limit
