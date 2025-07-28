@@ -21,7 +21,9 @@ class OAuthNotebookLMAutomator:
     def __init__(self):
         self.driver = None
         self.oauth_token = None
-        self.setup_driver()
+        # CI環境ではドライバーセットアップをスキップ
+        if not os.getenv('GITHUB_ACTIONS'):
+            self.setup_driver()
     
     def setup_driver(self):
         """Chromeドライバーの設定"""
@@ -404,7 +406,10 @@ class OAuthNotebookLMAutomator:
     def close(self):
         """ドライバーを閉じる"""
         if self.driver:
-            self.driver.quit()
+            try:
+                self.driver.quit()
+            except:
+                pass  # CI環境では既に閉じている可能性がある
     
     def create_audio_from_content(self, content_text, output_path, custom_prompt=None):
         """コンテンツから音声を生成する完全なフロー"""
@@ -447,51 +452,33 @@ class OAuthNotebookLMAutomator:
         try:
             print("CI環境: モック音声ファイルを生成中...")
             
-            # サイレント音声ファイルを生成（1分間）
-            import wave
-            import struct
+            # 簡単なバイナリファイルを作成（MP3ヘッダー付き）
+            # MP3の最小ヘッダー
+            mp3_header = b'\xff\xfb\x90\x00'  # MP3フレームヘッダー
+            silence_data = b'\x00' * 1024  # サイレンスデータ
             
-            # 音声パラメータ
-            sample_rate = 44100
-            duration = 60  # 60秒
-            frequency = 440  # A4音
+            with open(output_path, 'wb') as f:
+                f.write(mp3_header)
+                # 1分間分のサイレンスデータを書き込み（約2MB）
+                for _ in range(2048):
+                    f.write(silence_data)
             
-            # WAVファイル作成
-            with wave.open(output_path.replace('.mp3', '.wav'), 'w') as wav_file:
-                wav_file.setnchannels(1)  # モノラル
-                wav_file.setsampwidth(2)  # 16bit
-                wav_file.setframerate(sample_rate)
-                
-                # サイン波生成
-                for i in range(int(sample_rate * duration)):
-                    value = int(32767 * 0.1 * (i / (sample_rate * duration)))  # フェードアウト
-                    data = struct.pack('<h', value)
-                    wav_file.writeframesraw(data)
-            
-            # FFmpegが利用可能な場合はMP3に変換、そうでなければWAVのまま
-            wav_path = output_path.replace('.mp3', '.wav')
-            try:
-                import subprocess
-                subprocess.run([
-                    'ffmpeg', '-i', wav_path, '-acodec', 'mp3', output_path
-                ], check=True, capture_output=True)
-                os.remove(wav_path)
-                print(f"モック音声ファイル生成完了: {output_path}")
-            except:
-                # FFmpegが無い場合はWAVファイルをそのまま使用
-                os.rename(wav_path, output_path)
-                print(f"モック音声ファイル生成完了 (WAV): {output_path}")
-            
+            print(f"モック音声ファイル生成完了: {output_path}")
             return True
             
         except Exception as e:
             print(f"モック音声生成エラー: {e}")
-            # 最終手段：空のテキストファイルを作成
+            # 最終手段：メタデータファイルを作成
             try:
-                with open(output_path, 'w') as f:
-                    f.write("# Mock Audio File for CI\n")
-                    f.write(f"Content: {content_text[:100]}...\n")
-                print(f"テキスト形式のモックファイル生成: {output_path}")
+                with open(output_path.replace('.mp3', '.txt'), 'w', encoding='utf-8') as f:
+                    f.write(f"# CI環境用モックポッドキャスト\n")
+                    f.write(f"生成日時: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"コンテンツ要約: {content_text[:200]}...\n")
+                print(f"メタデータファイル生成: {output_path.replace('.mp3', '.txt')}")
+                
+                # 空のMP3ファイルも作成
+                with open(output_path, 'wb') as f:
+                    f.write(b'\xff\xfb\x90\x00' + b'\x00' * 100)
                 return True
             except:
                 return False
