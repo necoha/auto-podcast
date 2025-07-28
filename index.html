@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auto Podcast</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .link-card {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .link-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+        }
+        .link-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        .emoji {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="emoji">🎙️</span>AI Auto Podcast</h1>
+        <p style="text-align: center; font-size: 1.2rem; margin-bottom: 30px;">
+            Notebook LMのAudio Overview機能を使った自動生成ポッドキャスト
+        </p>
+        
+        <div class="links">
+            <a href="system_overview.html" class="link-card">
+                <h3><span class="emoji">📊</span>システム概要</h3>
+                <p>システム全体の構成と技術仕様を詳しく説明</p>
+            </a>
+            
+            <a href="feed.xml" class="link-card">
+                <h3><span class="emoji">📡</span>RSS Feed</h3>
+                <p>ポッドキャストアプリで購読するためのRSSフィード</p>
+            </a>
+            
+            <a href="https://github.com/necoha/auto-podcast" class="link-card" target="_blank">
+                <h3><span class="emoji">💻</span>ソースコード</h3>
+                <p>GitHubリポジトリでコードを確認</p>
+            </a>
+            
+            <div class="link-card">
+                <h3><span class="emoji">🎵</span>最新エピソード</h3>
+                <p id="episode-info">読み込み中...</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px; opacity: 0.8;">
+            <p>完全無料 × 自動化 × 高品質音声</p>
+            <p>GitHub Actions + GitHub Pages + Notebook LM</p>
+        </div>
+    </div>
+
+    <script>
+        // 最新エピソード情報を取得
+        fetch('./audio/')
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a[href$=".mp3"]');
+                const episodeInfo = document.getElementById('episode-info');
+                
+                if (links.length > 0) {
+                    episodeInfo.textContent = `${links.length}個のエピソードが利用可能`;
+                } else {
+                    episodeInfo.textContent = 'エピソードを生成中...';
+                }
+            })
+            .catch(err => {
+                document.getElementById('episode-info').textContent = 'エピソードを生成中...';
+            });
+    </script>
+</body>
+</html>
