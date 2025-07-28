@@ -32,6 +32,7 @@ class OAuthNotebookLMAutomator:
         
         # GitHub Actions環境での設定
         if os.getenv('GITHUB_ACTIONS'):
+            print("GitHub Actions環境用のChrome設定を適用中...")
             chrome_options.add_argument('--headless=new')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
@@ -41,13 +42,31 @@ class OAuthNotebookLMAutomator:
             chrome_options.add_argument('--disable-extensions')
             chrome_options.add_argument('--disable-plugins')
             chrome_options.add_argument('--disable-images')
-            chrome_options.add_argument('--disable-javascript')
-            chrome_options.add_argument('--virtual-time-budget=5000')
+            # JavaScriptを有効化（Notebook LMには必要）
+            # chrome_options.add_argument('--disable-javascript')  # コメントアウト
+            chrome_options.add_argument('--virtual-time-budget=30000')  # 30秒に延長
             chrome_options.add_argument('--run-all-compositor-stages-before-draw')
             chrome_options.add_argument('--disable-ipc-flooding-protection')
             chrome_options.add_argument('--disable-background-timer-throttling')
             chrome_options.add_argument('--disable-renderer-backgrounding')
             chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+            chrome_options.add_argument('--remote-debugging-port=9222')
+            chrome_options.add_argument('--disable-software-rasterizer')
+            chrome_options.add_argument('--disable-background-networking')
+            chrome_options.add_argument('--disable-default-apps')
+            chrome_options.add_argument('--disable-sync')
+            chrome_options.add_argument('--metrics-recording-only')
+            chrome_options.add_argument('--mute-audio')
+            chrome_options.add_argument('--no-first-run')
+            chrome_options.add_argument('--safebrowsing-disable-auto-update')
+            chrome_options.add_argument('--disable-component-update')
+            chrome_options.add_argument('--disable-domain-reliability')
+            # ウィンドウクラッシュ防止
+            chrome_options.add_argument('--disable-features=TranslateUI')
+            chrome_options.add_argument('--disable-features=Translate')
+            chrome_options.add_argument('--disable-hang-monitor')
+            chrome_options.add_argument('--disable-prompt-on-repost')
+            chrome_options.add_argument('--disable-client-side-phishing-detection')
             
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
@@ -69,17 +88,44 @@ class OAuthNotebookLMAutomator:
                 print(f"ChromeDriverパス: {chromedriver_path}")
                 
                 # パスの検証と修正
-                if 'THIRD_PARTY_NOTICES' in chromedriver_path:
+                if 'THIRD_PARTY_NOTICES' in chromedriver_path or not os.access(chromedriver_path, os.X_OK):
+                    print("ChromeDriverパスを修正中...")
                     # 正しいchromedriverファイルを探す
                     import glob
                     driver_dir = os.path.dirname(chromedriver_path)
-                    possible_drivers = glob.glob(os.path.join(driver_dir, '**/chromedriver*'), recursive=True)
+                    root_dir = os.path.dirname(driver_dir)  # 上位ディレクトリも検索
                     
-                    for path in possible_drivers:
-                        if os.path.isfile(path) and 'THIRD_PARTY_NOTICES' not in path and os.access(path, os.X_OK):
-                            chromedriver_path = path
-                            print(f"修正されたChromeDriverパス: {chromedriver_path}")
+                    search_patterns = [
+                        os.path.join(driver_dir, '**', 'chromedriver'),
+                        os.path.join(root_dir, '**', 'chromedriver'),
+                        os.path.join(driver_dir, 'chromedriver'),
+                        os.path.join(root_dir, 'chromedriver'),
+                    ]
+                    
+                    found_driver = None
+                    for pattern in search_patterns:
+                        possible_drivers = glob.glob(pattern, recursive=True)
+                        for path in possible_drivers:
+                            if (os.path.isfile(path) and 
+                                'THIRD_PARTY_NOTICES' not in path and 
+                                'chromedriver' in os.path.basename(path).lower()):
+                                # 実行権限を設定
+                                try:
+                                    import stat
+                                    os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+                                    if os.access(path, os.X_OK):
+                                        found_driver = path
+                                        break
+                                except:
+                                    continue
+                        if found_driver:
                             break
+                    
+                    if found_driver:
+                        chromedriver_path = found_driver
+                        print(f"修正されたChromeDriverパス: {chromedriver_path}")
+                    else:
+                        print("有効なChromeDriverが見つかりませんでした")
                 
                 # 実行権限を確認・設定
                 if os.path.exists(chromedriver_path):
@@ -200,26 +246,79 @@ class OAuthNotebookLMAutomator:
                 print("ドライバーが初期化されていません - セットアップを試行")
                 self.setup_driver()
             
-            # Notebook LMに直接アクセスしてみる
+            # Notebook LMに段階的にアクセス
             print("Notebook LMにアクセス中...")
-            self.driver.get("https://notebooklm.google.com")
             
-            # ページ読み込み待機
-            time.sleep(10)
+            # まずGoogleのホームページでセッション確認
+            try:
+                print("1. Googleホームページをテスト...")
+                self.driver.get("https://www.google.com")
+                time.sleep(5)
+                
+                google_title = self.driver.title
+                print(f"Googleページタイトル: {google_title}")
+                
+                if not google_title or "Google" not in google_title:
+                    print("⚠️ Googleページの読み込みに問題があります")
+                    return False
+                
+            except Exception as e:
+                print(f"Googleページアクセスエラー: {e}")
+                return False
             
-            # ページタイトルとURLを確認
-            current_url = self.driver.current_url
-            page_title = self.driver.title
-            
-            print(f"現在のURL: {current_url}")
-            print(f"ページタイトル: {page_title}")
-            
-            # ページソースの一部を確認
-            page_source_preview = self.driver.page_source[:500] if self.driver.page_source else "Empty"
-            print(f"ページソース（最初の500文字）: {page_source_preview}")
+            # 次にNotebook LMにアクセス
+            try:
+                print("2. Notebook LMページにアクセス...")
+                self.driver.get("https://notebooklm.google.com")
+                
+                # 段階的な待機とチェック
+                for i in range(6):
+                    time.sleep(5)
+                    try:
+                        current_url = self.driver.current_url
+                        page_title = self.driver.title or "No Title"
+                        
+                        print(f"  {i+1}/6 - URL: {current_url}")
+                        print(f"  {i+1}/6 - Title: {page_title}")
+                        
+                        # ページが完全に読み込まれたかのチェック
+                        if "notebooklm" in current_url.lower():
+                            print("✅ Notebook LMページに到達")
+                            break
+                        elif "accounts.google.com" in current_url:
+                            print("🔐 Googleログインページにリダイレクト")
+                            break
+                        elif current_url != "data:,":  # about:blankではない
+                            print(f"🔄 ページ読み込み中... ({current_url})")
+                        
+                    except Exception as e:
+                        print(f"  {i+1}/6 - ページ状態取得エラー: {e}")
+                        continue
+                
+                # 最終的なページ状態を確認
+                final_url = self.driver.current_url
+                final_title = self.driver.title or "No Title"
+                
+                print(f"最終URL: {final_url}")
+                print(f"最終タイトル: {final_title}")
+                
+                # ページソースの一部を確認（安全に）
+                try:
+                    page_source = self.driver.page_source
+                    if page_source:
+                        page_source_preview = page_source[:500]
+                        print(f"ページソース（最初の500文字）: {page_source_preview}")
+                    else:
+                        print("ページソースが空です")
+                except:
+                    print("ページソース取得に失敗")
+                
+            except Exception as e:
+                print(f"Notebook LMアクセスエラー: {e}")
+                return False
             
             # アクセス可能かどうかの基本判定
-            if "notebooklm" in current_url.lower() or "notebooklm" in page_title.lower():
+            if "notebooklm" in final_url.lower() or "notebooklm" in final_title.lower():
                 print("✅ Notebook LMへのアクセス成功")
                 
                 # ログイン状態をチェック
