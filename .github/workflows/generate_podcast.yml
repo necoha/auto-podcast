@@ -62,13 +62,26 @@ jobs:
         # Install Chrome dependencies for Ubuntu 24.04
         sudo apt-get install -y fonts-liberation libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libdrm2 libgtk-3-0 libnspr4 libnss3 libwayland-client0 libxcomposite1 libxdamage1 libxrandr2 xdg-utils libxss1 libgconf-2-4 || echo "Some dependencies may be missing but continuing..."
         
-        # Install Firefox and Geckodriver for alternative WebDriver
-        echo "Installing Firefox and Geckodriver..."
-        sudo apt-get install -y firefox xvfb
+        # Install multiple browsers for WebDriver fallbacks
+        echo "Installing multiple browsers: Firefox, Chromium, Edge..."
+        sudo apt-get install -y firefox chromium-browser xvfb
         
-        # Setup virtual display for headless Firefox
+        # Install Microsoft Edge
+        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-edge.gpg
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list
+        sudo apt-get update
+        sudo apt-get install -y microsoft-edge-stable || echo "Edge installation failed, continuing..."
+        
+        # Setup virtual display for headless browsers
         export DISPLAY=:99.0
         Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        
+        # Verify browser installations
+        echo "=== Browser Installation Verification ==="
+        firefox --version || echo "Firefox: Not available"
+        chromium-browser --version || echo "Chromium: Not available"
+        microsoft-edge --version || echo "Edge: Not available"
+        google-chrome --version || echo "Chrome: Not available"
         
         # Install Google Chrome with error handling
         if sudo apt-get install -y google-chrome-stable; then

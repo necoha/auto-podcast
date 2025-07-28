@@ -22,18 +22,23 @@ class OAuthNotebookLMAutomator:
     def __init__(self):
         self.driver = None
         self.oauth_token = None
-        # GitHub Actions環境でFirefoxフォールバックを使用
+        # GitHub Actions環境でマルチブラウザ自動化を使用
         if os.getenv('GITHUB_ACTIONS'):
-            print("GitHub Actions環境: Firefox自動化を使用")
+            print("GitHub Actions環境: マルチブラウザ自動化を使用")
             try:
-                from firefox_automation import FirefoxNotebookLMAutomator
-                self.firefox_automator = FirefoxNotebookLMAutomator()
-                self.driver = self.firefox_automator.driver
+                from multi_browser_automation import MultiBrowserNotebookLMAutomator
+                self.multi_browser_automator = MultiBrowserNotebookLMAutomator()
+                self.driver = self.multi_browser_automator.driver
+                if self.driver:
+                    browser_info = self.multi_browser_automator.get_browser_info()
+                    print(f"✅ {browser_info['browser']}で初期化成功")
+                else:
+                    print("❌ 全ブラウザで初期化失敗")
             except Exception as e:
-                print(f"Firefox自動化初期化エラー: {e}")
-                self.firefox_automator = None
+                print(f"マルチブラウザ自動化初期化エラー: {e}")
+                self.multi_browser_automator = None
         else:
-            self.firefox_automator = None
+            self.multi_browser_automator = None
             self.setup_driver()
     
     def setup_driver(self):
@@ -841,10 +846,11 @@ class OAuthNotebookLMAutomator:
     def create_audio_from_url(self, source_url, output_path, custom_prompt=None):
         """URLから直接Audio Overviewを生成"""
         try:
-            # GitHub Actions環境でFirefox自動化を使用
-            if os.getenv('GITHUB_ACTIONS') and self.firefox_automator:
-                print("GitHub Actions環境: Firefox自動化を使用してURL音声生成")
-                return self.firefox_automator.create_audio_from_url(source_url, output_path, custom_prompt)
+            # GitHub Actions環境でマルチブラウザ自動化を使用
+            if os.getenv('GITHUB_ACTIONS') and self.multi_browser_automator:
+                browser_info = self.multi_browser_automator.get_browser_info()
+                print(f"GitHub Actions環境: {browser_info['browser']}を使用してURL音声生成")
+                return self.multi_browser_automator.create_audio_from_url(source_url, output_path, custom_prompt)
             
             # CI環境でのテストモード判定
             if os.getenv('GITHUB_ACTIONS') and os.getenv('SKIP_REAL_GENERATION', 'true') == 'true':
