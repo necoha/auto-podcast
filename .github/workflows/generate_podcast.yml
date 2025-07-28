@@ -90,7 +90,20 @@ jobs:
       env:
         PODCAST_BASE_URL: ${{ secrets.PODCAST_BASE_URL }}
       run: |
+        echo "Checking audio files before RSS generation..."
+        ls -la audio_files/ 2>/dev/null || echo "No audio_files directory"
+        ls -la content/ 2>/dev/null || echo "No content directory"
+        
+        echo "Generating RSS feed..."
         python rss_feed_generator.py
+        
+        echo "Checking generated RSS feed..."
+        if [ -f podcast_feed.xml ]; then
+          echo "RSS feed generated successfully"
+          head -20 podcast_feed.xml
+        else
+          echo "RSS feed generation failed"
+        fi
     
     - name: Upload audio artifacts
       if: steps.check_limit.outputs.skip_generation == 'false'
@@ -169,51 +182,58 @@ jobs:
       run: |
         mkdir -p static
         
+        # RSS Feed
         if [ -f podcast_feed.xml ]; then
           cp podcast_feed.xml static/feed.xml
+          echo "RSS Feed copied to static/feed.xml"
+        else
+          echo "Warning: podcast_feed.xml not found"
         fi
         
+        # Audio files
         if [ -d audio_files ]; then
           mkdir -p static/audio
           cp audio_files/*.mp3 static/audio/ 2>/dev/null || true
+          echo "Audio files copied to static/audio/"
+          ls -la static/audio/ 2>/dev/null || echo "No audio files found"
+        else
+          echo "Warning: audio_files directory not found"
         fi
         
-        cat > static/index.html << 'EOF'
+        # Copy existing HTML files
+        if [ -f index.html ]; then
+          cp index.html static/index.html
+          echo "Main index.html copied"
+        fi
+        
+        if [ -f system_overview.html ]; then
+          cp system_overview.html static/system_overview.html
+          echo "System overview HTML copied"
+        fi
+        
+        # Create episodes listing page
+        cat > static/episodes.html << 'EOF'
         <!DOCTYPE html>
         <html>
         <head>
-            <title>AI Auto Podcast</title>
+            <title>Episodes - AI Auto Podcast</title>
             <meta charset="utf-8">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         </head>
         <body>
-            <h1>AI Auto Podcast</h1>
-            <p>Notebook LMのAudio Overview機能を使った自動生成ポッドキャスト</p>
-            <p><a href="feed.xml">RSS Feed</a></p>
-            
-            <h2>Latest Episodes</h2>
-            <div id="episodes"></div>
+            <div class="container mt-4">
+                <h1>AI Auto Podcast - Episodes</h1>
+                <p><a href="index.html">← Back to Home</a></p>
+                <p><a href="feed.xml">RSS Feed</a></p>
+                
+                <h2>Latest Episodes</h2>
+                <div id="episodes"></div>
+            </div>
             
             <script>
-                fetch('./audio/')
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const links = doc.querySelectorAll('a[href$=".mp3"]');
-                        const episodesDiv = document.getElementById('episodes');
-                        
-                        links.forEach(link => {
-                            const episode = document.createElement('div');
-                            episode.innerHTML = `
-                                <h3>${link.textContent}</h3>
-                                <audio controls>
-                                    <source src="./audio/${link.textContent}" type="audio/mpeg">
-                                </audio>
-                            `;
-                            episodesDiv.appendChild(episode);
-                        });
-                    })
-                    .catch(err => console.log('Episodes loading failed:', err));
+                // Episode listing will be populated by JavaScript if audio files exist
+                const episodesDiv = document.getElementById('episodes');
+                episodesDiv.innerHTML = '<p>Episodes will appear here after podcast generation...</p>';
             </script>
         </body>
         </html>
