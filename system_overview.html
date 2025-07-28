@@ -168,35 +168,43 @@
 
         <div class="mermaid">
 graph TB
-    subgraph "コンテンツ収集"
-        A1[NHKニュース<br/>RSS]
-        A2[ITmedia<br/>RSS]
-        A3[TechCrunch<br/>RSS]
-        A4[GitHub Blog<br/>RSS]
-        A1 --> B[Content Manager]
+    subgraph "URL収集"
+        A1[NHKニュース<br/>RSS URLs]
+        A2[ITmedia<br/>RSS URLs]
+        A3[TechCrunch<br/>RSS URLs]
+        A4[GitHub Blog<br/>RSS URLs]
+        A1 --> B[Latest Article URLs]
         A2 --> B
         A3 --> B
         A4 --> B
     end
     
-    subgraph "音声生成"
-        B --> C[Podcast Generator]
+    subgraph "音声生成（新方式）"
+        B --> C[URL選択]
         C --> D[OAuth認証]
-        D --> E[Notebook LM<br/>Audio Overview]
-        E --> F[MP3音声ファイル]
+        D --> E[Notebook LM<br/>URL直接投入]
+        E --> F[Audio Overview<br/>自動生成]
+        F --> G[MP3音声ファイル]
+    end
+    
+    subgraph "フォールバック"
+        H[従来方式]
+        I[テキスト処理]
+        H --> I
+        I --> E
     end
     
     subgraph "配信システム"
-        F --> G[RSS Feed Generator]
-        G --> H[GitHub Pages<br/>ホスティング]
-        H --> I1[Apple Podcasts]
-        H --> I2[Spotify]
-        H --> I3[Google Podcasts]
+        G --> J[RSS Feed Generator<br/>URL情報付き]
+        J --> K[GitHub Pages<br/>ホスティング]
+        K --> L1[Apple Podcasts]
+        K --> L2[Spotify]
+        K --> L3[Google Podcasts]
     end
     
     subgraph "自動化"
-        J[GitHub Actions<br/>スケジューラー] --> C
-        K[GitHub Secrets] --> D
+        M[GitHub Actions<br/>スケジューラー] --> C
+        N[GitHub Secrets] --> D
     end
     
     style A1 fill:#e1f5fe
@@ -204,8 +212,9 @@ graph TB
     style A3 fill:#e1f5fe
     style A4 fill:#e1f5fe
     style E fill:#f3e5f5
-    style H fill:#e8f5e8
-    style J fill:#fff3e0
+    style F fill:#4caf50
+    style K fill:#e8f5e8
+    style M fill:#fff3e0
         </div>
 
         <div class="section-divider"></div>
@@ -221,17 +230,23 @@ sequenceDiagram
     participant GHP as GitHub Pages
     
     Note over GHA: 毎日9時に自動実行
-    GHA->>CM: コンテンツ収集開始
-    CM->>RSS: RSS記事取得
-    RSS-->>CM: 最新記事データ
-    CM->>CM: テキスト処理・要約
+    GHA->>CM: 最新記事URL取得開始
+    CM->>RSS: RSS Feed解析
+    RSS-->>CM: 記事URL一覧
+    CM->>CM: 最適記事選択
     
-    Note over CM,NLM: OAuth認証
-    CM->>NLM: 処理済みテキスト送信
-    NLM->>NLM: Audio Overview生成
+    Note over CM,NLM: OAuth認証 + URL投入
+    CM->>NLM: 記事URL直接送信
+    NLM->>NLM: 記事解析 + Audio Overview生成
     NLM-->>GHA: MP3音声ファイル
     
-    GHA->>GHA: RSS Feed生成
+    Note over GHA: フォールバック機能
+    alt URL生成失敗時
+        GHA->>CM: 従来方式（テキスト処理）
+        CM->>NLM: 処理済みテキスト送信
+    end
+    
+    GHA->>GHA: RSS Feed生成（URL情報付き）
     GHA->>GHP: 静的ファイルデプロイ
     
     Note over GHP: ポッドキャスト配信開始
@@ -519,10 +534,11 @@ flowchart TD
             </div>
             <div class="col-md-6">
                 <div class="feature-box">
-                    <h3><span class="emoji">✅</span>高品質音声</h3>
+                    <h3><span class="emoji">✅</span>高品質音声（URL方式）</h3>
                     <ul>
-                        <li>Notebook LMの自然な対話形式</li>
-                        <li>プロフェッショナルなポッドキャスト品質</li>
+                        <li>記事URL直接投入で正確な内容理解</li>
+                        <li>テキスト処理不要で情報損失なし</li>
+                        <li>自然な対話形式でプロ品質</li>
                     </ul>
                 </div>
             </div>
@@ -540,10 +556,33 @@ flowchart TD
             </div>
             <div class="col-md-6">
                 <div class="feature-box">
+                    <h3><span class="emoji">✅</span>インテリジェント処理</h3>
+                    <ul>
+                        <li>URL優先・フォールバック機能</li>
+                        <li>最適記事の自動選択</li>
+                        <li>エラー時の自動復旧機能</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="feature-box">
                     <h3><span class="emoji">✅</span>カスタマイズ性</h3>
                     <ul>
                         <li>RSS源、生成頻度、プロンプト調整可能</li>
                         <li>オープンソースで完全カスタマイズ</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-box">
+                    <h3><span class="emoji">🆕</span>新機能：URL方式</h3>
+                    <ul>
+                        <li>記事URL直接投入で簡単生成</li>
+                        <li>テキスト処理エラー回避</li>
+                        <li>より正確なコンテンツ理解</li>
                     </ul>
                 </div>
             </div>
