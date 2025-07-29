@@ -205,6 +205,16 @@ jobs:
         mkdir -p content
         mkdir -p static
     
+    - name: Chrome WebDriver Debug Test
+      run: |
+        echo "=== Chrome WebDriver 段階的デバッグ ==="
+        echo "ステップ1: 最小構成テスト"
+        python debug_chrome_minimal.py || echo "最小構成テストが失敗しました"
+        
+        echo ""
+        echo "ステップ2: 詳細ログ収集"
+        python debug_chrome_verbose.py || echo "詳細ログ収集が失敗しました"
+    
     - name: Test Notebook LM Connection
       env:
         GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
