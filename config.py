@@ -8,7 +8,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # TTS設定
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
-TTS_VOICE = "Kore"  # 日本語対応音声
+TTS_VOICE = "Kore"    # デフォルト音声
+TTS_VOICE_A = "Kore"  # 話者A（ホスト）
+TTS_VOICE_B = "Charon"  # 話者B（ゲスト）
 
 # LLM設定（台本生成）
 LLM_MODEL = "gemini-2.5-flash"
@@ -43,3 +45,4 @@ PODCAST_LANGUAGE = "ja"
 
 # コンテンツ制限
 MAX_CONTENT_LENGTH = 10000  # 文字数制限
+MAX_ARTICLES = 5  # 1エピソードに含む記事数上限

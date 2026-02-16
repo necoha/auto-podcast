@@ -3,13 +3,20 @@
 RSSフィード、ニュースサイト、テキストファイルからコンテンツを収集・処理
 """
 
+import logging
+import os
+import json
+import re
+from datetime import datetime, timedelta
+from collections import Counter
+
 import requests
 from bs4 import BeautifulSoup
 import feedparser
-import json
-import os
-from datetime import datetime, timedelta
+
 import config
+
+logger = logging.getLogger(__name__)
 
 
 class ContentManager:
@@ -37,44 +44,12 @@ class ContentManager:
                     articles.append(article)
                 
                 all_articles.extend(articles)
-                print(f"取得完了: {feed.feed.get('title', feed_url)} - {len(articles)}記事")
-                
+                logger.info("取得完了: %s - %d記事", feed.feed.get('title', feed_url), len(articles))
+
             except Exception as e:
-                print(f"RSS取得エラー ({feed_url}): {e}")
+                logger.warning("RSS取得エラー (%s): %s", feed_url, e)
         
         return all_articles
-    
-    def get_latest_article_urls(self, limit=5):
-        """最新記事のURLを取得（Notebook LM用）"""
-        article_urls = []
-        
-        for feed_url in config.RSS_FEEDS:
-            try:
-                feed = feedparser.parse(feed_url)
-                feed_title = feed.feed.get('title', 'Unknown Feed')
-                
-                # 各フィードから1-2記事を取得
-                articles_per_feed = min(2, limit // len(config.RSS_FEEDS) + 1)
-                
-                for entry in feed.entries[:articles_per_feed]:
-                    if hasattr(entry, 'link') and entry.link:
-                        article_info = {
-                            'url': entry.link,
-                            'title': entry.get('title', 'No Title'),
-                            'source': feed_title,
-                            'published': entry.get('published', '')
-                        }
-                        article_urls.append(article_info)
-                        
-                        if len(article_urls) >= limit:
-                            break
-                
-                print(f"URL取得: {feed_title} - {min(articles_per_feed, len(feed.entries))}記事")
-                
-            except Exception as e:
-                print(f"URL取得エラー ({feed_url}): {e}")
-        
-        return article_urls[:limit]
     
     def fetch_web_content(self, url):
         """Webページからコンテンツを取得"""
@@ -114,7 +89,7 @@ class ContentManager:
             return content[:config.MAX_CONTENT_LENGTH]
             
         except Exception as e:
-            print(f"Webコンテンツ取得エラー ({url}): {e}")
+            logger.warning("Webコンテンツ取得エラー (%s): %s", url, e)
             return ""
     
     def process_articles_for_podcast(self, articles, topic_focus=None):
@@ -168,7 +143,7 @@ class ContentManager:
                 f.write(content)
             return filepath
         except Exception as e:
-            print(f"コンテンツ保存エラー: {e}")
+            logger.error("コンテンツ保存エラー: %s", e)
             return None
     
     def load_content(self, filename):
@@ -179,19 +154,19 @@ class ContentManager:
             with open(filepath, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception as e:
-            print(f"コンテンツ読み込みエラー: {e}")
+            logger.warning("コンテンツ読み込みエラー: %s", e)
             return ""
     
     def create_daily_content(self, topic_keywords=None):
         """日次コンテンツを作成"""
-        print("RSSフィードから記事を取得中...")
+        logger.info("RSSフィードから記事を取得中...")
         articles = self.fetch_rss_feeds()
-        
+
         if not articles:
-            print("記事が取得できませんでした。")
+            logger.warning("記事が取得できませんでした。")
             return None
-        
-        print(f"{len(articles)}記事を取得しました。")
+
+        logger.info("%d記事を取得しました。", len(articles))
         
         # ポッドキャスト用に処理
         podcast_content = self.process_articles_for_podcast(articles, topic_keywords)
@@ -202,16 +177,13 @@ class ContentManager:
         filepath = self.save_content(podcast_content, filename)
         
         if filepath:
-            print(f"コンテンツを保存しました: {filepath}")
+            logger.info("コンテンツを保存しました: %s", filepath)
             return filepath
         else:
             return None
     
     def get_trending_topics(self, articles):
         """記事からトレンドトピックを抽出"""
-        from collections import Counter
-        import re
-        
         # 簡単なキーワード抽出
         all_text = " ".join([f"{a['title']} {a['summary']}" for a in articles])
         
@@ -227,8 +199,8 @@ class ContentManager:
         return word_counts.most_common(10)
 
 
-# 使用例とテスト
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     content_manager = ContentManager()
     
     # 日次コンテンツ作成

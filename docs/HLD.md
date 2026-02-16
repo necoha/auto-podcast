@@ -177,7 +177,6 @@ auto-podcast/
 ├── podcast_uploader.py            # アップロード（新規）
 ├── config.py                      # 設定管理（更新）
 │
-├── index.html                     # Webランディングページ
 ├── requirements.txt               # Python依存関係（更新）
 ├── CLAUDE.md                      # AI Agent向けガイダンス
 ├── README.md                      # プロジェクト説明
