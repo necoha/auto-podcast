@@ -4,130 +4,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an AI Auto Podcast system that uses Notebook LM's Audio Overview feature to automatically generate and distribute podcasts. The system collects content from RSS feeds, processes it through Notebook LM, and publishes episodes via RSS feed using GitHub Actions and GitHub Pages - all completely free.
+AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生成 → TTS音声合成 → Spotify配信する完全無料（$0/月）のポッドキャスト自動生成システム。
+
+**採用プラン（Plan α）**: Gemini 2.5 Flash（LLM + TTS）+ Cloud Scheduler + Spotify for Creators
 
 ## Technology Stack
 
-- **Python 3.11+** - Main application language
-- **Selenium** - Web automation for Notebook LM interaction
-- **feedgen** - RSS feed generation
-- **GitHub Actions** - CI/CD and scheduling
-- **GitHub Pages** - Free hosting for audio files and RSS feeds
+- **Python 3.11+** — メイン言語
+- **google-genai** — Gemini API（LLM台本生成 + TTS音声合成、1パッケージで両方対応）
+- **feedparser** — RSSフィード解析
+- **Cloud Scheduler + Cloud Functions** — 定期実行
+- **Spotify for Creators** — ポッドキャスト配信（無料）
 
 ## Common Commands
 
-### Development Setup
 ```bash
-# Install dependencies
+# 依存関係インストール
 pip install -r requirements.txt
 
-# Copy environment template
-cp .env.example .env
-# Edit .env with your Google credentials
-
-# Create required directories
-mkdir -p audio_files content static
-```
-
-### Manual Podcast Generation
-```bash
-# Generate a single episode
+# ポッドキャスト生成（手動）
 python podcast_generator.py
 
-# Generate RSS feed
-python -c "from rss_feed_generator import RSSFeedGenerator; RSSFeedGenerator().generate_rss_feed()"
+# コンテンツ収集テスト
+python -c "from content_manager import ContentManager; cm = ContentManager(); print(cm.create_daily_content(['AI', 'Technology']))"
 
-# Test content collection
-python -c "from content_manager import ContentManager; ContentManager().create_daily_content(['AI', 'Technology'])"
-```
-
-### Testing Individual Components
-```bash
-# Test RSS feed collection
-python content_manager.py
-
-# Test RSS feed generation  
-python rss_feed_generator.py
-
-# Test Notebook LM automation (requires valid credentials)
-python notebooklm_automation.py
+# Cloud Functionsデプロイ
+gcloud functions deploy generate_podcast --runtime python311 --trigger-http --set-env-vars GEMINI_API_KEY=your-key
 ```
 
 ## Architecture
 
+### Pipeline
+
+```
+RSS → ContentManager → ScriptGenerator → TTSGenerator → PodcastUploader
+         (feedparser)    (Gemini LLM)     (Gemini TTS)   (Spotify API)
+```
+
 ### Core Components
 
-1. **ContentManager** (`content_manager.py`)
-   - Fetches articles from RSS feeds
-   - Processes content for podcast format
-   - Manages content files and metadata
+1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形
+2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで対話形式の台本生成
+3. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（WAV→MP3）
+4. **PodcastUploader** (`podcast_uploader.py`) — Spotify for Creatorsへアップロード
+5. **PodcastGenerator** (`podcast_generator.py`) — 全体オーケストレーション
 
-2. **NotebookLMAutomator** (`notebooklm_automation.py`)
-   - Selenium-based web automation
-   - Handles Google login, notebook creation, content upload
-   - Automates Audio Overview generation and download
+### Key Design Decisions
 
-3. **PodcastGenerator** (`podcast_generator.py`)
-   - Main orchestration class
-   - Integrates content collection and audio generation
-   - Manages daily limits and scheduling
-
-4. **RSSFeedGenerator** (`rss_feed_generator.py`)
-   - Generates standard podcast RSS feeds
-   - Includes iTunes-compatible metadata
-   - Validates feed structure
-
-### File Structure
-```
-audio_files/     - Generated MP3 episodes
-content/         - Source content and metadata  
-static/          - Deployed web files
-.github/workflows/ - GitHub Actions automation
-```
-
-### Automation Flow
-
-1. **GitHub Actions** triggers daily at 9 AM JST
-2. **ContentManager** fetches latest articles from configured RSS feeds
-3. **NotebookLMAutomator** creates Audio Overview via Selenium
-4. **RSSFeedGenerator** updates podcast feed
-5. **GitHub Pages** serves audio files and RSS feed
+- **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
+- **UIスクレイピング禁止**: 全て公式APIベースで安定動作
+- **フォールバック**: TTS失敗時はモデル切り替え → リトライ → スキップ
 
 ## Configuration
 
+### Environment Variables
+
+| 変数 | 必須 | 説明 |
+|------|------|------|
+| `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
+
 ### Key Settings in `config.py`
 
-- `MAX_DAILY_GENERATIONS = 3` - Notebook LM free tier limit
-- `RSS_FEEDS` - List of news sources to monitor
-- `GENERATION_SCHEDULE` - Frequency (daily/weekly/hourly)
-- `MAX_CONTENT_LENGTH` - Character limit for input content
+- `RSS_FEEDS` — 監視するRSSフィード一覧
+- `TTS_MODEL` — TTSモデル名（default: `gemini-2.5-flash-preview-tts`）
+- `TTS_VOICE` — 音声名（default: `Kore`）
+- `AUDIO_OUTPUT_DIR` — 音声ファイル出力先
+- `MAX_CONTENT_LENGTH` — コンテンツ文字数制限
 
-### Required Secrets (GitHub Actions)
+## Free Tier Limits
 
-- `GOOGLE_OAUTH_CREDENTIALS` - OAuth credentials from Google Cloud Console (Base64 encoded)
-- `PODCAST_BASE_URL` - GitHub Pages URL for hosting
-- `OAUTH_SESSION_DATA` - Pre-authenticated session data (optional, for CI/CD)
+- **Gemini 2.5 Flash（LLM）**: 500 req/日、入出力無料
+- **Gemini 2.5 Flash Preview TTS**: 入出力ともに無料
+- **Cloud Functions**: 200万回/月
+- **Cloud Scheduler**: 3ジョブ無料
 
-**Important**: Uses secure OAuth authentication. See OAUTH_SETUP.md for detailed setup instructions.
+## Documentation
 
-## Free Service Limits
-
-- **Notebook LM**: 3 audio generations per day (free tier)
-- **GitHub Actions**: 2000 minutes per month (free tier)  
-- **GitHub Pages**: 1GB storage, 100GB bandwidth per month
-- **File retention**: Audio files cleaned up after 30 days
-
-## Development Notes
-
-- Selenium requires Chrome/Chromium for Notebook LM automation
-- GitHub Actions workflow includes Chrome installation
-- RSS feeds must be publicly accessible
-- Audio files are served directly from GitHub Pages
-- Content length is limited to prevent Notebook LM timeouts
-
-## Troubleshooting
-
-- **Login issues**: Check 2FA settings, consider app passwords
-- **Generation failures**: Verify daily limits not exceeded
-- **Audio quality**: Adjust custom prompts for better Notebook LM output
-- **Feed validation**: Use podcast validators before publishing
+- `docs/CRD.md` — 構想・要件定義書（技術選定比較、プラン比較）
+- `docs/HLD.md` — 概要設計書（アーキテクチャ、Mermaidフロー図）
+- `docs/LLD.md` — 詳細設計書（クラス設計、API仕様、Mermaidクラス図）

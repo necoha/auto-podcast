@@ -1,197 +1,121 @@
 # AI Auto Podcast
 
-Notebook LMのAudio Overview機能を使用して自動でポッドキャストを生成・配信するシステムです。
+最新ニュースを自動収集し、Gemini AIでポッドキャスト台本を生成、TTS音声合成でエピソードを作成・配信するシステムです。
 
-## 🎯 特徴
+## 特徴
 
-- **完全無料**: Notebook LM無料版 + GitHub Actions + GitHub Pages
-- **自動化**: RSSフィードからコンテンツを収集し、毎日自動生成
-- **高品質**: Notebook LMのAI音声で自然な対話形式
-- **RSS配信**: 標準的なポッドキャストアプリで購読可能
+- **完全無料（$0/月）**: Gemini 2.5 Flash無料枠のみで運用
+- **公式APIベース**: UIスクレイピング不要、安定動作
+- **自動化**: Cloud Scheduler + Cloud Functionsで定期実行
+- **高品質TTS**: Gemini 2.5 Flash Preview TTSによる自然な音声
+- **ポッドキャスト配信**: Spotify for Creatorsで主要アプリに配信
 
-## 🚀 セットアップ
+## アーキテクチャ
 
-### 1. リポジトリをフォーク
+```
+RSSフィード → ContentManager → ScriptGenerator → TTSGenerator → PodcastUploader
+                                  (Gemini LLM)     (Gemini TTS)   (Spotify for Creators)
+```
 
-このリポジトリをGitHubでフォークします。
+詳細は [docs/HLD.md](docs/HLD.md) を参照。
 
-### 2. Google OAuth認証の設定
+## セットアップ
 
-**📋 詳細手順は [OAUTH_SETUP.md](OAUTH_SETUP.md) を参照**
+### 1. 前提条件
 
-1. Google Cloud ConsoleでOAuth認証情報を作成
-2. 認証情報を設定:
+- Python 3.11+
+- Google AI Studio APIキー（無料）
+- Spotify for Creatorsアカウント（無料）
+
+### 2. APIキーの取得
+
+1. [Google AI Studio](https://aistudio.google.com/apikey) でAPIキーを作成
+2. 環境変数に設定:
    ```bash
-   python oauth_setup.py
+   cp .env.example .env
+   # .env に GEMINI_API_KEY を記入
    ```
-3. GitHub Secretsに設定:
-   - `GOOGLE_OAUTH_CREDENTIALS`: OAuth認証情報（Base64エンコード）
-   - `PODCAST_BASE_URL`: `https://necoha.github.io/auto-podcast`
 
-### 3. GitHub Pagesの有効化
-
-1. Settings > Pages
-2. Source を "GitHub Actions" に設定
-
-### 4. ワークフローの実行
-
-- 自動実行: 毎日日本時間9時
-- 手動実行: Actions タブから "Auto Podcast Generation" を実行
-
-## 📁 プロジェクト構成
-
-```
-auto-podcast/
-├── config.py              # 設定ファイル
-├── content_manager.py      # コンテンツ収集・管理
-├── notebooklm_automation.py # Notebook LM自動化
-├── podcast_generator.py    # メイン生成ロジック
-├── rss_feed_generator.py   # RSS配信
-├── requirements.txt        # Python依存関係
-├── .github/workflows/      # GitHub Actions設定
-├── audio_files/           # 生成された音声ファイル
-├── content/              # コンテンツとメタデータ
-└── static/               # 配信用静的ファイル
-```
-
-## 🎮 使い方
-
-### 手動実行
+### 3. 依存関係のインストール
 
 ```bash
-# 依存関係インストール
 pip install -r requirements.txt
+```
 
-# 環境変数設定
-cp .env.example .env
-# .envファイルを編集
+### 4. ポッドキャスト生成（手動実行）
 
-# ポッドキャスト生成
+```bash
 python podcast_generator.py
 ```
 
-### トピックのカスタマイズ
+### 5. 自動実行（Cloud Functions）
 
-`config.py`でRSSフィードやキーワードを変更:
-
-```python
-RSS_FEEDS = [
-    "https://your-favorite-news.com/rss",
-    "https://tech-blog.com/feed.xml"
-]
+```bash
+gcloud functions deploy generate_podcast \
+  --runtime python311 \
+  --trigger-http \
+  --set-env-vars GEMINI_API_KEY=your-key
 ```
 
-### プロンプトのカスタマイズ
+Cloud Schedulerでcronジョブを設定し定期実行。
 
-GitHub Actions手動実行時にカスタムプロンプトを指定可能:
+## プロジェクト構成
 
 ```
-テクノロジーニュースについて、初心者向けに優しく解説してください。
-専門用語は分かりやすく説明し、具体例を交えてください。
+auto-podcast/
+├── config.py              # 設定（APIキー、RSSフィード、TTS設定）
+├── content_manager.py     # RSSフィード収集・コンテンツ管理
+├── script_generator.py    # Gemini LLMでポッドキャスト台本生成
+├── tts_generator.py       # Gemini TTSで音声合成
+├── podcast_uploader.py    # Spotify for Creatorsへアップロード
+├── podcast_generator.py   # メインオーケストレーション
+├── rss_feed_generator.py  # RSS生成（レガシー）
+├── requirements.txt       # Python依存関係
+├── docs/
+│   ├── CRD.md             # 構想・要件定義書
+│   ├── HLD.md             # 概要設計書
+│   └── LLD.md             # 詳細設計書
+└── audio_files/           # 生成された音声ファイル
 ```
 
-## 🔧 設定オプション
+## 設定オプション
 
 ### `config.py`
 
-- `MAX_DAILY_GENERATIONS`: 1日の最大生成回数（デフォルト: 3）
-- `GENERATION_SCHEDULE`: 生成スケジュール（daily/weekly/hourly）
-- `RSS_FEEDS`: 監視するRSSフィード一覧
-- `MAX_CONTENT_LENGTH`: コンテンツの最大文字数
+| 設定 | 説明 | デフォルト |
+|------|------|-----------|
+| `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
+| `RSS_FEEDS` | 監視するRSSフィード一覧 | NHK, ITmedia等 |
+| `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
+| `TTS_VOICE` | TTS音声名 | `Kore` |
+| `AUDIO_OUTPUT_DIR` | 音声出力ディレクトリ | `./audio_files` |
+| `MAX_CONTENT_LENGTH` | 入力コンテンツ文字数制限 | `10000` |
 
-### Notebook LM制限
+## 無料枠の制限
 
-**無料版の制限:**
-- 1日3回まで音声生成
-- 1ノートブック50ソースまで
-- 100ノートブックまで
+| サービス | 無料枠 |
+|----------|--------|
+| Gemini 2.5 Flash（LLM） | 500 req/日 |
+| Gemini 2.5 Flash Preview TTS | 入出力ともに無料 |
+| Cloud Functions | 200万回/月 |
+| Cloud Scheduler | 3ジョブ無料 |
+| Spotify for Creators | 完全無料 |
 
-## 📡 配信
+## トラブルシューティング
 
-生成されたポッドキャストは以下でアクセス可能:
+| 問題 | 対処 |
+|------|------|
+| APIキーエラー | `.env` の `GEMINI_API_KEY` を確認 |
+| TTS生成失敗 | Gemini TTS Preview の利用可能リージョンを確認 |
+| コンテンツ収集失敗 | RSSフィードURLの有効性を確認 |
+| Cloud Functions失敗 | ログを `gcloud functions logs read` で確認 |
 
-- **RSS Feed**: `https://your-username.github.io/auto-podcast/feed.xml`
-- **Web Player**: `https://your-username.github.io/auto-podcast/`
+## ドキュメント
 
-## 🎵 ポッドキャストアプリでの購読
+- [CRD（構想・要件定義書）](docs/CRD.md) — 技術選定比較、プラン比較
+- [HLD（概要設計書）](docs/HLD.md) — システムアーキテクチャ、フロー図
+- [LLD（詳細設計書）](docs/LLD.md) — クラス設計、API仕様、デプロイ手順
 
-以下のアプリで購読可能:
-
-- Apple Podcasts
-- Spotify
-- Google Podcasts
-- その他RSS対応アプリ
-
-RSS URLを登録: `https://your-username.github.io/auto-podcast/feed.xml`
-
-## 🔒 セキュリティ
-
-- Google認証情報はGitHub Secretsで管理
-- 音声ファイルは自動でクリーンアップ（30日後）
-- パスワード等をコードに記載しない
-
-## 🐛 トラブルシューティング
-
-### よくある問題
-
-**1. Notebook LMログインエラー**
-- 2要素認証を無効化
-- アプリパスワードを使用
-- CAPTCHAが表示される場合は手動実行
-
-**2. GitHub Actions失敗**
-- Secrets設定を確認
-- 実行時間制限（6時間）に注意
-- Chrome依存関係エラーの場合はワークフロー再実行
-
-**3. RSS配信エラー**
-- PODCAST_BASE_URLが正しく設定されているか確認
-- GitHub Pagesが有効化されているか確認
-
-### ログの確認
-
-GitHub Actions > 実行履歴 でエラーログを確認できます。
-
-## 📈 制限と注意事項
-
-- **Notebook LM**: 1日3回まで（無料版）
-- **GitHub Actions**: 月2000分まで（無料版）
-- **GitHub Pages**: 1GB, 月100GB転送まで
-- **音声ファイル**: 大きすぎる場合は外部ストレージ検討
-
-## 🛠 カスタマイズ
-
-### 音声品質向上
-
-Notebook LMのプロンプトをカスタマイズ:
-
-```python
-custom_prompt = """
-プロのポッドキャスターのように、以下の点を意識して話してください:
-1. 聞き取りやすいスピードで話す
-2. 重要なポイントは強調する
-3. 聞き手との距離感を大切にする
-4. 専門用語は必ず解説する
-"""
-```
-
-### 配信頻度の変更
-
-`config.py`とGitHub Actionsの cron を調整:
-
-```yaml
-# 毎日 → 週2回
-- cron: '0 0 * * 1,4'  # 月曜と木曜
-```
-
-## 📝 ライセンス
+## ライセンス
 
 MIT License
-
-## 🤝 コントリビューション
-
-プルリクエストやイシューを歓迎します！
-
-## 📞 サポート
-
-問題が発生した場合は、GitHubのIssuesで報告してください。
