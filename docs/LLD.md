@@ -196,12 +196,12 @@ Leda, Orus, Zephyr, ...
 ```mermaid
 classDiagram
     class PodcastUploader {
-        -upload_method: str
+        -output_dir: str
+        -content_dir: str
         +__init__()
         +upload(audio_path: str, metadata: EpisodeMetadata) bool
-        -_upload_to_spotify(audio_path, metadata) bool
+        +get_episode_count() int
         -_save_for_manual_upload(audio_path, metadata) bool
-        -_generate_rss_fallback(audio_path, metadata) bool
     }
 ```
 
@@ -209,10 +209,9 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `upload` | audio_path, metadata | bool | upload_method に基づいて適切なアップロード方式を呼び出し |
-| `_upload_to_spotify` | audio_path, metadata | bool | Spotify for Creators API（利用可能な場合） |
-| `_save_for_manual_upload` | audio_path, metadata | bool | ローカル保存 + メタデータJSON出力。手動アップロード用 |
-| `_generate_rss_fallback` | audio_path, metadata | bool | feedgen で自前RSS生成（GitHub Pages等で配信） |
+| `upload` | audio_path, metadata | bool | メタデータJSONをcontent/に保存 |
+| `get_episode_count` | - | int | content/内のJSONファイル数を返す |
+| `_save_for_manual_upload` | audio_path, metadata | bool | メタデータJSON出力（手動Spotifyアップロード用） |
 
 #### データ構造: EpisodeMetadata
 ```python
@@ -233,9 +232,9 @@ class EpisodeMetadata:
 
 ---
 
-### 1.5 PodcastGenerator (`podcast_generator.py`) — 書き直し
+### 1.5 PodcastGenerator (`podcast_generator.py`)
 
-**責務**: 全体のオーケストレーション
+**責務**: 全体のオーケストレーション（収集→台本→音声→MP3変換→保存）
 
 #### クラス図
 ```mermaid
@@ -248,6 +247,7 @@ classDiagram
         +__init__(api_key: str)
         +generate() EpisodeMetadata
         -_get_episode_number() int
+        -_convert_to_mp3(wav_path, mp3_path, bitrate) str
         -_build_metadata(articles, audio_path) EpisodeMetadata
     }
 
@@ -269,80 +269,54 @@ classDiagram
 #### generate() フロー（疑似コード）
 ```python
 def generate(self) -> EpisodeMetadata | None:
-    # 1. コンテンツ収集
-    articles = self.content_manager.fetch_rss_feeds(max_articles=5)
-    if not articles:
-        log.error("記事が取得できませんでした")
-        return None
+    # 1. コンテンツ収集（24h以内 + 重複排除）
+    articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
 
-    # 2. 台本生成
-    try:
-        script = self.script_generator.generate_script(articles)
-    except Exception as e:
-        log.warning(f"台本生成失敗、フォールバック: {e}")
-        script = self._fallback_script(articles)
+    # 2. 台本生成（+ PRONUNCIATION_MAP発音補正）
+    script = self.script_generator.generate_script(articles)
 
-    # 3. 音声生成
-    episode_num = self._get_episode_number()
-    audio_filename = f"episode_{episode_num}_{date.today()}.wav"
-    audio_path = os.path.join(config.AUDIO_OUTPUT_DIR, audio_filename)
-    
-    try:
-        self.tts_generator.generate_audio(script, audio_path)
-    except Exception as e:
-        log.error(f"音声生成失敗: {e}")
-        return None
+    # 3. TTS音声生成（Multi-Speaker 1コール）
+    self.tts_generator.generate_audio(script, audio_path)  # → WAV
 
-    # 4. メタデータ保存 & アップロード
-    metadata = self._build_metadata(articles, audio_path)
-    self.uploader.upload(audio_path, metadata)
-    
-    return metadata
+    # 3.5 WAV → MP3 変換 (pydub + ffmpeg, 128kbps)
+    mp3_path = self._convert_to_mp3(audio_path, mp3_path)
+    #   変換成功時はWAV削除、失敗時はWAVフォールバック
+
+    # 4. メタデータ保存
+    self.uploader.upload(mp3_path, metadata)
 ```
 
 ---
 
-### 1.6 Config (`config.py`) — 更新
+### 1.6 Config (`config.py`)
 
 **責務**: 全コンポーネントの設定値を一元管理
 
-| 設定名 | 型 | デフォルト値 | 説明 |
-|--------|---|-------------|------|
-| `GEMINI_API_KEY` | str | env | Gemini APIキー（台本生成 + TTS 共通） |
-| `GEMINI_MODEL` | str | `gemini-2.5-flash` | 台本生成用モデル |
-| `GEMINI_TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル |
-| `TTS_VOICE_A` | str | `Aoede` | 話者Aの音声 |
-| `TTS_VOICE_B` | str | `Charon` | 話者Bの音声 |
-| `RSS_FEEDS` | List[str] | 5フィード | 監視するRSSフィード一覧 |
-| `AUDIO_OUTPUT_DIR` | str | `./audio_files` | 音声出力ディレクトリ |
-| `CONTENT_DIR` | str | `./content` | コンテンツディレクトリ |
-| `PODCAST_TITLE` | str | `AI Auto Podcast` | ポッドキャスト名 |
-| `PODCAST_DESCRIPTION` | str | 日本語説明 | ポッドキャスト説明 |
-| `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |
-| `PODCAST_LANGUAGE` | str | `ja` | 言語コード |
-| `MAX_CONTENT_LENGTH` | int | `10000` | 最大コンテンツ長（文字） |
-| `MAX_ARTICLES` | int | `5` | 1エピソードに含む記事数上限 |
+| 設定名 | 型 | 値 | 説明 |
+|--------|---|-----|------|
+| `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
+| `LLM_MODEL` | str | `gemini-2.5-flash` | 台本生成用モデル |
+| `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル |
+| `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）の音声 |
+| `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）の音声 |
+| `RSS_FEEDS` | List[str] | 12フィード | テクノロジー7 + 経済5 |
+| `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
 
-#### 削除した設定
-| 旧設定名 | 理由 |
-|---------|------|
-| `NOTEBOOKLM_URL` | Notebook LM 不使用 |
-| `GOOGLE_OAUTH_CREDENTIALS` | OAuth不要 |
-| `OAUTH_SESSION_DATA` | セッション管理不要 |
-| `GOOGLE_ACCOUNT_EMAIL` | アプリパスワード不要 |
-| `GOOGLE_ACCOUNT_PASSWORD` | 同上 |
-| `RSS_OUTPUT_FILE` | Spotify側でRSS管理 |
-| `MAX_DAILY_GENERATIONS` | Cloud Schedulerで制御 |
-| `GENERATION_SCHEDULE` | 同上 |
-
-#### デフォルトRSSフィード一覧（既存維持）
-| ソース | URL |
-|--------|-----|
-| NHKニュース | `https://www3.nhk.or.jp/rss/news/cat0.xml` |
-| ITmedia | `https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml` |
-| TechCrunch | `https://feeds.feedburner.com/TechCrunch` |
-| Ars Technica | `https://feeds.arstechnica.com/arstechnica/index` |
-| GitHub Blog | `https://github.blog/feed/` |
+#### RSSフィード一覧（12フィード）
+| カテゴリ | ソース | URL |
+|---------|--------|-----|
+| テクノロジー | ITmedia NEWS | `rss.itmedia.co.jp/rss/2.0/news_bursts.xml` |
+| テクノロジー | Publickey | `www.publickey1.jp/atom.xml` |
+| テクノロジー | GIGAZINE | `gigazine.net/news/rss_2.0/` |
+| テクノロジー | CNET Japan | `japan.cnet.com/rss/index.rdf` |
+| テクノロジー | Impress Watch | `www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf` |
+| テクノロジー | gihyo.jp | `gihyo.jp/feed/rss2` |
+| テクノロジー | ASCII.jp | `ascii.jp/rss.xml` |
+| 経済 | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
+| 経済 | NHK経済 | `www3.nhk.or.jp/rss/news/cat5.xml` |
+| 経済 | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
+| 経済 | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
+| 経済 | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
 
 ---
 
@@ -350,7 +324,7 @@ def generate(self) -> EpisodeMetadata | None:
 
 | ファイル種別 | 命名パターン | 例 |
 |------------|-------------|-----|
-| 音声ファイル | `episode_{N}_{YYYYMMDD}.wav` | `episode_42_20260216.wav` |
+| 音声ファイル | `episode_{N}_{YYYYMMDD}.mp3` | `episode_42_20260216.mp3` |
 | メタデータ | `episode_{N}_{YYYYMMDD}.json` | `episode_42_20260216.json` |
 
 ---
@@ -399,93 +373,78 @@ def generate(self) -> EpisodeMetadata | None:
 レート制限（無料枠）: 15 RPM, 100万トークン/日
 ```
 
-### 4.3 Gemini Flash TTS API（音声生成）
+### 4.3 Gemini Flash TTS API（Multi-Speaker 音声生成）
 ```
 プロトコル: HTTPS
 ライブラリ: google-genai
 エンドポイント: generativelanguage.googleapis.com
 認証: APIキー（台本生成と共通）
 モデル: gemini-2.5-flash-preview-tts
-入力: テキスト + 音声設定（voice_id）
-出力: 音声バイナリ（WAV PCM）
+入力: Director's Notes + MultiSpeaker トランスクリプト
+出力: 音声バイナリ（WAV PCM 24kHz 16bit mono）
 レスポンスモダリティ: AUDIO
-レート制限: Preview版のためレート制限は変動の可能性あり
-```
-
-### 4.4 Google Cloud TTS WaveNet（フォールバック）
-```
-プロトコル: HTTPS (gRPC)
-ライブラリ: google-cloud-texttospeech
-認証: サービスアカウントキー or APIキー
-モデル: WaveNet
-入力: テキスト or SSML
-出力: MP3/WAV
-無料枠: 月400万文字
-使用条件: Gemini TTS が失敗した場合のみ
+APIコール数: 1回/エピソード
+レート制限 (Free Tier): RPM=3, RPD=10
+話者: HostA=Kore, GuestB=Charon
 ```
 
 ---
 
-## 5. Cloud Functions デプロイ仕様
+## 5. GitHub Actions デプロイ仕様
 
-### 5.1 エントリポイント
-```python
-# main.py (Cloud Functions用)
-import functions_framework
-from podcast_generator import PodcastGenerator
-import os
+### 5.1 ワークフローファイル
+```yaml
+# .github/workflows/generate-podcast.yml
+name: Generate Podcast
+on:
+  schedule:
+    - cron: "0 15 * * *"    # 毎日 00:00 JST = 15:00 UTC
+  workflow_dispatch:         # 手動実行対応
 
-@functions_framework.http
-def generate_podcast(request):
-    """Cloud Functions エントリポイント"""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    generator = PodcastGenerator(api_key=api_key)
-    result = generator.generate()
-    
-    if result:
-        return {"status": "success", "episode": result.title}, 200
-    else:
-        return {"status": "error", "message": "Generation failed"}, 500
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync
+      - run: uv run python podcast_generator.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: episode-${{ github.run_number }}
+          path: |
+            audio_files/*.mp3
+            content/*.json
+          retention-days: 90
 ```
 
-### 5.2 Cloud Scheduler 設定
-```
-ジョブ名: auto-podcast-daily
-スケジュール: 0 0 * * * (毎日 00:00 JST)
-タイムゾーン: Asia/Tokyo
-ターゲット: HTTP
-URL: https://<region>-<project>.cloudfunctions.net/generate_podcast
-HTTPメソッド: POST
-```
-
-### 5.3 デプロイコマンド
-```bash
-gcloud functions deploy generate_podcast \
-  --gen2 \
-  --runtime python311 \
-  --trigger-http \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=<key> \
-  --memory 512MB \
-  --timeout 300s \
-  --region asia-northeast1
-```
+### 5.2 セットアップ手順
+1. GitHub Secrets に `GEMINI_API_KEY` を設定
+2. ワークフローファイルを push
+3. Actions タブで手動実行 or cron 待ち
+4. Artifacts から MP3 をダウンロード → Spotify にアップロード
 
 ---
 
-## 6. 依存パッケージ一覧（更新後）
+## 6. 依存パッケージ一覧
 
-| パッケージ | 用途 |
-|-----------|------|
-| google-genai | Gemini API（台本生成 + TTS） |
-| feedparser | RSS/Atomフィード解析 |
-| beautifulsoup4 | HTML本文抽出 |
-| requests | HTTP通信（RSS取得等） |
-| python-dotenv | ローカル環境変数読み込み |
-| functions-framework | Cloud Functions エントリポイント（デプロイ時） |
+**パッケージ管理: uv** (`pyproject.toml` + `uv.lock`)
 
-### オプション（フォールバック用）
-| パッケージ | 用途 |
-|-----------|------|
-| google-cloud-texttospeech | WaveNet フォールバックTTS |
-| feedgen | 自前RSS生成（Spotify不使用時） |
+| パッケージ | バージョン | 用途 |
+|-----------|----------|------|
+| google-genai | >=1.0.0 | Gemini API（台本生成 + Multi-Speaker TTS） |
+| feedparser | >=6.0.10 | RSS/Atomフィード解析 |
+| beautifulsoup4 | >=4.12.2 | HTML本文抽出 |
+| requests | >=2.31.0 | HTTP通信 |
+| python-dotenv | >=1.0.0 | ローカル環境変数読み込み |
+| pydub | >=0.25.1 | WAV→MP3変換（ffmpeg経由） |
+
+### システム依存
+| ツール | 用途 |
+|-------|------|
+| ffmpeg | pydubのバックエンド（MP3エンコード） |
+| uv | パッケージ管理・仮想環境 |

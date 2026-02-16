@@ -1,0 +1,55 @@
+name: Generate Podcast
+
+on:
+  schedule:
+    # 毎日 00:00 JST = 前日 15:00 UTC
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "記事取得の時間範囲（hours, 0=無制限）"
+        required: false
+        default: "24"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Verify ffmpeg
+        run: ffmpeg -version | head -1
+
+      - name: Generate podcast
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: uv run python podcast_generator.py
+
+      - name: Upload episode artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: episode-${{ github.run_number }}
+          path: |
+            audio_files/*.mp3
+            audio_files/*.wav
+            content/*.json
+          retention-days: 90
+          if-no-files-found: warn

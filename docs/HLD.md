@@ -9,28 +9,29 @@
 
 ```mermaid
 flowchart TD
-    subgraph Cloud["Cloud Infrastructure"]
-        Scheduler["☁️ Cloud Scheduler<br/>cron: 毎日 00:00 JST"]
-        CF["⚡ Cloud Functions / Run"]
+    subgraph CI["GitHub Actions"]
+        Cron["⏰ cron: 毎日 00:00 JST<br/>(15:00 UTC)"]
+        Runner["🖥️ ubuntu-latest"]
     end
 
     subgraph App["PodcastGenerator"]
-        CM["1. ContentManager<br/>コンテンツ収集"]
-        SG["2. ScriptGenerator<br/>台本生成"]
-        TTS["3. TTSGenerator<br/>音声生成"]
-        UP["4. PodcastUploader<br/>アップロード"]
+        CM["1. ContentManager<br/>収集 + 日付フィルタ + 重複排除"]
+        SG["2. ScriptGenerator<br/>台本生成 + 発音補正"]
+        TTS["3. TTSGenerator<br/>Multi-Speaker TTS"]
+        MP3["3.5 MP3変換<br/>pydub + ffmpeg"]
+        UP["4. PodcastUploader<br/>メタデータ保存"]
     end
 
     subgraph External["外部サービス"]
-        RSS[("RSS Feeds<br/>NHK / ITmedia 等")]
+        RSS[("RSS Feeds<br/>テクノロジー7 + 経済5")]
         GeminiLLM["Gemini 2.5 Flash<br/>台本生成 API"]
-        GeminiTTS["Gemini Flash TTS<br/>音声生成 API"]
+        GeminiTTS["Gemini Flash TTS<br/>Multi-Speaker 音声生成"]
         Spotify["Spotify for Creators<br/>配信プラットフォーム"]
     end
 
-    Scheduler --> CF
-    CF --> CM
-    CM --> SG --> TTS --> UP
+    Cron --> Runner
+    Runner --> CM
+    CM --> SG --> TTS --> MP3 --> UP
 
     CM -.-> RSS
     SG -.-> GeminiLLM
@@ -95,48 +96,48 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant Cron as Cloud Scheduler
-    participant CF as Cloud Functions
+    participant Cron as GitHub Actions cron
+    participant Runner as ubuntu-latest
     participant CM as ContentManager
-    participant RSS as RSS Feeds
+    participant RSS as RSS Feeds (12)
     participant SG as ScriptGenerator
-    participant Gemini as Gemini Flash API
+    participant Gemini as Gemini 2.5 Flash
     participant TTS as TTSGenerator
     participant GTTS as Gemini Flash TTS
     participant UP as PodcastUploader
-    participant Spotify as Spotify for Creators
+    participant Art as Actions Artifacts
 
-    Cron->>CF: 毎日 00:00 JST トリガー
-    CF->>CM: generate() 開始
+    Cron->>Runner: 毎日 15:00 UTC (00:00 JST)
+    Runner->>CM: generate() 開始
 
     rect rgb(230, 245, 255)
-        Note over CM,RSS: 1. コンテンツ収集
-        CM->>RSS: fetch_rss_feeds(max=5)
-        RSS-->>CM: 記事リスト（title, summary, source）
+        Note over CM,RSS: 1. コンテンツ収集（日付フィルタ + 重複排除）
+        CM->>RSS: fetch_rss_feeds(max=5, hours=24)
+        RSS-->>CM: 記事リスト
+        CM->>CM: 日付フィルタ (24h) → 重複排除 (URL+タイトル類似度)
     end
 
     rect rgb(230, 255, 230)
-        Note over SG,Gemini: 2. 台本生成
+        Note over SG,Gemini: 2. 台本生成 + 発音補正
         CM->>SG: articles
-        SG->>Gemini: generate_content(プロンプト + 記事情報)
+        SG->>Gemini: generate_content(SYSTEM_PROMPT + 記事)
         Gemini-->>SG: 対話台本 JSON
+        SG->>SG: PRONUNCIATION_MAP で読み仮名を付与
     end
 
     rect rgb(255, 245, 230)
-        Note over TTS,GTTS: 3. 音声生成
-        SG->>TTS: script（話者A/Bの対話）
-        loop 各発話セグメント
-            TTS->>GTTS: generate_content(text, voice)
-            GTTS-->>TTS: 音声バイナリ
-        end
-        TTS->>TTS: セグメント結合 → WAVファイル保存
+        Note over TTS,GTTS: 3. 音声生成（Multi-Speaker TTS 1コール）
+        SG->>TTS: Script (HostA/GuestB)
+        TTS->>GTTS: generate_content(Director's Notes + 全台本)
+        GTTS-->>TTS: 音声バイナリ (PCM)
+        TTS->>TTS: WAV保存 → MP3変換 (128kbps) → WAV削除
     end
 
     rect rgb(245, 230, 255)
-        Note over UP,Spotify: 4. 配信
-        TTS->>UP: audio_file + metadata
-        UP->>Spotify: エピソードアップロード
-        Spotify-->>UP: 配信完了
+        Note over UP,Art: 4. 保存
+        TTS->>UP: MP3 + metadata
+        UP->>UP: メタデータJSON保存
+        UP->>Art: MP3 + JSON を Artifacts にアップロード
     end
 ```
 
@@ -165,19 +166,25 @@ flowchart TD
 
 ```
 auto-podcast/
+├── .github/
+│   └── workflows/
+│       └── generate-podcast.yml   # GitHub Actions 定期実行
+│
 ├── docs/                          # ドキュメント
 │   ├── CRD.md                     #   構想・要件定義書
 │   ├── HLD.md                     #   アーキテクチャ設計書
 │   └── LLD.md                     #   詳細設計書
 │
-├── podcast_generator.py           # オーケストレーター（書き直し）
-├── content_manager.py             # コンテンツ収集（既存流用）
-├── script_generator.py            # 台本生成（新規）
-├── tts_generator.py               # TTS音声生成（新規）
-├── podcast_uploader.py            # アップロード（新規）
-├── config.py                      # 設定管理（更新）
+├── podcast_generator.py           # オーケストレーター
+├── content_manager.py             # コンテンツ収集 + 日付フィルタ + 重複排除
+├── script_generator.py            # 台本生成 + 発音補正 (PRONUNCIATION_MAP)
+├── tts_generator.py               # Multi-Speaker TTS音声生成
+├── podcast_uploader.py            # メタデータ保存
+├── config.py                      # 設定管理
 │
-├── requirements.txt               # Python依存関係（更新）
+├── pyproject.toml                 # プロジェクト定義 + 依存関係 (uv)
+├── uv.lock                        # 依存ロックファイル
+├── .python-version                # Python 3.11
 ├── CLAUDE.md                      # AI Agent向けガイダンス
 ├── README.md                      # プロジェクト説明
 │
@@ -192,28 +199,18 @@ auto-podcast/
 
 | レイヤー | 技術 | 備考 |
 |---------|------|------|
-| **言語** | Python | 3.11+ |
-| **LLM** | Google Gemini 2.5 Flash | 台本生成（無料枠） |
-| **TTS** | Gemini 2.5 Flash Preview TTS | 音声生成（無料枠） |
-| **RSS解析** | feedparser | 既存流用 |
-| **HTMLスクレイピング** | BeautifulSoup4 | 既存流用 |
-| **HTTP** | google-genai | Gemini API通信 |
+| **言語** | Python 3.11 | `.python-version` で固定 |
+| **パッケージ管理** | uv | pyproject.toml + uv.lock |
+| **LLM** | Gemini 2.5 Flash | 台本生成（無料枠） |
+| **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成（無料枠、RPD=10） |
+| **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
+| **RSS解析** | feedparser | 12フィード対応（テクノロジー7 + 経済5） |
+| **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
+| **API SDK** | google-genai v1.63+ | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
-| **スケジューリング** | Cloud Scheduler | 正確なcron実行 |
-| **実行基盤** | Cloud Functions / Cloud Run | サーバーレス |
+| **スケジューリング** | GitHub Actions cron | 毎日 00:00 JST (15:00 UTC) |
+| **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |
 | **配信** | Spotify for Creators | 無料・無制限ホスティング |
-
-### 5.1 削除した依存関係
-
-| 旧パッケージ | 理由 |
-|-------------|------|
-| selenium | ブラウザ自動操作不要 |
-| webdriver-manager | 同上 |
-| feedgen | RSS自前生成不要（Spotify側で管理） |
-| pydub | 音声メタデータ取得不要 |
-| schedule | Cloud Scheduler に移行 |
-| google-cloud-texttospeech | Gemini TTS に統一 |
-| openai | Gemini に統一 |
 
 ---
 
@@ -224,9 +221,28 @@ auto-podcast/
 | 環境 | 用途 | 認証 |
 |------|------|------|
 | **ローカル開発** | テスト・手動実行 | `.env` ファイル内 GEMINI_API_KEY |
-| **Cloud Functions** | 定期自動実行 | 環境変数 GEMINI_API_KEY |
+| **GitHub Actions** | 定期自動実行 | GitHub Secrets `GEMINI_API_KEY` |
 
-### 6.2 環境変数
+### 6.2 GitHub Actions ワークフロー
+
+```yaml
+# .github/workflows/generate-podcast.yml
+on:
+  schedule:
+    - cron: "0 15 * * *"    # 毎日 00:00 JST
+  workflow_dispatch:         # 手動実行対応
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - Checkout → uv setup → uv sync → podcast_generator.py → Artifacts upload
+```
+
+- 生成した MP3 + メタデータ JSON は **Actions Artifacts** に90日間保存
+- 手動で Spotify for Creators にアップロード（API未提供のため）
+
+### 6.3 環境変数
 
 | 変数名 | 用途 | 必須 |
 |--------|------|------|
@@ -259,4 +275,4 @@ auto-podcast/
 | APIキー | 環境変数で管理。コードに平文保存しない |
 | Git管理 | `.env`, `audio_files/`, `content/` は `.gitignore` に追加 |
 | 通信 | 全てHTTPS経由 |
-| Cloud Functions | IAMで最小権限アクセス |
+| GitHub Actions | Secrets で API キー管理。リポジトリは Private 推奨 |
