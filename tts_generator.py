@@ -1,11 +1,14 @@
 """
 TTS音声生成モジュール
-Gemini Flash TTS APIを使い、台本テキストから音声ファイルを生成する
+Gemini Flash TTS Multi-Speaker APIを使い、台本テキストから音声ファイルを生成する
+
+Multi-Speaker TTS により台本全体を1回のAPIコールで音声化するため、
+レート制限（Free Tier 3 RPM）の影響を受けない。
 """
 
 import io
 import logging
-import struct
+import time
 import wave
 import os
 from typing import List, Optional
@@ -18,20 +21,22 @@ from script_generator import Script, ScriptLine
 
 logger = logging.getLogger(__name__)
 
-# 無音セグメント: 500ms @ 24kHz 16bit mono
-SILENCE_DURATION_MS = 500
 SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2  # 16-bit
 
+# Multi-Speaker TTS の話者名（プロンプト内の名前と一致させる）
+SPEAKER_NAME_A = "HostA"
+SPEAKER_NAME_B = "GuestB"
 
-def _generate_silence(duration_ms: int = SILENCE_DURATION_MS) -> bytes:
-    """指定ミリ秒の無音PCMデータを生成する (16-bit mono)"""
-    num_samples = int(SAMPLE_RATE * duration_ms / 1000)
-    return b'\x00\x00' * num_samples
+MAX_RETRIES = 3
+RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
 
 
 class TTSGenerator:
-    """Gemini Flash TTS APIで台本から音声ファイルを生成する"""
+    """Gemini Flash TTS Multi-Speaker APIで台本から音声ファイルを生成する
+
+    台本全体を1回のAPIコールで処理するため、レート制限の問題が発生しない。
+    """
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or config.GEMINI_API_KEY
@@ -44,7 +49,7 @@ class TTSGenerator:
         self.voice_b = getattr(config, 'TTS_VOICE_B', 'Charon')
 
     def generate_audio(self, script: Script, output_path: str) -> str:
-        """台本全体から音声ファイルを生成する
+        """台本全体から音声ファイルを生成する（Multi-Speaker TTS 1回コール）
 
         Args:
             script: ScriptLineのリスト
@@ -58,50 +63,84 @@ class TTSGenerator:
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        segments: List[bytes] = []
-        total = len(script)
-        silence = _generate_silence()
+        # 台本を Multi-Speaker プロンプト形式に変換
+        prompt = self._build_multi_speaker_prompt(script)
+        logger.info(
+            "Multi-Speaker TTS生成開始 (話者A=%s, 話者B=%s, %d行)",
+            self.voice_a, self.voice_b, len(script),
+        )
 
-        for i, line in enumerate(script):
-            voice = self.voice_a if line.speaker == "A" else self.voice_b
-            logger.info(
-                "TTS生成中 [%d/%d] 話者%s (%s): %s...",
-                i + 1, total, line.speaker, voice,
-                line.text[:30]
-            )
-
-            try:
-                pcm = self._generate_segment(line.text, voice)
-                segments.append(pcm)
-                # セグメント間に無音を挿入
-                if i < total - 1:
-                    segments.append(silence)
-            except Exception as e:
-                logger.warning("TTSセグメント生成失敗 [%d/%d]: %s", i + 1, total, e)
-                # 失敗セグメントは無音で埋める（1秒）
-                segments.append(_generate_silence(1000))
-
-        if not any(len(s) > 0 for s in segments):
-            raise RuntimeError("全てのTTSセグメント生成に失敗しました")
-
-        # 全セグメントを結合
-        combined = self._concatenate_segments(segments)
+        # リトライ付きでTTS APIを呼び出し
+        pcm_data = self._generate_with_retry(prompt)
 
         # WAVファイルとして保存
-        self._save_audio(combined, output_path)
+        self._save_audio(pcm_data, output_path)
         logger.info("音声ファイル生成完了: %s", output_path)
         return output_path
 
-    def _generate_segment(self, text: str, voice: str) -> bytes:
-        """1発話分のTTS API呼び出しを行い、PCMバイナリを返す"""
+    def _build_multi_speaker_prompt(self, script: Script) -> str:
+        """ScriptLineリストをMulti-Speaker TTSプロンプト文字列に変換する
+
+        出力例:
+            HostA: こんにちは、今日のニュースをお届けします。
+            GuestB: よろしくお願いします。
+        """
+        lines = []
+        for line in script:
+            name = SPEAKER_NAME_A if line.speaker == "A" else SPEAKER_NAME_B
+            lines.append(f"{name}: {line.text}")
+        return "\n".join(lines)
+
+    def _generate_with_retry(self, prompt: str) -> bytes:
+        """リトライ付き Multi-Speaker TTS API 呼び出し"""
+        for attempt in range(MAX_RETRIES):
+            try:
+                if attempt > 0:
+                    wait = RETRY_DELAY * attempt
+                    logger.info("  リトライ待機: %.0f秒...", wait)
+                    time.sleep(wait)
+
+                return self._call_tts_api(prompt)
+
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    if attempt < MAX_RETRIES - 1:
+                        logger.warning(
+                            "  レート制限 (試行%d/%d)、リトライします",
+                            attempt + 1, MAX_RETRIES,
+                        )
+                        continue
+                raise
+        raise RuntimeError(f"TTS生成に{MAX_RETRIES}回失敗しました")
+
+    def _call_tts_api(self, prompt: str) -> bytes:
+        """Multi-Speaker TTS API 呼び出し→PCMバイナリを返す"""
         response = self.client.models.generate_content(
             model=self.model,
-            contents=text,
+            contents=prompt,
             config=types.GenerateContentConfig(
                 response_modalities=["AUDIO"],
                 speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_id=voice,
+                    multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                        speaker_voice_configs=[
+                            types.SpeakerVoiceConfig(
+                                speaker=SPEAKER_NAME_A,
+                                voice_config=types.VoiceConfig(
+                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                        voice_name=self.voice_a,
+                                    )
+                                ),
+                            ),
+                            types.SpeakerVoiceConfig(
+                                speaker=SPEAKER_NAME_B,
+                                voice_config=types.VoiceConfig(
+                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                        voice_name=self.voice_b,
+                                    )
+                                ),
+                            ),
+                        ]
                     )
                 ),
             ),
@@ -121,6 +160,7 @@ class TTSGenerator:
         elif mime_type.startswith("audio/L16") or mime_type.startswith("audio/pcm"):
             pass  # すでにPCMデータ
 
+        logger.info("  音声データ取得: %d bytes, mime=%s", len(audio_bytes), mime_type)
         return audio_bytes
 
     def _extract_pcm_from_wav(self, wav_bytes: bytes) -> bytes:
@@ -130,13 +170,8 @@ class TTSGenerator:
             with wave.open(buf, 'rb') as wf:
                 return wf.readframes(wf.getnframes())
         except Exception:
-            # WAVヘッダーが不正な場合はそのまま返す
             logger.warning("WAVヘッダー解析失敗、生データとして扱います")
             return wav_bytes
-
-    def _concatenate_segments(self, segments: List[bytes]) -> bytes:
-        """複数のPCMセグメントを連結する"""
-        return b''.join(segments)
 
     def _save_audio(self, pcm_data: bytes, output_path: str) -> str:
         """PCMデータをWAVファイルとして保存する"""
