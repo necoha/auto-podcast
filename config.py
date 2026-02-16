@@ -17,16 +17,19 @@ LLM_MODEL = "gemini-2.5-flash"
 
 # コンテンツソース設定
 RSS_FEEDS = [
-    # 日本語ニュース
-    "https://www3.nhk.or.jp/rss/news/cat0.xml",  # NHKニュース
-    "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia
+    # テクノロジー（日本語）
+    "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia NEWS
+    "https://www.publickey1.jp/atom.xml",  # Publickey（クラウド・開発）
+    "https://gigazine.net/news/rss_2.0/",  # GIGAZINE
+    "https://japan.cnet.com/rss/index.rdf",  # CNET Japan
+    "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf",  # Impress Watch
+    "https://gihyo.jp/feed/rss2",  # gihyo.jp（技術評論社）
+    "https://ascii.jp/rss.xml",  # ASCII.jp
 
-    # 英語テクノロジーニュース
-    "https://feeds.feedburner.com/TechCrunch",  # TechCrunch
-    "https://feeds.arstechnica.com/arstechnica/index",  # Ars Technica
-
-    # GitHub・開発関連
-    "https://github.blog/feed/",  # GitHub Blog
+    # 経済（日本語）
+    "https://www3.nhk.or.jp/rss/news/cat5.xml",  # NHK 経済・ビジネス
+    "https://toyokeizai.net/list/feed/rss",  # 東洋経済オンライン
+    "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター日本語
 ]
 
 # 環境変数からカスタムRSSフィードを追加
