@@ -39,13 +39,13 @@ RSSフィード → ContentManager → ScriptGenerator → TTSGenerator → Podc
 ### 3. 依存関係のインストール
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 4. ポッドキャスト生成（手動実行）
 
 ```bash
-python podcast_generator.py
+uv run podcast_generator.py
 ```
 
 ### 5. 自動実行（Cloud Functions）
@@ -69,8 +69,7 @@ auto-podcast/
 ├── tts_generator.py       # Gemini TTSで音声合成
 ├── podcast_uploader.py    # Spotify for Creatorsへアップロード
 ├── podcast_generator.py   # メインオーケストレーション
-├── rss_feed_generator.py  # RSS生成（レガシー）
-├── requirements.txt       # Python依存関係
+├── pyproject.toml         # プロジェクト設定・依存関係（uv）
 ├── docs/
 │   ├── CRD.md             # 構想・要件定義書
 │   ├── HLD.md             # 概要設計書

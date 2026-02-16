@@ -20,10 +20,10 @@ AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生
 
 ```bash
 # 依存関係インストール
-pip install -r requirements.txt
+uv sync
 
 # ポッドキャスト生成（手動）
-python podcast_generator.py
+uv run podcast_generator.py
 
 # コンテンツ収集テスト
 python -c "from content_manager import ContentManager; cm = ContentManager(); print(cm.create_daily_content(['AI', 'Technology']))"
