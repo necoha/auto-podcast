@@ -1,2 +1,13 @@
-google_oauth_credentials.json
-OAuth/
+# Environment
+.env
+__pycache__/
+*.pyc
+
+# Audio output
+audio_files/
+
+# Content cache
+content/
+
+# OS
+.DS_Store
