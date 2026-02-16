@@ -5,6 +5,7 @@ Gemini Flash APIを使い、記事情報から対話形式の台本を生成す�
 
 import json
 import logging
+import re
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
@@ -42,8 +43,17 @@ SYSTEM_PROMPT = """\
 - 各記事を紹介する際にソース名（NHK、TechCrunchなど）を明示する
 - 末尾にまとめと「詳しくは概要欄のリンクをご覧ください」という案内を入れる
 
+発音・表記ルール（TTS読み上げ用）:
+- 英語の固有名詞や技術用語にはカタカナ読みを括弧で併記する
+  例: GitHub（ギットハブ）、Kubernetes（クバネティス）、AWS（エーダブリューエス）
+- 数字は自然な日本語読みで書く
+  例: "2026年" → "2026年（にせんにじゅうろくねん）"
+- 英語略語はカタカナまたはアルファベット読みを併記する
+  例: AI（エーアイ）、API（エーピーアイ）、LLM（エルエルエム）
+- 記号や特殊文字は使わず、読み上げやすい日本語表現にする
+
 出力形式: JSON配列
-[{"speaker": "A", "text": "..."}, {"speaker": "B", "text": "..."}, ...]
+[{"speaker": "A", "text": "..."}, {"speaker": "B", "text": "..."}], ...]
 """
 
 
@@ -76,8 +86,60 @@ class ScriptGenerator:
         )
 
         script = self._parse_response(response.text)
+        script = self._apply_pronunciation_fixes(script)
         logger.info("台本生成完了: %d行", len(script))
         return script
+
+    # TTS 読み替え辞書: {パターン: 読み替え}
+    # 正規表現パターンも使用可能（re.sub で適用）
+    PRONUNCIATION_MAP = {
+        # テクノロジー用語
+        "GitHub": "ギットハブ",
+        "Kubernetes": "クバネティス",
+        "Docker": "ドッカー",
+        "Python": "パイソン",
+        "JavaScript": "ジャバスクリプト",
+        "TypeScript": "タイプスクリプト",
+        "React": "リアクト",
+        "Linux": "リナックス",
+        "macOS": "マックオーエス",
+        "iOS": "アイオーエス",
+        "Android": "アンドロイド",
+        "Google": "グーグル",
+        "Microsoft": "マイクロソフト",
+        "Apple": "アップル",
+        "Amazon": "アマゾン",
+        "OpenAI": "オープンエーアイ",
+        "Gemini": "ジェミニ",
+        "ChatGPT": "チャットジーピーティー",
+        "LLM": "エルエルエム",
+        "API": "エーピーアイ",
+        "AWS": "エーダブリューエス",
+        "GPU": "ジーピーユー",
+        "CPU": "シーピーユー",
+        "SaaS": "サース",
+        "OSS": "オーエスエス",
+        "UI": "ユーアイ",
+        "UX": "ユーエックス",
+        "CI/CD": "シーアイシーディー",
+        # ニュースメディア
+        "TechCrunch": "テッククランチ",
+        "Ars Technica": "アルステクニカ",
+        "ITmedia": "アイティメディア",
+        "NHK": "エヌエイチケー",
+    }
+
+    def _apply_pronunciation_fixes(self, script: Script) -> Script:
+        """台本テキストに読み替え辞書を適用する"""
+        fixed: Script = []
+        for line in script:
+            text = line.text
+            for word, reading in self.PRONUNCIATION_MAP.items():
+                # 既にカタカナ読みが併記されている場合はスキップ
+                pattern = re.compile(re.escape(word) + r'(?!（)')
+                text = pattern.sub(f"{word}（{reading}）", text)
+            fixed.append(ScriptLine(speaker=line.speaker, text=text))
+        return fixed
 
     def _build_prompt(self, articles: List[dict]) -> str:
         """記事情報からプロンプトテキストを構築する"""

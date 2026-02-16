@@ -78,18 +78,31 @@ class TTSGenerator:
         logger.info("音声ファイル生成完了: %s", output_path)
         return output_path
 
+    # TTS に渡すプロンプト冒頭の演出指示
+    DIRECTOR_NOTES = """### DIRECTOR'S NOTES
+Language: 日本語（Japanese）
+Style: 明るく親しみやすいテクノロジー系ポッドキャスト。
+Pacing: 落ち着いたテンポで、聞き取りやすく話す。
+Pronunciation:
+- 括弧内のカタカナ読みに従って発音すること。
+  例: GitHub（ギットハブ） → 「ギットハブ」と読む
+- 括弧自体は読み上げない。
+- 英語の単語が出た場合は自然な日本語アクセントで読む。
+
+### TRANSCRIPT
+"""
+
     def _build_multi_speaker_prompt(self, script: Script) -> str:
         """ScriptLineリストをMulti-Speaker TTSプロンプト文字列に変換する
 
-        出力例:
-            HostA: こんにちは、今日のニュースをお届けします。
-            GuestB: よろしくお願いします。
+        Director's Notes + 対話トランスクリプトの形式で出力する。
         """
         lines = []
         for line in script:
             name = SPEAKER_NAME_A if line.speaker == "A" else SPEAKER_NAME_B
             lines.append(f"{name}: {line.text}")
-        return "\n".join(lines)
+        transcript = "\n".join(lines)
+        return self.DIRECTOR_NOTES + transcript
 
     def _generate_with_retry(self, prompt: str) -> bytes:
         """リトライ付き Multi-Speaker TTS API 呼び出し"""
