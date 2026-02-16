@@ -5,9 +5,10 @@
 
 import logging
 import os
-import wave
 from datetime import date, datetime
 from typing import Optional
+
+from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
@@ -75,6 +76,15 @@ class PodcastGenerator:
             logger.error("音声生成失敗: %s", e)
             return None
 
+        # 3.5 WAV → MP3 変換
+        mp3_path = audio_path.replace('.wav', '.mp3')
+        try:
+            mp3_path = self._convert_to_mp3(audio_path, mp3_path)
+            # 変換成功時はMP3を最終出力とする
+            audio_path = mp3_path
+        except Exception as e:
+            logger.warning("MP3変換失敗、WAVのまま使用: %s", e)
+
         # 4. メタデータ構築 & アップロード
         logger.info("4. メタデータ保存・アップロード中...")
         metadata = self._build_metadata(articles, audio_path, episode_num)
@@ -134,14 +144,44 @@ class PodcastGenerator:
         )
 
     def _get_audio_duration(self, audio_path: str) -> int:
-        """WAVファイルの再生秒数を取得する"""
+        """音声ファイルの再生秒数を取得する（WAV/MP3対応）"""
         try:
-            with wave.open(audio_path, 'rb') as wf:
-                frames = wf.getnframes()
-                rate = wf.getframerate()
-                return int(frames / rate)
+            audio = AudioSegment.from_file(audio_path)
+            return int(len(audio) / 1000)
         except Exception:
             return 0
+
+    def _convert_to_mp3(
+        self, wav_path: str, mp3_path: str, bitrate: str = "128k"
+    ) -> str:
+        """WAV を MP3 に変換し、元 WAV を削除する
+
+        Args:
+            wav_path: 入力WAVファイルパス
+            mp3_path: 出力MP3ファイルパス
+            bitrate: MP3ビットレート
+
+        Returns:
+            出力MP3ファイルパス
+        """
+        wav_size = os.path.getsize(wav_path)
+        logger.info("MP3変換開始: %s (%.1f MB)", wav_path, wav_size / 1024 / 1024)
+
+        audio = AudioSegment.from_wav(wav_path)
+        audio.export(mp3_path, format="mp3", bitrate=bitrate)
+
+        mp3_size = os.path.getsize(mp3_path)
+        ratio = wav_size / mp3_size if mp3_size else 0
+        logger.info(
+            "MP3変換完了: %s (%.1f MB, 圧縮率 %.1fx)",
+            mp3_path, mp3_size / 1024 / 1024, ratio,
+        )
+
+        # 変換成功時は元WAVを削除
+        os.remove(wav_path)
+        logger.info("元WAVファイルを削除: %s", wav_path)
+
+        return mp3_path
 
 
 # メイン実行部分
