@@ -30,6 +30,8 @@ class PodcastGenerator:
 
         # 曜日ローテーションで出演者を決定
         host_name, host_voice, guest_name, guest_voice = get_daily_speakers()
+        self.host_name = host_name
+        self.guest_name = guest_name
         logger.info(
             "本日の出演者: %s(%s) & %s(%s)",
             host_name, host_voice, guest_name, guest_voice,
@@ -79,7 +81,7 @@ class PodcastGenerator:
             script = self.script_generator.generate_script(articles)
         except Exception as e:
             logger.warning("台本生成失敗、フォールバック使用: %s", e)
-            script = fallback_script(articles)
+            script = fallback_script(articles, self.host_name, self.guest_name)
 
         logger.info("  台本: %d行", len(script))
 

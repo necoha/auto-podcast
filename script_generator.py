@@ -28,19 +28,24 @@ class ScriptLine:
 Script = List[ScriptLine]
 
 
-SYSTEM_PROMPT = """\
+SYSTEM_PROMPT_TEMPLATE = """\
 あなたはポッドキャストの台本ライターです。
 以下のニュース記事をもとに、2人の話者（ホストとゲスト）による
 自然な日本語の対話形式でポッドキャスト台本を作成してください。
 
+話者設定:
+- 話者A: ホスト（進行役）。名前は「{host_name}」
+- 話者B: ゲスト（解説役・テック専門家）。名前は「{guest_name}」
+- 台本中の speaker は "A" "B" を使用する（名前はテキスト内で自然に使う）
+
 要件:
 - 10〜15分程度の会話になるボリューム（合計3000〜5000文字程度）
 - 各記事について分かりやすく解説
-- 話者Aはホスト（進行役）、話者Bはゲスト（解説役・テック専門家）
-- 話者に固有の名前を付けない。台本中では "A:" "B:" のみ使用する
+- 冒頭の挨拶は「おはようございます、{host_name}です」「{guest_name}です、よろしくお願いします」のように名乗りする
+- 会話中、相手を名前で呼ぶことがある（「{guest_name}さん、それは〜」など）
 - 自然な相槌・質問・感想を含める
 - 冒頭で「この番組はAIによって自動生成されています」と必ず述べる
-- 各記事を紹介する際にソース名（NHK、TechCrunchなど）を明示する
+- 各記事を紹介する際にソース名（NHK、GIGAZINEなど）を明示する
 - 末尾にまとめと「詳しくは概要欄のリンクをご覧ください」という案内を入れる
 
 発音・表記ルール（TTS読み上げ用）:
@@ -57,7 +62,7 @@ SYSTEM_PROMPT = """\
 - 記号や特殊文字は使わず、読み上げやすい日本語表現にする
 
 出力形式: JSON配列
-[{"speaker": "A", "text": "..."}, {"speaker": "B", "text": "..."}], ...]
+[{{"speaker": "A", "text": "..."}}, {{"speaker": "B", "text": "..."}}], ...]
 """
 
 
@@ -227,14 +232,21 @@ class ScriptGenerator:
         return script
 
 
-def fallback_script(articles: List[dict]) -> Script:
+def fallback_script(articles: List[dict],
+                    host_name: str = "アオイ",
+                    guest_name: str = "タクミ") -> Script:
     """台本生成失敗時のフォールバック: 記事をそのまま読み上げテキスト化"""
     from datetime import datetime
+    import re as _re
 
     script: Script = []
     script.append(ScriptLine(
         speaker="A",
-        text=f"こんにちは。{datetime.now().strftime('%Y年%m月%d日')}のニュースをお届けします。"
+        text=f"おはようございます、{host_name}です。{datetime.now().strftime('%Y年%m月%d日')}のニュースをお届けします。"
+    ))
+    script.append(ScriptLine(
+        speaker="B",
+        text=f"{guest_name}です。よろしくお願いします。"
     ))
 
     for i, article in enumerate(articles, 1):
@@ -242,21 +254,24 @@ def fallback_script(articles: List[dict]) -> Script:
         summary = article.get('summary', '')
         source = article.get('source', '')
 
-        import re
-        summary = re.sub(r'<[^>]+>', '', summary)
+        summary = _re.sub(r'<[^>]+>', '', summary)
 
         script.append(ScriptLine(
             speaker="A",
             text=f"続いて{i}つ目のニュースです。{source}からお伝えします。"
         ))
         script.append(ScriptLine(
-            speaker="A",
+            speaker="B",
             text=f"{title}。{summary}"
         ))
 
     script.append(ScriptLine(
         speaker="A",
-        text="以上、本日のニュースでした。ご視聴ありがとうございました。"
+        text=f"以上、本日のニュースでした。{guest_name}さん、ありがとうございました。"
+    ))
+    script.append(ScriptLine(
+        speaker="B",
+        text="ありがとうございました。また明日お会いしましょう。"
     ))
 
     return script
