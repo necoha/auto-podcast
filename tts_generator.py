@@ -8,6 +8,7 @@ Multi-Speaker TTS により台本全体を1回のAPIコールで音声化する�
 
 import io
 import logging
+import re
 import time
 import wave
 import os
@@ -117,13 +118,33 @@ Pronunciation:
         """台本を Multi-Speaker TTS プロンプトに変換する
 
         台本中の speaker:"A" をホスト名、"B" をゲスト名にマッピング。
+        英字固有名詞はカタカナ読みに置換して TTS の誤読を防ぐ。
         """
         lines = []
         for line in script:
             name = self.host_name if line.speaker == "A" else self.guest_name
-            lines.append(f"{name}: {line.text}")
+            text = self._prepare_for_tts(line.text)
+            lines.append(f"{name}: {text}")
         transcript = "\n".join(lines)
         return self.DIRECTOR_NOTES_TEMPLATE + transcript
+
+    def _prepare_for_tts(self, text: str) -> str:
+        """テキストをTTS向けに前処理する
+
+        1. 英字の固有名詞（読み）→ 読みのみに置換
+           例: GIGAZINE（ギガジン） → ギガジン
+        2. 漢字の読みアノテーション（ひらがな）は括弧部分を除去
+           例: 脆弱性（ぜいじゃくせい） → 脆弱性
+        """
+        # 英字（+数字・記号）の後に（読み）が付いている → 読みだけに置換
+        text = re.sub(
+            r'[A-Za-z][A-Za-z0-9./_\-]*(?:\s[A-Za-z][A-Za-z0-9./_\-]*)*（([^）]+)）',
+            r'\1',
+            text,
+        )
+        # 漢字の後に（ひらがな/カタカナ読み）→ 括弧ごと除去（漢字はTTSが読める）
+        text = re.sub(r'（[ぁ-ゟァ-ヿー\s]+）', '', text)
+        return text
 
     def _generate_with_retry(self, prompt: str) -> bytes:
         """リトライ付き Multi-Speaker TTS API 呼び出し"""
