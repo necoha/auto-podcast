@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -yqq ffmpeg
+
       - name: Verify ffmpeg
         run: ffmpeg -version | head -1
 
@@ -44,9 +47,9 @@ jobs:
 
       - name: Deploy to gh-pages
         run: |
-          # 生成物が存在するか確認
-          if ! ls audio_files/*.mp3 1>/dev/null 2>&1; then
-            echo "::warning::MP3 ファイルが見つかりません。デプロイをスキップします。"
+          # 生成物が存在するか確認（MP3 優先、なければ WAV）
+          if ! ls audio_files/*.mp3 audio_files/*.wav 1>/dev/null 2>&1; then
+            echo "::warning::音声ファイルが見つかりません。デプロイをスキップします。"
             exit 0
           fi
 
@@ -62,9 +65,10 @@ jobs:
             cd ..
           }
 
-          # episodes/ ディレクトリを作成し MP3 をコピー
+          # episodes/ ディレクトリを作成し音声ファイルをコピー
           mkdir -p gh-pages-deploy/episodes
-          cp audio_files/*.mp3 gh-pages-deploy/episodes/
+          cp audio_files/*.mp3 gh-pages-deploy/episodes/ 2>/dev/null || true
+          cp audio_files/*.wav gh-pages-deploy/episodes/ 2>/dev/null || true
 
           # feed.xml をコピー
           if [ -f audio_files/feed.xml ]; then
