@@ -1,6 +1,6 @@
 """
 ポッドキャスト生成オーケストレーター
-コンテンツ収集 → 台本生成 → 音声生成 → アップロードの統合制御
+コンテンツ収集 → 台本生成 → 音声生成 → MP3変換 → RSS更新 → メタデータ保存
 """
 
 import logging
@@ -14,6 +14,7 @@ import config
 from content_manager import ContentManager
 from script_generator import ScriptGenerator, Script, fallback_script
 from tts_generator import TTSGenerator
+from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class PodcastGenerator:
         self.content_manager = ContentManager()
         self.script_generator = ScriptGenerator(api_key=self.api_key)
         self.tts_generator = TTSGenerator(api_key=self.api_key)
+        self.rss_generator = RSSFeedGenerator()
         self.uploader = PodcastUploader()
 
         os.makedirs(config.AUDIO_OUTPUT_DIR, exist_ok=True)
@@ -85,9 +87,26 @@ class PodcastGenerator:
         except Exception as e:
             logger.warning("MP3変換失敗、WAVのまま使用: %s", e)
 
-        # 4. メタデータ構築 & アップロード
-        logger.info("4. メタデータ保存・アップロード中...")
+        # 4. メタデータ構築 & RSS フィード更新
+        logger.info("4. メタデータ構築・RSS フィード更新中...")
         metadata = self._build_metadata(articles, audio_path, episode_num)
+
+        # RSS フィード更新（feed.xml にエピソード追加）
+        mp3_filename = os.path.basename(audio_path)
+        mp3_size = os.path.getsize(audio_path) if os.path.exists(audio_path) else None
+        try:
+            self.rss_generator.add_episode(
+                mp3_filename=mp3_filename,
+                title=metadata.title,
+                description=metadata.description,
+                episode_number=episode_num,
+                duration_seconds=metadata.duration_seconds,
+                mp3_size=mp3_size,
+            )
+        except Exception as e:
+            logger.error("RSS フィード更新失敗: %s", e)
+
+        # 5. メタデータ JSON 保存
         success = self.uploader.upload(audio_path, metadata)
 
         if success:

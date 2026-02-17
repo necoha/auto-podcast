@@ -188,9 +188,66 @@ Leda, Orus, Zephyr, ...
 
 ---
 
-### 1.4 PodcastUploader (`podcast_uploader.py`) — 新規作成
+### 1.4 RSSFeedGenerator (`rss_feed_generator.py`)
 
-**責務**: 生成した音声ファイルをポッドキャスト配信プラットフォームにアップロード
+**責務**: ポッドキャスト配信用 RSS 2.0 XML を生成・更新する
+
+#### クラス図
+```mermaid
+classDiagram
+    class RSSFeedGenerator {
+        -base_url: str
+        -feed_path: str
+        +__init__(base_url: str, feed_path: str)
+        +add_episode(mp3_filename: str, metadata: EpisodeMetadata) None
+        +generate_feed() str
+        -_load_existing_feed() ElementTree | None
+        -_create_channel_element() Element
+        -_create_item_element(mp3_filename, metadata) Element
+        -_get_file_size(filepath) int
+        -_format_rfc2822(date_str) str
+    }
+```
+
+#### メソッド詳細
+
+| メソッド | 入力 | 出力 | 処理概要 |
+|---------|------|------|------|
+| `add_episode` | mp3_filename, metadata | None | 既存feed.xmlを読み込み、新エピソードを先頭に追加 |
+| `generate_feed` | - | str | 空のフィードを新規作成（チャンネル情報のみ） |
+| `_create_item_element` | mp3_filename, metadata | Element | RSS item 要素を構築（enclosure + メタデータ） |
+
+#### RSS 2.0 + iTunes 拡張仕様
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+  xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>AI Auto Podcast</title>
+    <link>https://necoha.github.io/auto-podcast</link>
+    <language>ja</language>
+    <itunes:author>Auto Podcast Generator</itunes:author>
+    <itunes:category text="Technology"/>
+    <atom:link href=".../feed.xml" rel="self" type="application/rss+xml"/>
+
+    <item>
+      <title>第N話 - AI Auto Podcast (YYYY-MM-DD)</title>
+      <enclosure url=".../episodes/xxx.mp3" length="..." type="audio/mpeg"/>
+      <guid isPermaLink="false">episode-N-YYYYMMDD</guid>
+      <pubDate>Mon, 17 Feb 2026 00:00:00 +0900</pubDate>
+      <itunes:duration>600</itunes:duration>
+      <description>...</description>
+    </item>
+  </channel>
+</rss>
+```
+
+---
+
+### 1.5 PodcastUploader (`podcast_uploader.py`)
+
+**責務**: メタデータJSON保存。GitHub Actions が gh-pages へのデプロイを担当。
 
 #### クラス図
 ```mermaid
@@ -225,16 +282,15 @@ class EpisodeMetadata:
     duration_seconds: int   # 音声の長さ（秒）
 ```
 
-> **設計判断**: Spotify for Creators に公式APIが提供されていない場合、
-> 初期実装では `_save_for_manual_upload` をデフォルトとし、
-> 音声ファイル + メタデータを `audio_files/` に保存する方式とする。
-> 手動で Spotify にアップロードするか、将来的にAPI対応に切り替える。
+> **配信方式**: MP3 + feed.xml を gh-pages ブランチに push。
+> GitHub Pages がホスティングし、Spotify / Apple Podcasts が
+> RSS を定期取得して新エピソードを自動配信する。
 
 ---
 
-### 1.5 PodcastGenerator (`podcast_generator.py`)
+### 1.6 PodcastGenerator (`podcast_generator.py`)
 
-**責務**: 全体のオーケストレーション（収集→台本→音声→MP3変換→保存）
+**責務**: 全体のオーケストレーション（収集→台本→音声→MP3変換→RSS更新→保存）
 
 #### クラス図
 ```mermaid
@@ -243,6 +299,7 @@ classDiagram
         -content_manager: ContentManager
         -script_generator: ScriptGenerator
         -tts_generator: TTSGenerator
+        -rss_generator: RSSFeedGenerator
         -uploader: PodcastUploader
         +__init__(api_key: str)
         +generate() EpisodeMetadata
@@ -280,15 +337,18 @@ def generate(self) -> EpisodeMetadata | None:
 
     # 3.5 WAV → MP3 変換 (pydub + ffmpeg, 128kbps)
     mp3_path = self._convert_to_mp3(audio_path, mp3_path)
-    #   変換成功時はWAV削除、失敗時はWAVフォールバック
 
-    # 4. メタデータ保存
+    # 4. RSS 更新
+    self.rss_generator.add_episode(mp3_filename, metadata)
+
+    # 5. メタデータ保存
     self.uploader.upload(mp3_path, metadata)
+    #   GitHub Actions が gh-pages に MP3 + feed.xml を push
 ```
 
 ---
 
-### 1.6 Config (`config.py`)
+### 1.7 Config (`config.py`)
 
 **責務**: 全コンポーネントの設定値を一元管理
 
@@ -301,6 +361,10 @@ def generate(self) -> EpisodeMetadata | None:
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）の音声 |
 | `RSS_FEEDS` | List[str] | 12フィード | テクノロジー7 + 経済5 |
 | `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
+| `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
+| `PODCAST_TITLE` | str | `AI Auto Podcast` | ポッドキャスト名 |
+| `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |
+| `PODCAST_LANGUAGE` | str | `ja` | 言語コード |
 
 #### RSSフィード一覧（12フィード）
 | カテゴリ | ソース | URL |
@@ -408,25 +472,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv python install
-      - run: uv sync
+      - run: uv python install && uv sync
       - run: uv run python podcast_generator.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      - uses: actions/upload-artifact@v4
+
+  deploy:
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: episode-${{ github.run_number }}
-          path: |
-            audio_files/*.mp3
-            content/*.json
-          retention-days: 90
+          ref: gh-pages
+      - “新 MP3 + feed.xml を gh-pages に commit & push”
+      - uses: actions/upload-artifact@v4  # バックアップ
 ```
 
-### 5.2 セットアップ手順
+### 5.2 gh-pages ブランチ構造
+```
+gh-pages/
+├── feed.xml              # ポッドキャスト RSS
+├── episodes/
+│   ├── episode_1_20260217.mp3
+│   ├── episode_2_20260218.mp3
+│   └── ...
+└── index.html            # 簡易ランディングページ（任意）
+```
+
+公開URL: `https://necoha.github.io/auto-podcast/`
+RSS URL: `https://necoha.github.io/auto-podcast/feed.xml`
+
+### 5.3 セットアップ手順
 1. GitHub Secrets に `GEMINI_API_KEY` を設定
-2. ワークフローファイルを push
-3. Actions タブで手動実行 or cron 待ち
-4. Artifacts から MP3 をダウンロード → Spotify にアップロード
+2. `gh-pages` ブランチを作成
+3. GitHub Pages を `gh-pages` ブランチから配信に設定
+4. Spotify for Creators に RSS URL を登録
+5. Apple Podcasts Connect に RSS URL を登録
+6. Actions タブで手動実行 or cron 待ち
 
 ---
 

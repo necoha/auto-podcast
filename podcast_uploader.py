@@ -1,6 +1,6 @@
 """
 ポッドキャストアップロードモジュール
-生成した音声ファイルをポッドキャスト配信プラットフォームにアップロードする
+メタデータJSON保存を担当。GitHub Actions が gh-pages へのデプロイを実行する。
 """
 
 import json
@@ -28,10 +28,10 @@ class EpisodeMetadata:
 
 
 class PodcastUploader:
-    """ポッドキャスト音声のアップロード管理
+    """ポッドキャスト音声のメタデータ保存管理
 
-    初期実装ではローカル保存 + メタデータJSON出力を行う。
-    Spotify for CreatorsにAPIが提供された場合に拡張する。
+    メタデータ JSON を content/ に保存する。
+    MP3 + feed.xml の配信は GitHub Actions が gh-pages ブランチへ push して行う。
     """
 
     def __init__(self):
@@ -75,7 +75,7 @@ class PodcastUploader:
 
             logger.info("メタデータ保存完了: %s", metadata_path)
             logger.info(
-                "音声ファイル: %s (手動で Spotify for Creators にアップロードしてください)",
+                "音声ファイル: %s (GitHub Actions が gh-pages に自動デプロイします)",
                 audio_path
             )
             return True

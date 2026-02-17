@@ -47,11 +47,12 @@ flowchart TD
 
 | コンポーネント | モジュール | 責務 |
 |---------------|-----------|------|
-| **PodcastGenerator** | `podcast_generator.py` | オーケストレーター。収集→台本→音声→アップロードの統合制御 |
-| **ContentManager** | `content_manager.py` | RSSフィードからのコンテンツ収集・テキスト処理（既存流用） |
+| **PodcastGenerator** | `podcast_generator.py` | オーケストレーター。収集→台本→音声→RSS→配信の統合制御 |
+| **ContentManager** | `content_manager.py` | RSSフィードからのコンテンツ収集・テキスト処理 |
 | **ScriptGenerator** | `script_generator.py` | Gemini Flash APIでポッドキャスト対話台本を生成 |
 | **TTSGenerator** | `tts_generator.py` | Gemini Flash TTS APIで台本から音声ファイルを生成 |
-| **PodcastUploader** | `podcast_uploader.py` | 生成した音声をSpotify for Creatorsにアップロード |
+| **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新 |
+| **PodcastUploader** | `podcast_uploader.py` | メタデータ保存 + gh-pages へのデプロイ |
 | **Config** | `config.py` | 全体設定管理（環境変数・定数） |
 
 ### 2.2 コンポーネント関係図
@@ -62,17 +63,20 @@ graph TD
     CM["ContentManager<br/><i>content_manager.py</i>"]
     SG["ScriptGenerator<br/><i>script_generator.py</i>"]
     TTS["TTSGenerator<br/><i>tts_generator.py</i>"]
+    RGEN["RSSFeedGenerator<br/><i>rss_feed_generator.py</i>"]
     UP["PodcastUploader<br/><i>podcast_uploader.py</i>"]
     CFG["Config<br/><i>config.py</i>"]
 
     PG --> CM
     PG --> SG
     PG --> TTS
+    PG --> RGEN
     PG --> UP
 
     CM -.->|参照| CFG
     SG -.->|参照| CFG
     TTS -.->|参照| CFG
+    RGEN -.->|参照| CFG
     UP -.->|参照| CFG
     PG -.->|参照| CFG
 ```
@@ -104,8 +108,9 @@ sequenceDiagram
     participant Gemini as Gemini 2.5 Flash
     participant TTS as TTSGenerator
     participant GTTS as Gemini Flash TTS
-    participant UP as PodcastUploader
-    participant Art as Actions Artifacts
+    participant RGEN as RSSFeedGenerator
+    participant GHP as GitHub Pages (gh-pages)
+    participant Spotify as Spotify / Apple Podcasts
 
     Cron->>Runner: 毎日 15:00 UTC (00:00 JST)
     Runner->>CM: generate() 開始
@@ -134,10 +139,11 @@ sequenceDiagram
     end
 
     rect rgb(245, 230, 255)
-        Note over UP,Art: 4. 保存
-        TTS->>UP: MP3 + metadata
-        UP->>UP: メタデータJSON保存
-        UP->>Art: MP3 + JSON を Artifacts にアップロード
+        Note over RGEN,GHP: 4. RSS更新 & 配信
+        TTS->>RGEN: MP3 + metadata
+        RGEN->>RGEN: feed.xml に新エピソード追加
+        RGEN->>GHP: MP3 + feed.xml を gh-pages に push
+        GHP-->>Spotify: RSS定期取得 → 新エピソード自動反映
     end
 ```
 
@@ -156,7 +162,7 @@ flowchart TD
     C2 -->|失敗| C3["❌ 生成中止<br/>次回実行に委ねる"]
 
     D --> E["PodcastUploader<br/>アップロード"]
-    E -->|成功| F["✅ Spotify配信完了"]
+    E -->|成功| F["✅ gh-pages に push<br/>Spotify/Apple が自動取得"]
     E -->|失敗| E2["ローカル保存<br/>+ リトライキュー追加"]
 ```
 
@@ -179,7 +185,8 @@ auto-podcast/
 ├── content_manager.py             # コンテンツ収集 + 日付フィルタ + 重複排除
 ├── script_generator.py            # 台本生成 + 発音補正 (PRONUNCIATION_MAP)
 ├── tts_generator.py               # Multi-Speaker TTS音声生成
-├── podcast_uploader.py            # メタデータ保存
+├── rss_feed_generator.py          # ポッドキャスト配信用 RSS XML 生成
+├── podcast_uploader.py            # メタデータ保存 + gh-pages デプロイ
 ├── config.py                      # 設定管理
 │
 ├── pyproject.toml                 # プロジェクト定義 + 依存関係 (uv)
@@ -203,6 +210,7 @@ auto-podcast/
 | **パッケージ管理** | uv | pyproject.toml + uv.lock |
 | **LLM** | Gemini 2.5 Flash | 台本生成（無料枠） |
 | **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成（無料枠、RPD=10） |
+| **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
 | **RSS解析** | feedparser | 12フィード対応（テクノロジー7 + 経済5） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
@@ -210,7 +218,8 @@ auto-podcast/
 | **環境変数** | python-dotenv | ローカル開発用 |
 | **スケジューリング** | GitHub Actions cron | 毎日 00:00 JST (15:00 UTC) |
 | **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |
-| **配信** | Spotify for Creators | 無料・無制限ホスティング |
+| **ホスティング** | GitHub Pages (gh-pages) | MP3 + RSS 配信。無料 100GB/月帯域 |
+| **配信** | Spotify / Apple Podcasts | RSS経由で自動配信 |
 
 ---
 
@@ -236,23 +245,30 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - Checkout → uv setup → uv sync → podcast_generator.py → Artifacts upload
+      - Checkout → uv setup → uv sync → podcast_generator.py
+      - gh-pages ブランチに MP3 + feed.xml を push
+      - Artifacts にバックアップ保存
 ```
 
-- 生成した MP3 + メタデータ JSON は **Actions Artifacts** に90日間保存
-- 手動で Spotify for Creators にアップロード（API未提供のため）
+- 生成した MP3 + feed.xml は **gh-pages ブランチ** に自動 push
+- GitHub Pages が `https://necoha.github.io/auto-podcast/` で配信
+- Spotify / Apple Podcasts が RSS を定期取得 → 新エピソード自動反映
+- Artifacts には90日間バックアップ保存
 
 ### 6.3 環境変数
 
 | 変数名 | 用途 | 必須 |
 |--------|------|------|
 | `GEMINI_API_KEY` | Gemini API（台本生成 + TTS 共通） | Yes |
+| `PODCAST_BASE_URL` | GitHub Pages のベースURL | No（デフォルト: `https://necoha.github.io/auto-podcast`） |
 | `PODCAST_TITLE` | ポッドキャスト名 | No（デフォルトあり） |
 | `PODCAST_LANGUAGE` | 言語コード | No（デフォルト: ja） |
 
-> **注**: Spotify for Creators に公式アップロードAPIがない場合は、
-> 手動アップロード or GitHub Pages + 自前RSS にフォールバック。
-> その場合 `PODCAST_BASE_URL` と `feedgen` が必要になる。
+> **配信方式**: GitHub Pages で MP3 と RSS をホスティング。
+> Spotify for Creators と Apple Podcasts Connect に RSS URL を初回登録するだけで、
+> 以降は新エピソードが自動的に配信される。
+>
+> RSS URL: `https://necoha.github.io/auto-podcast/feed.xml`
 
 ---
 

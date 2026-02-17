@@ -42,6 +42,47 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: uv run python podcast_generator.py
 
+      - name: Deploy to gh-pages
+        run: |
+          # 生成物が存在するか確認
+          if ! ls audio_files/*.mp3 1>/dev/null 2>&1; then
+            echo "::warning::MP3 ファイルが見つかりません。デプロイをスキップします。"
+            exit 0
+          fi
+
+          # gh-pages ブランチをチェックアウト（存在しなければ orphan 作成）
+          git fetch origin gh-pages || true
+          git worktree add gh-pages-deploy origin/gh-pages 2>/dev/null || {
+            git worktree add --detach gh-pages-deploy
+            cd gh-pages-deploy
+            git checkout --orphan gh-pages
+            git rm -rf . 2>/dev/null || true
+            echo "# AI Auto Podcast" > index.html
+            git add index.html
+            cd ..
+          }
+
+          # episodes/ ディレクトリを作成し MP3 をコピー
+          mkdir -p gh-pages-deploy/episodes
+          cp audio_files/*.mp3 gh-pages-deploy/episodes/
+
+          # feed.xml をコピー
+          if [ -f audio_files/feed.xml ]; then
+            cp audio_files/feed.xml gh-pages-deploy/feed.xml
+          fi
+
+          # コミット & プッシュ
+          cd gh-pages-deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && {
+            echo "変更なし。デプロイをスキップします。"
+            exit 0
+          }
+          git commit -m "🎙️ Episode $(date +%Y%m%d) deployed"
+          git push origin HEAD:gh-pages
+
       - name: Upload episode artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,7 +90,7 @@ jobs:
           name: episode-${{ github.run_number }}
           path: |
             audio_files/*.mp3
-            audio_files/*.wav
+            audio_files/feed.xml
             content/*.json
           retention-days: 90
           if-no-files-found: warn

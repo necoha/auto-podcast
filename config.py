@@ -51,3 +51,8 @@ PODCAST_LANGUAGE = "ja"
 # コンテンツ制限
 MAX_CONTENT_LENGTH = 10000  # 文字数制限
 MAX_ARTICLES = 5  # 1エピソードに含む記事数上限
+
+# GitHub Pages 配信設定
+PODCAST_BASE_URL = "https://necoha.github.io/auto-podcast"
+RSS_FEED_FILENAME = "feed.xml"
+EPISODES_DIR = "episodes"  # gh-pages ブランチ上の MP3 格納ディレクトリ
