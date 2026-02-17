@@ -129,12 +129,14 @@ classDiagram
     class TTSGenerator {
         -client: genai.Client
         -model: str
-        -voice_a: str
-        -voice_b: str
-        +__init__(api_key: str)
+        -host_name: str
+        -host_voice: str
+        -guest_name: str
+        -guest_voice: str
+        +__init__(api_key: str, host_name: str, host_voice: str, guest_name: str, guest_voice: str)
         +generate_audio(script: Script, output_path: str) str
-        -_generate_segment(text: str, voice: str) bytes
-        -_concatenate_segments(segments: List~bytes~) bytes
+        -_build_multi_speaker_prompt(script: Script) str
+        -_call_tts_api(prompt: str) bytes
         -_save_audio(audio_data: bytes, output_path: str) str
     }
 ```
@@ -143,11 +145,11 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `__init__` | api_key: str | - | genai.Client初期化。音声名設定 |
-| `generate_audio` | script, output_path | str | 台本の各行を話者別にTTS → 結合 → ファイル保存 |
-| `_generate_segment` | text, voice | bytes | 1発話分のTTS API呼び出し。音声バイナリ取得 |
-| `_concatenate_segments` | segments | bytes | 複数音声セグメントを連結（無音間隔挿入含む） |
-| `_save_audio` | audio_data, path | str | 音声データをファイルに書き出し |
+| `__init__` | api_key, host_name, host_voice, guest_name, guest_voice | - | genai.Client初期化。曜日ローテーションの音声名設定 |
+| `generate_audio` | script, output_path | str | 台本全体をMulti-Speaker TTS 1コールで音声化 → WAV保存 |
+| `_build_multi_speaker_prompt` | script | str | Director's Notes + 話者名付きトランスクリプト構築 |
+| `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
+| `_save_audio` | audio_data, path | str | 音声データをWAVファイルに書き出し |
 
 #### Gemini TTS API 呼び出し仕様
 ```python
@@ -296,6 +298,8 @@ class EpisodeMetadata:
 ```mermaid
 classDiagram
     class PodcastGenerator {
+        -host_name: str
+        -guest_name: str
         -content_manager: ContentManager
         -script_generator: ScriptGenerator
         -tts_generator: TTSGenerator
@@ -305,7 +309,8 @@ classDiagram
         +generate() EpisodeMetadata
         -_get_episode_number() int
         -_convert_to_mp3(wav_path, mp3_path, bitrate) str
-        -_build_metadata(articles, audio_path) EpisodeMetadata
+        -_build_metadata(articles, audio_path, episode_num) EpisodeMetadata
+        -_get_audio_duration(audio_path) int
     }
 
     PodcastGenerator --> ContentManager
@@ -318,7 +323,7 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `__init__` | api_key: str | - | 4つのサブコンポーネントを初期化 |
+| `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。6つのサブコンポーネントを初期化 |
 | `generate` | - | EpisodeMetadata or None | メインフロー: 収集→台本→音声→アップロード |
 | `_get_episode_number` | - | int | content/ 内のメタデータファイル数 + 1 |
 | `_build_metadata` | articles, audio_path | EpisodeMetadata | メタデータ構築 |
@@ -357,8 +362,9 @@ def generate(self) -> EpisodeMetadata | None:
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
 | `LLM_MODEL` | str | `gemini-2.5-flash` | 台本生成用モデル |
 | `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル |
-| `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）の音声 |
-| `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）の音声 |
+| `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
+| `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
+| `DAILY_SPEAKERS` | dict | 7曜日分 | 曜日ローテーションテーブル（7ペア×14人） |
 | `RSS_FEEDS` | List[str] | 12フィード | テクノロジー7 + 経済5 |
 | `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
@@ -449,7 +455,7 @@ def generate(self) -> EpisodeMetadata | None:
 レスポンスモダリティ: AUDIO
 APIコール数: 1回/エピソード
 レート制限 (Free Tier): RPM=3, RPD=10
-話者: HostA=Kore, GuestB=Charon
+話者: 曜日ローテーション（7ペア×14人）
 ```
 
 ---
@@ -462,7 +468,7 @@ APIコール数: 1回/エピソード
 name: Generate Podcast
 on:
   schedule:
-    - cron: "0 15 * * *"    # 毎日 00:00 JST = 15:00 UTC
+    - cron: "0 21 * * *"    # 毎日 06:00 JST = 21:00 UTC
   workflow_dispatch:         # 手動実行対応
 
 jobs:

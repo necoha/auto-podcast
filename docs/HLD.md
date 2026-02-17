@@ -10,33 +10,37 @@
 ```mermaid
 flowchart TD
     subgraph CI["GitHub Actions"]
-        Cron["⏰ cron: 毎日 00:00 JST<br/>(15:00 UTC)"]
+        Cron["⏰ cron: 毎日 06:00 JST<br/>(21:00 UTC)"]
         Runner["🖥️ ubuntu-latest"]
     end
 
     subgraph App["PodcastGenerator"]
+        ROT["0. 曜日ローテーション<br/>14人日替わり（7ペア）"]
         CM["1. ContentManager<br/>収集 + 日付フィルタ + 重複排除"]
         SG["2. ScriptGenerator<br/>台本生成 + 発音補正"]
         TTS["3. TTSGenerator<br/>Multi-Speaker TTS"]
         MP3["3.5 MP3変換<br/>pydub + ffmpeg"]
-        UP["4. PodcastUploader<br/>メタデータ保存"]
+        RGEN["4. RSSFeedGenerator<br/>feed.xml 更新"]
+        UP["5. PodcastUploader<br/>メタデータ保存"]
     end
 
     subgraph External["外部サービス"]
         RSS[("RSS Feeds<br/>テクノロジー7 + 経済5")]
         GeminiLLM["Gemini 2.5 Flash<br/>台本生成 API"]
         GeminiTTS["Gemini Flash TTS<br/>Multi-Speaker 音声生成"]
-        Spotify["Spotify for Creators<br/>配信プラットフォーム"]
+        GHP["GitHub Pages<br/>MP3 + RSS ホスティング"]
+        Spotify["Spotify / Apple Podcasts<br/>RSS 自動取得"]
     end
 
     Cron --> Runner
-    Runner --> CM
-    CM --> SG --> TTS --> MP3 --> UP
+    Runner --> ROT --> CM
+    CM --> SG --> TTS --> MP3 --> RGEN --> UP
 
     CM -.-> RSS
     SG -.-> GeminiLLM
     TTS -.-> GeminiTTS
-    UP -.-> Spotify
+    UP -.-> GHP
+    GHP -.-> Spotify
 ```
 
 ---
@@ -53,7 +57,7 @@ flowchart TD
 | **TTSGenerator** | `tts_generator.py` | Gemini Flash TTS APIで台本から音声ファイルを生成 |
 | **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新 |
 | **PodcastUploader** | `podcast_uploader.py` | メタデータ保存 + gh-pages へのデプロイ |
-| **Config** | `config.py` | 全体設定管理（環境変数・定数） |
+| **Config** | `config.py` | 全体設定管理（環境変数・定数・曜日ローテーション） |
 
 ### 2.2 コンポーネント関係図
 
@@ -87,10 +91,12 @@ graph TD
 |------|-------------------|--------------|
 | 音声生成 | Selenium + Notebook LM | Gemini Flash TTS API |
 | 台本生成 | Notebook LM 内部 | Gemini Flash API（明示的） |
+| 話者 | 匿名2人固定 | 14人日替わりローテーション（7ペア） |
 | 認証 | OAuth + Cookie + セッション管理 | APIキー1つ |
 | ブラウザ | Chrome/Firefox/Chromium/Edge | 不要 |
 | コード量 | ~4,500行（6ファイル） | ~300行（3ファイル新規） |
 | CI動作 | モック音声のみ | 実音声生成可能 |
+| 配信 | 手動アップロード | GitHub Pages + RSS → Spotify/Apple自動取得 |
 
 ---
 
@@ -112,7 +118,8 @@ sequenceDiagram
     participant GHP as GitHub Pages (gh-pages)
     participant Spotify as Spotify / Apple Podcasts
 
-    Cron->>Runner: 毎日 15:00 UTC (00:00 JST)
+    Cron->>Runner: 毎日 21:00 UTC (06:00 JST)
+    Runner->>Runner: get_daily_speakers() — 曜日ローテーションで出演者決定
     Runner->>CM: generate() 開始
 
     rect rgb(230, 245, 255)
@@ -125,14 +132,15 @@ sequenceDiagram
     rect rgb(230, 255, 230)
         Note over SG,Gemini: 2. 台本生成 + 発音補正
         CM->>SG: articles
-        SG->>Gemini: generate_content(SYSTEM_PROMPT + 記事)
+        SG->>Gemini: generate_content(SYSTEM_PROMPT_TEMPLATE + 記事)
+        Note right of Gemini: ホスト名/ゲスト名が<br/>プロンプトに埋め込まれる
         Gemini-->>SG: 対話台本 JSON
         SG->>SG: PRONUNCIATION_MAP で読み仮名を付与
     end
 
     rect rgb(255, 245, 230)
         Note over TTS,GTTS: 3. 音声生成（Multi-Speaker TTS 1コール）
-        SG->>TTS: Script (HostA/GuestB)
+        SG->>TTS: Script (曜日のホスト/ゲスト)
         TTS->>GTTS: generate_content(Director's Notes + 全台本)
         GTTS-->>TTS: 音声バイナリ (PCM)
         TTS->>TTS: WAV保存 → MP3変換 (128kbps) → WAV削除
@@ -187,7 +195,8 @@ auto-podcast/
 ├── tts_generator.py               # Multi-Speaker TTS音声生成
 ├── rss_feed_generator.py          # ポッドキャスト配信用 RSS XML 生成
 ├── podcast_uploader.py            # メタデータ保存 + gh-pages デプロイ
-├── config.py                      # 設定管理
+├── config.py                      # 設定管理（曜日ローテーション含む）
+├── generate_cover.py              # カバーアート生成 (Pillow)
 │
 ├── pyproject.toml                 # プロジェクト定義 + 依存関係 (uv)
 ├── uv.lock                        # 依存ロックファイル
@@ -216,7 +225,7 @@ auto-podcast/
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
 | **API SDK** | google-genai v1.63+ | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
-| **スケジューリング** | GitHub Actions cron | 毎日 00:00 JST (15:00 UTC) |
+| **スケジューリング** | GitHub Actions cron | 毎日 06:00 JST (21:00 UTC) |
 | **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |
 | **ホスティング** | GitHub Pages (gh-pages) | MP3 + RSS 配信。無料 100GB/月帯域 |
 | **配信** | Spotify / Apple Podcasts | RSS経由で自動配信 |
@@ -238,7 +247,7 @@ auto-podcast/
 # .github/workflows/generate-podcast.yml
 on:
   schedule:
-    - cron: "0 15 * * *"    # 毎日 00:00 JST
+    - cron: "0 21 * * *"    # 毎日 06:00 JST
   workflow_dispatch:         # 手動実行対応
 
 jobs:
