@@ -148,17 +148,25 @@ class PodcastGenerator:
         """エピソードメタデータを構築する"""
         today_str = date.today().strftime("%Y-%m-%d")
 
-        # 記事タイトルからエピソードタイトルを生成
-        top_titles = [a.get("title", "") for a in articles[:3]]
         title = f"第{episode_num}話 - {config.PODCAST_TITLE} ({today_str})"
 
-        # 説明文
-        desc_parts = [f"配信日: {today_str}", ""]
-        desc_parts.append("取り上げた記事:")
-        for i, a in enumerate(articles, 1):
-            desc_parts.append(f"  {i}. {a.get('title', '不明')} ({a.get('source', '')})")
-        desc_parts.append("")
-        desc_parts.append("Gemini AIで自動生成されたポッドキャストです。")
+        # 出演者名を取得
+        host_name, _, guest_name, _ = get_daily_speakers()
+
+        # ソース名をユニーク化（記事タイトルは著作権リスクのため列挙しない）
+        sources = sorted(set(a.get("source", "") for a in articles if a.get("source")))
+        sources_text = "、".join(sources) if sources else "各種ニュースサイト"
+
+        # 説明文（簡潔に）
+        desc_parts = [
+            f"配信日: {today_str}",
+            f"出演: {host_name} & {guest_name}",
+            "",
+            f"本日のニュースソース: {sources_text}",
+            f"（{len(articles)}件の記事をもとに構成）",
+            "",
+            "Gemini AIで自動生成されたポッドキャストです。",
+        ]
         description = "\n".join(desc_parts)
 
         # 音声の長さ
