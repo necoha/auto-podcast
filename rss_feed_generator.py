@@ -149,9 +149,8 @@ class RSSFeedGenerator:
 
     def _create_empty_feed(self) -> ET.ElementTree:
         """チャンネル情報のみの空フィードを構築する"""
-        rss = ET.Element("rss", version="2.0")
-        rss.set("xmlns:itunes", ITUNES_NS)
-        rss.set("xmlns:atom", ATOM_NS)
+        rss = ET.Element("rss")
+        rss.set("version", "2.0")
 
         channel = ET.SubElement(rss, "channel")
 
