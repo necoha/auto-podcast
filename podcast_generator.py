@@ -13,7 +13,7 @@ from pydub import AudioSegment
 import config
 from content_manager import ContentManager
 from script_generator import ScriptGenerator, Script, fallback_script
-from tts_generator import TTSGenerator
+from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
 
@@ -28,9 +28,26 @@ class PodcastGenerator:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
 
+        # 曜日ローテーションで出演者を決定
+        host_name, host_voice, guest_name, guest_voice = get_daily_speakers()
+        logger.info(
+            "本日の出演者: %s(%s) & %s(%s)",
+            host_name, host_voice, guest_name, guest_voice,
+        )
+
         self.content_manager = ContentManager()
-        self.script_generator = ScriptGenerator(api_key=self.api_key)
-        self.tts_generator = TTSGenerator(api_key=self.api_key)
+        self.script_generator = ScriptGenerator(
+            api_key=self.api_key,
+            host_name=host_name,
+            guest_name=guest_name,
+        )
+        self.tts_generator = TTSGenerator(
+            api_key=self.api_key,
+            host_name=host_name,
+            host_voice=host_voice,
+            guest_name=guest_name,
+            guest_voice=guest_voice,
+        )
         self.rss_generator = RSSFeedGenerator()
         self.uploader = PodcastUploader()
 

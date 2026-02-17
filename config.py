@@ -8,9 +8,23 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # TTS設定
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
-TTS_VOICE = "Kore"    # デフォルト音声
-TTS_VOICE_A = "Kore"  # 話者A（ホスト）
-TTS_VOICE_B = "Charon"  # 話者B（ゲスト）
+TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
+
+# 曜日ローテーション（7ペア × ホスト＋ゲスト = 14人）
+# 各タプル: (ホスト名, ホスト音声, ゲスト名, ゲスト音声)
+DAILY_SPEAKERS = {
+    0: ("アオイ",   "Kore",       "タクミ",   "Charon"),      # 月曜
+    1: ("ヒナタ",   "Aoede",      "ソウタ",   "Puck"),        # 火曜
+    2: ("ミオ",     "Leda",       "ハルト",   "Fenrir"),      # 水曜
+    3: ("サクラ",   "Erinome",    "レン",     "Orus"),        # 木曜
+    4: ("リコ",     "Laomedeia",  "カイト",   "Iapetus"),     # 金曜
+    5: ("シオリ",   "Despina",    "ユウマ",   "Enceladus"),   # 土曜
+    6: ("ナツキ",   "Autonoe",    "リュウセイ", "Algenib"),   # 日曜
+}
+
+# 後方互換のためデフォルト値も維持
+TTS_VOICE_A = "Kore"
+TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
 LLM_MODEL = "gemini-2.5-flash"

@@ -62,15 +62,25 @@ SYSTEM_PROMPT = """\
 
 
 class ScriptGenerator:
-    """Gemini Flash APIでポッドキャスト対話台本を生成する"""
+    """ポッドキャスト対話台本を生成する
 
-    def __init__(self, api_key: Optional[str] = None):
+    曜日ローテーションでホスト名・ゲスト名を切り替える。
+    """
+
+    def __init__(self, api_key: Optional[str] = None,
+                 host_name: Optional[str] = None,
+                 guest_name: Optional[str] = None):
         self.api_key = api_key or config.GEMINI_API_KEY
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
         self.client = genai.Client(api_key=self.api_key)
         self.model = config.LLM_MODEL
-        self.system_prompt = SYSTEM_PROMPT
+        self.host_name = host_name or "アオイ"
+        self.guest_name = guest_name or "タクミ"
+        self.system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+            host_name=self.host_name,
+            guest_name=self.guest_name,
+        )
 
     def generate_script(self, articles: List[dict]) -> Script:
         """記事リストから対話形式の台本を生成する"""

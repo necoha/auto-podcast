@@ -11,7 +11,8 @@ import logging
 import time
 import wave
 import os
-from typing import List, Optional
+from datetime import datetime, timezone, timedelta
+from typing import List, Optional, Tuple
 
 from google import genai
 from google.genai import types
@@ -24,29 +25,50 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2  # 16-bit
 
-# Multi-Speaker TTS の話者名（プロンプト内の名前と一致させる）
-SPEAKER_NAME_A = "HostA"
-SPEAKER_NAME_B = "GuestB"
-
 MAX_RETRIES = 3
 RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
+
+JST = timezone(timedelta(hours=9))
+
+
+def get_daily_speakers() -> Tuple[str, str, str, str]:
+    """曜日に応じたホスト・ゲスト情報を返す
+
+    Returns:
+        (host_name, host_voice, guest_name, guest_voice)
+    """
+    weekday = datetime.now(JST).weekday()  # 0=月, 6=日
+    daily = getattr(config, 'DAILY_SPEAKERS', None)
+    if daily and weekday in daily:
+        return daily[weekday]
+    # フォールバック
+    return ("アオイ", config.TTS_VOICE_A, "タクミ", config.TTS_VOICE_B)
 
 
 class TTSGenerator:
     """Gemini Flash TTS Multi-Speaker APIで台本から音声ファイルを生成する
 
     台本全体を1回のAPIコールで処理するため、レート制限の問題が発生しない。
+    曜日ローテーションで7ペア×2人 = 14人の出演者を切り替える。
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None,
+                 host_name: Optional[str] = None,
+                 host_voice: Optional[str] = None,
+                 guest_name: Optional[str] = None,
+                 guest_voice: Optional[str] = None):
         self.api_key = api_key or config.GEMINI_API_KEY
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
         self.client = genai.Client(api_key=self.api_key)
         self.model = config.TTS_MODEL
-        # 話者ごとの音声設定
-        self.voice_a = getattr(config, 'TTS_VOICE_A', config.TTS_VOICE)
-        self.voice_b = getattr(config, 'TTS_VOICE_B', 'Charon')
+
+        # 曜日ローテーションから取得（明示的に指定された場合はそちらを優先）
+        daily = get_daily_speakers()
+        self.host_name = host_name or daily[0]
+        self.voice_a = host_voice or daily[1]
+        self.guest_name = guest_name or daily[2]
+        self.voice_b = guest_voice or daily[3]
 
     def generate_audio(self, script: Script, output_path: str) -> str:
         """台本全体から音声ファイルを生成する（Multi-Speaker TTS 1回コール）
@@ -66,8 +88,8 @@ class TTSGenerator:
         # 台本を Multi-Speaker プロンプト形式に変換
         prompt = self._build_multi_speaker_prompt(script)
         logger.info(
-            "Multi-Speaker TTS生成開始 (話者A=%s, 話者B=%s, %d行)",
-            self.voice_a, self.voice_b, len(script),
+            "Multi-Speaker TTS生成開始 (ホスト=%s[%s], ゲスト=%s[%s], %d行)",
+            self.host_name, self.voice_a, self.guest_name, self.voice_b, len(script),
         )
 
         # リトライ付きでTTS APIを呼び出し
@@ -78,8 +100,7 @@ class TTSGenerator:
         logger.info("音声ファイル生成完了: %s", output_path)
         return output_path
 
-    # TTS に渡すプロンプト冒頭の演出指示
-    DIRECTOR_NOTES = """### DIRECTOR'S NOTES
+    DIRECTOR_NOTES_TEMPLATE = """### DIRECTOR'S NOTES
 Language: 日本語（Japanese）
 Style: 明るく親しみやすいテクノロジー系ポッドキャスト。
 Pacing: 落ち着いたテンポで、聞き取りやすく話す。
@@ -93,16 +114,16 @@ Pronunciation:
 """
 
     def _build_multi_speaker_prompt(self, script: Script) -> str:
-        """ScriptLineリストをMulti-Speaker TTSプロンプト文字列に変換する
+        """台本を Multi-Speaker TTS プロンプトに変換する
 
-        Director's Notes + 対話トランスクリプトの形式で出力する。
+        台本中の speaker:"A" をホスト名、"B" をゲスト名にマッピング。
         """
         lines = []
         for line in script:
-            name = SPEAKER_NAME_A if line.speaker == "A" else SPEAKER_NAME_B
+            name = self.host_name if line.speaker == "A" else self.guest_name
             lines.append(f"{name}: {line.text}")
         transcript = "\n".join(lines)
-        return self.DIRECTOR_NOTES + transcript
+        return self.DIRECTOR_NOTES_TEMPLATE + transcript
 
     def _generate_with_retry(self, prompt: str) -> bytes:
         """リトライ付き Multi-Speaker TTS API 呼び出し"""
@@ -138,7 +159,7 @@ Pronunciation:
                     multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
                         speaker_voice_configs=[
                             types.SpeakerVoiceConfig(
-                                speaker=SPEAKER_NAME_A,
+                                speaker=self.host_name,
                                 voice_config=types.VoiceConfig(
                                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
                                         voice_name=self.voice_a,
@@ -146,7 +167,7 @@ Pronunciation:
                                 ),
                             ),
                             types.SpeakerVoiceConfig(
-                                speaker=SPEAKER_NAME_B,
+                                speaker=self.guest_name,
                                 voice_config=types.VoiceConfig(
                                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
                                         voice_name=self.voice_b,
