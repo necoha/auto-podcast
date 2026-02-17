@@ -56,3 +56,5 @@ MAX_ARTICLES = 5  # 1エピソードに含む記事数上限
 PODCAST_BASE_URL = "https://necoha.github.io/auto-podcast"
 RSS_FEED_FILENAME = "feed.xml"
 EPISODES_DIR = "episodes"  # gh-pages ブランチ上の MP3 格納ディレクトリ
+PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover.jpg"
+PODCAST_OWNER_EMAIL = "necoha@users.noreply.github.com"

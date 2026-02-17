@@ -185,6 +185,21 @@ class RSSFeedGenerator:
             channel, f"{{{ITUNES_NS}}}explicit"
         ).text = "false"
 
+        # itunes:image（Spotify / Apple 必須）
+        image_url = getattr(config, "PODCAST_IMAGE_URL", "")
+        if image_url:
+            img = ET.SubElement(channel, f"{{{ITUNES_NS}}}image")
+            img.set("href", image_url)
+
+        # itunes:owner（Spotify 必須）
+        owner = ET.SubElement(channel, f"{{{ITUNES_NS}}}owner")
+        ET.SubElement(
+            owner, f"{{{ITUNES_NS}}}name"
+        ).text = getattr(config, "PODCAST_AUTHOR", "Auto Podcast Generator")
+        ET.SubElement(
+            owner, f"{{{ITUNES_NS}}}email"
+        ).text = getattr(config, "PODCAST_OWNER_EMAIL", "")
+
         return ET.ElementTree(rss)
 
     def _create_item_element(
