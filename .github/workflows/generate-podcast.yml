@@ -75,6 +75,11 @@ jobs:
             cp audio_files/feed.xml gh-pages-deploy/feed.xml
           fi
 
+          # カバー画像をコピー（存在する場合）
+          if [ -f cover.jpg ]; then
+            cp cover.jpg gh-pages-deploy/cover.jpg
+          fi
+
           # コミット & プッシュ
           cd gh-pages-deploy
           git config user.name "github-actions[bot]"
