@@ -84,6 +84,12 @@ RSS → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator
 - **GitHub Actions**: 2000分/月
 - **GitHub Pages**: 1GB推奨、帯域100GB/月
 
+## Episode Retention
+
+- **保持期間**: 60日（`config.EPISODE_RETENTION_DAYS`）
+- **自動削除**: デプロイ時に `cleanup_old_episodes()` が60日超のMP3とfeed.xmlエントリを削除
+- **想定最大容量**: ~600MB（1GB制限内）
+
 ## Deployment
 
 - **スケジュール**: GitHub Actions cron `0 21 * * *` (06:00 JST)
