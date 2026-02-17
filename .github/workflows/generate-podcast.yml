@@ -48,7 +48,7 @@ jobs:
       - name: Deploy to gh-pages
         run: |
           # 生成物が存在するか確認（MP3 優先、なければ WAV）
-          if ! ls audio_files/*.mp3 audio_files/*.wav 1>/dev/null 2>&1; then
+          if ! ls audio_files/*.mp3 1>/dev/null 2>&1 && ! ls audio_files/*.wav 1>/dev/null 2>&1; then
             echo "::warning::音声ファイルが見つかりません。デプロイをスキップします。"
             exit 0
           fi
