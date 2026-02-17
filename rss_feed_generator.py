@@ -132,6 +132,87 @@ class RSSFeedGenerator:
         logger.info("RSS フィード新規作成: %s", self.feed_path)
         return self.feed_path
 
+    def cleanup_old_episodes(
+        self,
+        feed_path: str,
+        episodes_dir: str,
+        retention_days: int = 60,
+    ) -> list[str]:
+        """保持期間を超えた古いエピソードをfeed.xmlとディスクから削除する
+
+        Args:
+            feed_path: feed.xml のパス
+            episodes_dir: MP3が格納されているディレクトリのパス
+            retention_days: 保持する日数（これより古いエピソードを削除）
+
+        Returns:
+            削除されたMP3ファイル名のリスト
+        """
+        if not os.path.exists(feed_path):
+            logger.info("feed.xml が見つかりません: %s", feed_path)
+            return []
+
+        try:
+            tree = ET.parse(feed_path)
+        except ET.ParseError as e:
+            logger.warning("feed.xml のパースに失敗: %s", e)
+            return []
+
+        channel = tree.find("channel")
+        if channel is None:
+            return []
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=retention_days)
+        removed_files: list[str] = []
+
+        items_to_remove = []
+        for item in channel.findall("item"):
+            pub_date_el = item.find("pubDate")
+            if pub_date_el is None or not pub_date_el.text:
+                continue
+
+            # RFC 2822 日付をパース
+            try:
+                from email.utils import parsedate_to_datetime
+                pub_dt = parsedate_to_datetime(pub_date_el.text)
+            except (ValueError, TypeError):
+                continue
+
+            if pub_dt < cutoff:
+                # MP3ファイル名を取得
+                enclosure = item.find("enclosure")
+                if enclosure is not None:
+                    mp3_url = enclosure.get("url", "")
+                    mp3_name = mp3_url.rsplit("/", 1)[-1] if "/" in mp3_url else mp3_url
+                    mp3_path = os.path.join(episodes_dir, mp3_name)
+
+                    if os.path.exists(mp3_path):
+                        os.remove(mp3_path)
+                        logger.info("古いエピソードを削除: %s", mp3_name)
+                        removed_files.append(mp3_name)
+
+                items_to_remove.append(item)
+
+        # feed.xml から item を削除
+        for item in items_to_remove:
+            channel.remove(item)
+
+        if items_to_remove:
+            # lastBuildDate を更新
+            last_build = channel.find("lastBuildDate")
+            now_str = self._format_rfc2822(datetime.now(JST))
+            if last_build is not None:
+                last_build.text = now_str
+
+            tree.write(feed_path, encoding="unicode", xml_declaration=True)
+            logger.info(
+                "クリーンアップ完了: %d件のエピソードを削除（保持: %d日）",
+                len(items_to_remove), retention_days,
+            )
+
+        return removed_files
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
