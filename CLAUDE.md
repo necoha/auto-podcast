@@ -65,10 +65,11 @@ RSS → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator
 | 変数 | 必須 | 説明 |
 |------|------|------|
 | `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
+| `PODCAST_OWNER_EMAIL` | Yes | RSS/Spotify登録用メールアドレス |
 
 ### Key Settings in `config.py`
 
-- `RSS_FEEDS` — 監視するRSSフィード一覧
+- `RSS_FEEDS` — 監視するRSSフィード一覧（技術系6 + 経済系4 = 10ソース）
 - `TTS_MODEL` — TTSモデル名（default: `gemini-2.5-flash-preview-tts`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）
 - `DAILY_SPEAKERS` — 曜日ローテーションテーブル（7ペア×14人）

@@ -36,7 +36,7 @@ RSSフィード → ContentManager → ScriptGenerator → TTSGenerator → RSSF
 2. 環境変数に設定:
    ```bash
    cp .env.example .env
-   # .env に GEMINI_API_KEY を記入
+   # .env に GEMINI_API_KEY と PODCAST_OWNER_EMAIL を記入
    ```
 
 ### 3. 依存関係のインストール
@@ -53,7 +53,7 @@ uv run podcast_generator.py
 
 ### 5. 自動実行（GitHub Actions）
 
-GitHub Secrets に `GEMINI_API_KEY` を設定するだけで、毎日 06:00 JST に自動実行されます。
+GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定するだけで、毎日 06:00 JST に自動実行されます。
 手動実行はActionsタブから `workflow_dispatch` で実行可能です。
 
 ## プロジェクト構成
@@ -86,12 +86,12 @@ auto-podcast/
 | 設定 | 説明 | デフォルト |
 |------|------|-----------|
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
-| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー7 + 経済5 |
+| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `DAILY_SPEAKERS` | 曜日ローテーションテーブル | 7ペア×14人 |
 | `PODCAST_BASE_URL` | GitHub Pages URL | `necoha.github.io/auto-podcast` |
-| `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 設定値 |
+| `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 環境変数 |
 
 ## 無料枠の制限
 
