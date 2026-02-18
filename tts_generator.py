@@ -28,7 +28,6 @@ SAMPLE_WIDTH = 2  # 16-bit
 
 MAX_RETRIES = 3
 RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
-CHUNK_DELAY = 5.0   # チャンク間のAPI待機秒数
 SILENCE_PADDING_SEC = 0.8  # 末尾に追加する無音（秒）
 
 JST = timezone(timedelta(hours=9))
@@ -74,11 +73,10 @@ class TTSGenerator:
         self.voice_b = guest_voice or daily[3]
 
     def generate_audio(self, script: Script, output_path: str) -> str:
-        """台本から音声ファイルを生成する
+        """台本全体から音声ファイルを生成する（Multi-Speaker TTS 1回コール）
 
-        台本をチャンクに分割し、各チャンクを個別のTTS APIコールで
-        音声化してからPCMデータを結合する。これにより出力トークン
-        上限による末尾切れを防止する。
+        設計原則: TTS APIコールは1エピソードにつき1回のみ。
+        台本を短く保つことで出力切れを防止する（RPD=10制限対応）。
 
         Args:
             script: ScriptLineのリスト
@@ -92,61 +90,23 @@ class TTSGenerator:
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        chunk_size = getattr(config, 'TTS_CHUNK_LINES', 12)
-        chunks = self._split_script(script, chunk_size)
-
+        prompt = self._build_multi_speaker_prompt(script)
         logger.info(
-            "Multi-Speaker TTS生成開始 (ホスト=%s[%s], ゲスト=%s[%s], %d行, %dチャンク)",
-            self.host_name, self.voice_a, self.guest_name, self.voice_b,
-            len(script), len(chunks),
+            "Multi-Speaker TTS生成開始 (ホスト=%s[%s], ゲスト=%s[%s], %d行)",
+            self.host_name, self.voice_a, self.guest_name, self.voice_b, len(script),
         )
 
-        all_pcm = bytearray()
-        for i, chunk in enumerate(chunks):
-            # チャンク間で少し待機（レート制限回避）
-            if i > 0:
-                logger.info("  チャンク間待機: %.0f秒...", CHUNK_DELAY)
-                time.sleep(CHUNK_DELAY)
-
-            prompt = self._build_multi_speaker_prompt(chunk)
-            logger.info("  チャンク %d/%d (%d行) TTS生成中...", i + 1, len(chunks), len(chunk))
-            pcm_data = self._generate_with_retry(prompt)
-            all_pcm.extend(pcm_data)
-            logger.info("  チャンク %d/%d 完了 (%d bytes)", i + 1, len(chunks), len(pcm_data))
+        # 1回のAPIコールで台本全体を音声化
+        pcm_data = self._generate_with_retry(prompt)
 
         # 末尾に無音を追加（ぶつ切り防止）
         silence = self._generate_silence(SILENCE_PADDING_SEC)
-        all_pcm.extend(silence)
+        all_pcm = pcm_data + silence
 
         # WAVファイルとして保存
-        self._save_audio(bytes(all_pcm), output_path)
-        logger.info("音声ファイル生成完了: %s (合計 %d bytes)", output_path, len(all_pcm))
+        self._save_audio(all_pcm, output_path)
+        logger.info("音声ファイル生成完了: %s", output_path)
         return output_path
-
-    @staticmethod
-    def _split_script(script: Script, chunk_size: int) -> List[Script]:
-        """台本をチャンクに分割する
-
-        同じ話者の発話が途中で切れないよう、チャンク境界を調整する。
-        次のチャンクが話者A（ホスト）で始まるよう、分割位置をずらす。
-        """
-        if len(script) <= chunk_size:
-            return [script]
-
-        chunks: List[Script] = []
-        i = 0
-        while i < len(script):
-            end = min(i + chunk_size, len(script))
-            # 末尾が会話の途中にならないよう、話者Aの開始位置までずらす
-            if end < len(script):
-                min_end = max(i + chunk_size // 3, i + 1)
-                for j in range(end, min_end - 1, -1):
-                    if script[j].speaker == "A":
-                        end = j
-                        break
-            chunks.append(script[i:end])
-            i = end
-        return chunks
 
     @staticmethod
     def _generate_silence(seconds: float) -> bytes:
