@@ -254,11 +254,15 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - Checkout → uv setup → uv sync → podcast_generator.py
+      - Checkout → uv setup → uv sync → ffmpeg install
+      - 既存 feed.xml を gh-pages から curl で復元（エピソード蓄積のため）
+      - podcast_generator.py 実行（生成 + feed.xml 追記）
       - gh-pages ブランチに MP3 + feed.xml を push
-      - Artifacts にバックアップ保存
+      - 古いエピソードのクリーンアップ（60日超）
+      - Artifacts にバックアップ保存（90日）
 ```
 
+- GitHub Actions はクリーン環境のため、Generate 前に gh-pages の既存 feed.xml を復元する
 - 生成した MP3 + feed.xml は **gh-pages ブランチ** に自動 push
 - GitHub Pages が `https://necoha.github.io/auto-podcast/` で配信
 - Spotify / Apple Podcasts が RSS を定期取得 → 新エピソード自動反映

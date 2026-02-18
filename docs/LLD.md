@@ -479,22 +479,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv python install && uv sync
+      - run: sudo apt-get install -yqq ffmpeg
+      # 既存 feed.xml を復元（クリーン環境でもエピソード蓄積するため）
+      - run: |
+          mkdir -p audio_files
+          curl -sSf "$PODCAST_BASE_URL/feed.xml" -o audio_files/feed.xml || true
       - run: uv run python podcast_generator.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
-  deploy:
-    needs: generate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-      - “新 MP3 + feed.xml を gh-pages に commit & push”
-      - uses: actions/upload-artifact@v4  # バックアップ
+          PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
+      # gh-pages worktree で MP3 + feed.xml をデプロイ
+      # cleanup_episodes.py で60日超のエピソードを削除
+      # Artifacts に90日間バックアップ保存
 ```
 
-### 5.2 gh-pages ブランチ構造
 ```
 gh-pages/
 ├── feed.xml              # ポッドキャスト RSS
@@ -509,7 +507,7 @@ gh-pages/
 RSS URL: `https://necoha.github.io/auto-podcast/feed.xml`
 
 ### 5.3 セットアップ手順
-1. GitHub Secrets に `GEMINI_API_KEY` を設定
+1. GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定
 2. `gh-pages` ブランチを作成
 3. GitHub Pages を `gh-pages` ブランチから配信に設定
 4. Spotify for Creators に RSS URL を登録
