@@ -43,6 +43,7 @@ jobs:
       - name: Generate podcast
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
         run: uv run python podcast_generator.py
 
       - name: Deploy to gh-pages
