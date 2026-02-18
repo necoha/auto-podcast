@@ -37,12 +37,10 @@ RSS_FEEDS = [
     "https://gigazine.net/news/rss_2.0/",  # GIGAZINE
     "https://japan.cnet.com/rss/index.rdf",  # CNET Japan
     "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf",  # Impress Watch
-    "https://gihyo.jp/feed/rss2",  # gihyo.jp（技術評論社）
     "https://ascii.jp/rss.xml",  # ASCII.jp
 
     # 経済・ビジネス（日本語）
     "https://business.nikkei.com/rss/sns/nb.rdf",  # 日経ビジネス
-    "https://www3.nhk.or.jp/rss/news/cat5.xml",  # NHK 経済・ビジネス
     "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター日本語
     "https://news.yahoo.co.jp/rss/topics/business.xml",  # Yahoo経済
     "https://www.asahi.com/rss/asahi/business.rdf",  # 朝日新聞経済
