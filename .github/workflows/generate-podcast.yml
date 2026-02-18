@@ -40,6 +40,17 @@ jobs:
       - name: Verify ffmpeg
         run: ffmpeg -version | head -1
 
+      - name: Restore existing feed.xml
+        run: |
+          # gh-pages 上の既存 feed.xml を取得して audio_files/ に配置
+          # → podcast_generator が既存フィードに新エピソードを追記できるようにする
+          mkdir -p audio_files
+          curl -sSf "${PODCAST_BASE_URL}/feed.xml" -o audio_files/feed.xml 2>/dev/null || {
+            echo "既存 feed.xml なし（初回実行）。新規作成します。"
+          }
+        env:
+          PODCAST_BASE_URL: https://necoha.github.io/auto-podcast
+
       - name: Generate podcast
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
