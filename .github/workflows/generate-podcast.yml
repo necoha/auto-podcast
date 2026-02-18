@@ -83,20 +83,7 @@ jobs:
       - name: Cleanup old episodes
         run: |
           if [ -f gh-pages-deploy/feed.xml ] && [ -d gh-pages-deploy/episodes ]; then
-            uv run python -c "
-from rss_feed_generator import RSSFeedGenerator
-import config
-gen = RSSFeedGenerator()
-removed = gen.cleanup_old_episodes(
-    feed_path='gh-pages-deploy/feed.xml',
-    episodes_dir='gh-pages-deploy/episodes',
-    retention_days=config.EPISODE_RETENTION_DAYS,
-)
-if removed:
-    print(f'Cleaned up {len(removed)} old episodes')
-else:
-    print('No old episodes to clean up')
-"
+            uv run python cleanup_episodes.py gh-pages-deploy/feed.xml gh-pages-deploy/episodes
           else
             echo "feed.xml or episodes/ not found, skipping cleanup"
           fi
