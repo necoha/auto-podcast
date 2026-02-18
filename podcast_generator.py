@@ -5,7 +5,7 @@
 
 import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 
 from pydub import AudioSegment
@@ -18,6 +18,8 @@ from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
 
 logger = logging.getLogger(__name__)
+
+JST = timezone(timedelta(hours=9))
 
 
 class PodcastGenerator:
@@ -88,7 +90,8 @@ class PodcastGenerator:
         # 3. 音声生成
         logger.info("3. 音声生成中...")
         episode_num = self._get_episode_number()
-        audio_filename = f"episode_{episode_num}_{date.today().strftime('%Y%m%d')}.wav"
+        today_jst = datetime.now(JST).date()
+        audio_filename = f"episode_{episode_num}_{today_jst.strftime('%Y%m%d')}.wav"
         audio_path = os.path.join(config.AUDIO_OUTPUT_DIR, audio_filename)
 
         try:
@@ -138,7 +141,27 @@ class PodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """次のエピソード番号を算出する"""
+        """次のエピソード番号を算出する
+
+        feed.xml の既存エピソード数から算出する。
+        GitHub Actions のクリーン環境でも正しく連番になる。
+        フォールバックとして content/ の JSON カウントも使う。
+        """
+        # feed.xml から既存エピソード数を取得
+        feed_path = os.path.join(config.AUDIO_OUTPUT_DIR,
+                                 getattr(config, "RSS_FEED_FILENAME", "feed.xml"))
+        if os.path.exists(feed_path):
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(feed_path)
+                channel = tree.find("channel")
+                if channel is not None:
+                    existing = len(channel.findall("item"))
+                    if existing > 0:
+                        return existing + 1
+            except Exception:
+                pass
+        # フォールバック: content/ ディレクトリ
         return self.uploader.get_episode_count() + 1
 
     def _build_metadata(
@@ -148,7 +171,7 @@ class PodcastGenerator:
         episode_num: int,
     ) -> EpisodeMetadata:
         """エピソードメタデータを構築する"""
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = datetime.now(JST).date().strftime("%Y-%m-%d")
 
         title = f"第{episode_num}話 - {config.PODCAST_TITLE} ({today_str})"
 
