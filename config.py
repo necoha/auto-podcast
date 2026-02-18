@@ -9,6 +9,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # TTS設定
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
 TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
+TTS_CHUNK_LINES = 12   # 1回のTTS APIコールあたりの台本行数（出力切れ防止）
 
 # 曜日ローテーション（7ペア × ホスト＋ゲスト = 14人）
 # 各タプル: (ホスト名, ホスト音声, ゲスト名, ゲスト音声)
