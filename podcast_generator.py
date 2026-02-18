@@ -168,14 +168,7 @@ class PodcastGenerator:
             f"（{len(articles)}件の記事をもとに構成）",
             "",
             "Gemini AIで自動生成されたポッドキャストです。",
-            "",
-            "📎 参考リンク:",
         ]
-        for a in articles:
-            link = a.get("link", "")
-            source = a.get("source", "")
-            if link:
-                desc_parts.append(f"・[{source}] {link}" if source else f"・{link}")
         description = "\n".join(desc_parts)
 
         # 音声の長さ
