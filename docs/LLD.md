@@ -19,12 +19,17 @@ classDiagram
     class ContentManager {
         -content_dir: str
         +__init__()
-        +fetch_rss_feeds(max_articles) List~dict~
+        +fetch_rss_feeds(max_articles, hours) List~dict~
         +fetch_web_content(url) str
         +process_articles_for_podcast(articles, topic_focus) str
         +save_content(content, filename) str
         +create_daily_content(topic_keywords) str
         +get_trending_topics(articles) List~tuple~
+        +load_content(filename) str
+        -_parse_published_date(date_str) datetime
+        -_normalize_url(url) str
+        -_title_similarity(title1, title2) float
+        -_deduplicate_articles(articles) List~dict~
     }
 ```
 
@@ -32,7 +37,7 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `fetch_rss_feeds` | max_articles: int | List[dict] | config.RSS_FEEDSの各URLをfeedparserで解析。title/summary/link/published/sourceを抽出 |
+| `fetch_rss_feeds` | max_articles: int, hours: int | List[dict] | config.RSS_FEEDSの各URLをfeedparserで解析。hours時間以内の記事をフィルタ。URL・タイトル重複排除 |
 | `fetch_web_content` | url: str | str | BeautifulSoupでHTML本文抽出。MAX_CONTENT_LENGTH文字で切り詰め |
 | `process_articles_for_podcast` | articles, topic_focus | str | キーワードフィルタ → 上位5件をテキスト整形 |
 | `create_daily_content` | topic_keywords | str(filepath) | fetch → process → save の統合処理 |
@@ -61,10 +66,14 @@ classDiagram
         -client: genai.Client
         -model: str
         -system_prompt: str
-        +__init__(api_key: str)
+        -host_name: str
+        -guest_name: str
+        +PRONUNCIATION_MAP: dict
+        +__init__(api_key, host_name, guest_name)
         +generate_script(articles: List~dict~) Script
         -_build_prompt(articles: List~dict~) str
         -_parse_response(response: str) Script
+        -_apply_pronunciation_fixes(script: Script) Script
     }
 ```
 
@@ -72,7 +81,7 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `__init__` | api_key: str | - | genai.Client初期化。モデル名・システムプロンプト設定 |
+| `__init__` | api_key, host_name, guest_name | - | genai.Client初期化。ホスト/ゲスト名でプロンプトテンプレート展開 |
 | `generate_script` | articles: List[dict] | Script | 記事リストからプロンプト構築 → Gemini呼び出し → レスポンス解析 |
 | `_build_prompt` | articles: List[dict] | str | 記事タイトル・要約を含むプロンプトテキスト構築 |
 | `_parse_response` | response: str | Script | Geminiレスポンスを構造化されたScript型に変換 |
@@ -80,15 +89,17 @@ classDiagram
 #### システムプロンプト（概要）
 ```
 あなたはポッドキャストの台本ライターです。
-以下のニュース記事をもとに、2人の話者（ホストとゲスト）による
-自然な日本語の対話形式でポッドキャスト台本を作成してください。
+以下のニュース記事をもとに、{host_name}（ホスト）と{guest_name}（ゲスト）の
+2人による自然な日本語の対話形式でポッドキャスト台本を作成してください。
 
 要件:
-- 15分程度の会話になるボリューム
+- 5〜8分程度の会話（合計1500〜2500文字）
 - 各記事について分かりやすく解説
-- 話者Aはホスト（進行役）、話者Bはゲスト（解説役）
+- ホスト（進行役）、ゲスト（解説役）
 - 自然な相槌・質問・感想を含める
-- JSON形式で出力: [{"speaker": "A", "text": "..."}, ...]
+- 英語の固有名詞にはカタカナ読みを併記
+- TTS読み上げに適した平易な表現
+- JSON形式で出力: [{"speaker": "{host_name}", "text": "..."}, ...]
 ```
 
 #### データ構造: Script
@@ -133,10 +144,16 @@ classDiagram
         -host_voice: str
         -guest_name: str
         -guest_voice: str
-        +__init__(api_key: str, host_name: str, host_voice: str, guest_name: str, guest_voice: str)
+        +SILENCE_PADDING_SEC: float
+        +MAX_RETRIES: int
+        +RETRY_DELAY: float
+        +__init__(api_key, host_name, host_voice, guest_name, guest_voice)
         +generate_audio(script: Script, output_path: str) str
         -_build_multi_speaker_prompt(script: Script) str
-        -_call_tts_api(prompt: str) bytes
+        -_generate_with_retry(prompt: str) bytes
+        -_generate_silence(seconds: float) bytes
+        -_prepare_for_tts(script: Script) Script
+        -_extract_pcm_from_wav(data: bytes) bytes
         -_save_audio(audio_data: bytes, output_path: str) str
     }
 ```
@@ -151,7 +168,7 @@ classDiagram
 | `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
 | `_save_audio` | audio_data, path | str | 音声データをWAVファイルに書き出し |
 
-#### Gemini TTS API 呼び出し仕様
+#### Gemini TTS API 呼び出し仕様（Multi-Speaker）
 ```python
 from google import genai
 from google.genai import types
@@ -159,18 +176,29 @@ from google.genai import types
 client = genai.Client(api_key=api_key)
 response = client.models.generate_content(
     model="gemini-2.5-flash-preview-tts",
-    contents="こんにちは、今日のニュースをお届けします。",
+    contents=multi_speaker_prompt,  # Director's Notes + トランスクリプト
     config=types.GenerateContentConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
-            voice_config=types.VoiceConfig(
-                prebuilt_voice_id="Aoede"  # or other voice
+            multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                speaker_voice_configs=[
+                    types.SpeakerVoiceConfig(
+                        speaker=host_name,
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_id=host_voice
+                        ),
+                    ),
+                    types.SpeakerVoiceConfig(
+                        speaker=guest_name,
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_id=guest_voice
+                        ),
+                    ),
+                ]
             )
         ),
     ),
 )
-
-# レスポンスから音声データ取得
 audio_data = response.candidates[0].content.parts[0].inline_data.data
 ```
 
@@ -181,11 +209,13 @@ Leda, Orus, Zephyr, ...
 （※ 日本語対応の音声を要テスト・選定）
 ```
 
-#### 音声結合仕様
+#### 音声仕様
 ```
-各セグメント間: 500ms の無音を挿入
+TTS方式: Multi-Speaker 1コール（セグメント分割なし）
+末尾パディング: 800ms の無音を挿入
 出力フォーマット: WAV (PCM 24kHz 16bit mono)
-後処理: 必要に応じて ffmpeg で MP3 変換
+後処理: pydub + ffmpeg で MP3 変換 (128kbps)
+リトライ: 最大3回、30秒間隔
 ```
 
 ---
@@ -199,15 +229,18 @@ Leda, Orus, Zephyr, ...
 classDiagram
     class RSSFeedGenerator {
         -base_url: str
+        -feed_dir: str
         -feed_path: str
-        +__init__(base_url: str, feed_path: str)
-        +add_episode(mp3_filename: str, metadata: EpisodeMetadata) None
+        -episodes_subdir: str
+        +__init__(base_url, feed_dir)
+        +add_episode(mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size) str
         +generate_feed() str
+        +cleanup_old_episodes(feed_path, episodes_dir, retention_days) List~str~
         -_load_existing_feed() ElementTree | None
-        -_create_channel_element() Element
-        -_create_item_element(mp3_filename, metadata) Element
-        -_get_file_size(filepath) int
-        -_format_rfc2822(date_str) str
+        -_create_empty_feed() ElementTree
+        -_create_item_element(mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size) Element
+        -_get_file_size(mp3_filename) int
+        -_format_rfc2822(dt) str
     }
 ```
 
@@ -215,7 +248,7 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|------|
-| `add_episode` | mp3_filename, metadata | None | 既存feed.xmlを読み込み、新エピソードを先頭に追加 |
+| `add_episode` | mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size | str | 既存feed.xmlを読み込み、新エピソードを先頭に追加。feed.xmlパスを返す |
 | `generate_feed` | - | str | 空のフィードを新規作成（チャンネル情報のみ） |
 | `_create_item_element` | mp3_filename, metadata | Element | RSS item 要素を構築（enclosure + メタデータ） |
 
@@ -323,9 +356,9 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
-| `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。6つのサブコンポーネントを初期化 |
+| `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。5つのサブコンポーネントを初期化 |
 | `generate` | - | EpisodeMetadata or None | メインフロー: 収集→台本→音声→アップロード |
-| `_get_episode_number` | - | int | content/ 内のメタデータファイル数 + 1 |
+| `_get_episode_number` | - | int | feed.xmlの既存item数+1。フォールバックとしてcontent/ JSONカウント |
 | `_build_metadata` | articles, audio_path | EpisodeMetadata | メタデータ構築 |
 
 #### generate() フロー（疑似コード）
@@ -365,12 +398,21 @@ def generate(self) -> EpisodeMetadata | None:
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
 | `DAILY_SPEAKERS` | dict | 7曜日分 | 曜日ローテーションテーブル（7ペア×14人） |
-| `RSS_FEEDS` | List[str] | 12フィード | テクノロジー7 + 経済5 |
+| `RSS_FEEDS` | List[str] | 10フィード | テクノロジー6 + 経済4 |
 | `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
 | `PODCAST_TITLE` | str | `AI Auto Podcast` | ポッドキャスト名 |
 | `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |
 | `PODCAST_LANGUAGE` | str | `ja` | 言語コード |
+| `PODCAST_OWNER_EMAIL` | str | env | RSS/Spotify登録用メールアドレス |
+| `PODCAST_DESCRIPTION` | str | (default) | ポッドキャスト説明文 |
+| `PODCAST_IMAGE_URL` | str | (default) | カバー画像URL |
+| `MAX_CONTENT_LENGTH` | int | `10000` | コンテンツ文字数制限 |
+| `AUDIO_OUTPUT_DIR` | str | `./audio_files` | 音声ファイル出力先 |
+| `CONTENT_DIR` | str | `./content` | メタデータ保存先 |
+| `RSS_FEED_FILENAME` | str | `feed.xml` | RSSフィードファイル名 |
+| `EPISODES_DIR` | str | `episodes` | gh-pages上のMP3格納ディレクトリ |
+| `EPISODE_RETENTION_DAYS` | int | `60` | エピソード保持日数 |
 
 #### RSSフィード一覧（12フィード）
 | カテゴリ | ソース | URL |
@@ -380,10 +422,8 @@ def generate(self) -> EpisodeMetadata | None:
 | テクノロジー | GIGAZINE | `gigazine.net/news/rss_2.0/` |
 | テクノロジー | CNET Japan | `japan.cnet.com/rss/index.rdf` |
 | テクノロジー | Impress Watch | `www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf` |
-| テクノロジー | gihyo.jp | `gihyo.jp/feed/rss2` |
 | テクノロジー | ASCII.jp | `ascii.jp/rss.xml` |
 | 経済 | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
-| 経済 | NHK経済 | `www3.nhk.or.jp/rss/news/cat5.xml` |
 | 経済 | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
 | 経済 | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
 | 経済 | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
@@ -414,8 +454,8 @@ def generate(self) -> EpisodeMetadata | None:
 | RSS取得失敗（一部） | 取得できたフィードで続行 |
 | RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
 | 台本生成失敗 | 記事テキストを箇条書きにして読み上げテキスト化 |
-| Gemini TTS失敗 | Google Cloud TTS WaveNet にフォールバック |
-| アップロード失敗 | ローカル保存。次回リトライキューに追加 |
+| Gemini TTS失敗 | リトライ（最大3回、30秒間隔）→ 失敗時は生成中止 |
+| アップロード失敗 | ローカル保存。次回実行で自然リトライ |
 | レート制限到達 | ログ出力してスキップ。次回実行で再試行 |
 
 ---

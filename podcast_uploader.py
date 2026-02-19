@@ -8,10 +8,12 @@ import logging
 import os
 import shutil
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 import config
+
+JST = timezone(timedelta(hours=9))
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +64,13 @@ class PodcastUploader:
         try:
             # メタデータをJSON保存
             ep_num = metadata.episode_number
-            date_str = datetime.now().strftime("%Y%m%d")
+            date_str = datetime.now(JST).strftime("%Y%m%d")
             metadata_filename = f"episode_{ep_num}_{date_str}.json"
             metadata_path = os.path.join(self.content_dir, metadata_filename)
 
             meta_dict = asdict(metadata)
             meta_dict["audio_file"] = os.path.basename(audio_path)
-            meta_dict["generated_at"] = datetime.now().isoformat()
+            meta_dict["generated_at"] = datetime.now(JST).isoformat()
 
             with open(metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(meta_dict, f, ensure_ascii=False, indent=2)

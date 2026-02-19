@@ -25,7 +25,7 @@ flowchart TD
     end
 
     subgraph External["外部サービス"]
-        RSS[("RSS Feeds<br/>テクノロジー7 + 経済5")]
+        RSS[("RSS Feeds<br/>テクノロジー6 + 経済4")]
         GeminiLLM["Gemini 2.5 Flash<br/>台本生成 API"]
         GeminiTTS["Gemini Flash TTS<br/>Multi-Speaker 音声生成"]
         GHP["GitHub Pages<br/>MP3 + RSS ホスティング"]
@@ -109,7 +109,7 @@ sequenceDiagram
     participant Cron as GitHub Actions cron
     participant Runner as ubuntu-latest
     participant CM as ContentManager
-    participant RSS as RSS Feeds (12)
+    participant RSS as RSS Feeds (10)
     participant SG as ScriptGenerator
     participant Gemini as Gemini 2.5 Flash
     participant TTS as TTSGenerator
@@ -165,13 +165,13 @@ flowchart TD
 
     B --> C["TTSGenerator<br/>音声生成"]
     C -->|成功| D["音声ファイル"]
-    C -->|失敗| C2["Google Cloud TTS WaveNet<br/>（無料枠）で再試行"]
+    C -->|失敗| C2["リトライ<br/>（最大3回、30秒間隔）"]
     C2 -->|成功| D
     C2 -->|失敗| C3["❌ 生成中止<br/>次回実行に委ねる"]
 
     D --> E["PodcastUploader<br/>アップロード"]
     E -->|成功| F["✅ gh-pages に push<br/>Spotify/Apple が自動取得"]
-    E -->|失敗| E2["ローカル保存<br/>+ リトライキュー追加"]
+    E -->|失敗| E2["ローカル保存<br/>次回実行で自然リトライ"]
 ```
 
 ---
@@ -197,6 +197,7 @@ auto-podcast/
 ├── podcast_uploader.py            # メタデータ保存 + gh-pages デプロイ
 ├── config.py                      # 設定管理（曜日ローテーション含む）
 ├── generate_cover.py              # カバーアート生成 (Pillow)
+├── cleanup_episodes.py            # 古いエピソードの自動削除（60日超）
 │
 ├── pyproject.toml                 # プロジェクト定義 + 依存関係 (uv)
 ├── uv.lock                        # 依存ロックファイル
@@ -221,7 +222,7 @@ auto-podcast/
 | **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成（無料枠、RPD=10） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
-| **RSS解析** | feedparser | 12フィード対応（テクノロジー7 + 経済5） |
+| **RSS解析** | feedparser | 12フィード対応（テクノロジー6 + 経済4） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
 | **API SDK** | google-genai v1.63+ | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
@@ -276,6 +277,7 @@ jobs:
 | `PODCAST_BASE_URL` | GitHub Pages のベースURL | No（デフォルト: `https://necoha.github.io/auto-podcast`） |
 | `PODCAST_TITLE` | ポッドキャスト名 | No（デフォルトあり） |
 | `PODCAST_LANGUAGE` | 言語コード | No（デフォルト: ja） |
+| `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メールアドレス | Yes（GitHub Secrets） |
 
 > **配信方式**: GitHub Pages で MP3 と RSS をホスティング。
 > Spotify for Creators と Apple Podcasts Connect に RSS URL を初回登録するだけで、
@@ -291,8 +293,8 @@ jobs:
 |--------|------|
 | **コンテンツ収集** | フィード単位でエラーキャッチ、取得できたフィードで続行 |
 | **台本生成** | Gemini API失敗 → 記事テキストをそのまま読み上げテキストとして使用 |
-| **音声生成** | Gemini TTS失敗 → Google Cloud TTS WaveNet（無料枠）にフォールバック |
-| **アップロード** | 失敗 → ローカル保存 + 次回リトライキューに追加 |
+| **音声生成** | Gemini TTS失敗 → リトライ（最大3回、30秒間隔）→ 失敗時は生成中止、次回実行に委ねる |
+| **アップロード** | 失敗 → ローカル保存。次回実行で自然リトライ |
 | **レート制限** | Gemini無料枠の制限に到達 → ログ出力して次回実行にスキップ |
 
 ---
@@ -304,4 +306,4 @@ jobs:
 | APIキー | 環境変数で管理。コードに平文保存しない |
 | Git管理 | `.env`, `audio_files/`, `content/` は `.gitignore` に追加 |
 | 通信 | 全てHTTPS経由 |
-| GitHub Actions | Secrets で API キー管理。リポジトリは Private 推奨 |
+| GitHub Actions | Secrets で API キー管理。GitHub Pages配信のためPublic（APIキーはSecretsで保護） |
