@@ -462,11 +462,44 @@ class ScriptGenerator:
 
     def _parse_response(self, response_text: str) -> Script:
         """Geminiレスポンス（JSON文字列）をScript型に変換する"""
+        import re as _re
+        text = response_text.strip()
+
+        # markdownコードブロックを除去 (```json ... ``` or ``` ... ```)
+        text = _re.sub(r'^```(?:json)?\s*', '', text, flags=_re.MULTILINE)
+        text = _re.sub(r'```\s*$', '', text, flags=_re.MULTILINE)
+        text = text.strip()
+
+        # JSON配列部分を抽出（前後に余分なテキストがある場合）
+        m = _re.search(r'(\[.*\])', text, flags=_re.DOTALL)
+        if m:
+            text = m.group(1)
+
         try:
-            data = json.loads(response_text)
+            data = json.loads(text)
         except json.JSONDecodeError as e:
             logger.error("台本JSONパースエラー: %s", e)
-            raise ValueError(f"台本のJSON解析に失敗しました: {e}")
+            # 最終行を削って切り詰めを回復する試み
+            try:
+                lines = text.splitlines()
+                for i in range(len(lines) - 1, 0, -1):
+                    candidate = '\n'.join(lines[:i])
+                    # 末尾のカンマを除去して閉じ括弧を補う
+                    candidate = candidate.rstrip().rstrip(',')
+                    for closing in [']', '}]']:
+                        try:
+                            data = json.loads(candidate + closing)
+                            logger.warning("台本JSON部分回復: 末尾 %d 行をスキップ", len(lines) - i)
+                            break
+                        except json.JSONDecodeError:
+                            continue
+                    else:
+                        continue
+                    break
+                else:
+                    raise ValueError(f"台本のJSON解析に失敗しました: {e}")
+            except ValueError:
+                raise ValueError(f"台本のJSON解析に失敗しました: {e}")
 
         if not isinstance(data, list):
             raise ValueError("台本が配列形式ではありません")
@@ -493,11 +526,11 @@ def fallback_script(articles: List[dict],
 
     script: Script = []
     script.append(ScriptLine(
-        speaker="A",
+        speaker=host_name,
         text=f"おはようございます、{host_name}です。{datetime.now().strftime('%Y年%m月%d日')}のニュースをお届けします。"
     ))
     script.append(ScriptLine(
-        speaker="B",
+        speaker=guest_name,
         text=f"{guest_name}です。よろしくお願いします。"
     ))
 
@@ -509,20 +542,20 @@ def fallback_script(articles: List[dict],
         summary = _re.sub(r'<[^>]+>', '', summary)
 
         script.append(ScriptLine(
-            speaker="A",
+            speaker=host_name,
             text=f"続いて{i}つ目のニュースです。{source}からお伝えします。"
         ))
         script.append(ScriptLine(
-            speaker="B",
+            speaker=guest_name,
             text=f"{title}。{summary}"
         ))
 
     script.append(ScriptLine(
-        speaker="A",
+        speaker=host_name,
         text=f"以上、本日のニュースでした。{guest_name}さん、ありがとうございました。"
     ))
     script.append(ScriptLine(
-        speaker="B",
+        speaker=guest_name,
         text="ありがとうございました。また明日お会いしましょう。"
     ))
 
