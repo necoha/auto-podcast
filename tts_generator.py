@@ -28,7 +28,7 @@ SAMPLE_WIDTH = 2  # 16-bit
 
 MAX_RETRIES = 3
 RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
-SILENCE_PADDING_SEC = 0.8  # 末尾に追加する無音（秒）
+SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 
 JST = timezone(timedelta(hours=9))
 
