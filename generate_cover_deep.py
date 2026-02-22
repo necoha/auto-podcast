@@ -151,16 +151,18 @@ def draw_text(draw: ImageDraw.Draw) -> None:
     FONT_EN = "/System/Library/Fonts/Helvetica.ttc"
     FONT_JP = "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"
     try:
-        font_title = ImageFont.truetype(FONT_EN, 110)
-        font_sub = ImageFont.truetype(FONT_EN, 52)
-        font_tag = ImageFont.truetype(FONT_JP, 36)
+        font_title = ImageFont.truetype(FONT_JP, 100)
+        font_sub = ImageFont.truetype(FONT_JP, 52)
+        font_tag = ImageFont.truetype(FONT_JP, 34)
+        font_badge = ImageFont.truetype(FONT_EN, 28)
     except (OSError, IOError):
         font_title = ImageFont.load_default()
         font_sub = ImageFont.load_default()
         font_tag = ImageFont.load_default()
+        font_badge = ImageFont.load_default()
 
-    # メインタイトル "AI AUTO"
-    title1 = "AI AUTO"
+    # 「テック深掘り」
+    title1 = "テック深掘り"
     bbox1 = draw.textbbox((0, 0), title1, font=font_title)
     tw1 = bbox1[2] - bbox1[0]
     x1 = (WIDTH - tw1) // 2
@@ -172,24 +174,24 @@ def draw_text(draw: ImageDraw.Draw) -> None:
                   stroke_width=offset, stroke_fill=glow_color)
     draw.text((x1, y1), title1, font=font_title, fill=TEXT_WHITE)
 
-    # メインタイトル "PODCAST"
-    title2 = "PODCAST"
-    bbox2 = draw.textbbox((0, 0), title2, font=font_title)
+    # 「AI 解説ラジオ」
+    title2 = "AI 解説ラジオ"
+    bbox2 = draw.textbbox((0, 0), title2, font=font_sub)
     tw2 = bbox2[2] - bbox2[0]
     x2 = (WIDTH - tw2) // 2
-    y2 = 590
-    for offset in range(8, 0, -2):
+    y2 = 600
+    for offset in range(6, 0, -2):
         glow_color = (ACCENT2[0] // 6, ACCENT2[1] // 6, ACCENT2[2] // 6)
-        draw.text((x2, y2), title2, font=font_title, fill=glow_color,
+        draw.text((x2, y2), title2, font=font_sub, fill=glow_color,
                   stroke_width=offset, stroke_fill=glow_color)
-    draw.text((x2, y2), title2, font=font_title, fill=TEXT_WHITE)
+    draw.text((x2, y2), title2, font=font_sub, fill=ACCENT)
 
-    # "DEEP DIVE" サブタイトル（オレンジで強調）
+    # "DEEP DIVE" バッジ
     deep_text = "DEEP DIVE"
     bbox_d = draw.textbbox((0, 0), deep_text, font=font_sub)
     tw_d = bbox_d[2] - bbox_d[0]
     x_d = (WIDTH - tw_d) // 2
-    y_d = y2 + 130
+    y_d = y2 + 80
     for offset in range(6, 0, -2):
         glow_color = (ACCENT[0] // 4, ACCENT[1] // 4, ACCENT[2] // 4)
         draw.text((x_d, y_d), deep_text, font=font_sub, fill=glow_color,
@@ -207,7 +209,7 @@ def draw_text(draw: ImageDraw.Draw) -> None:
         draw.ellipse([(lx - 5, line_y - 5), (lx + 5, line_y + 5)], fill=ACCENT)
 
     # タグライン
-    tagline = "AI が深掘り解説する毎朝のニュース分析"
+    tagline = "毎朝 6 時配信 ─ 最新ニュースを AI が深掘り解説"
     bbox_t = draw.textbbox((0, 0), tagline, font=font_tag)
     tw_t = bbox_t[2] - bbox_t[0]
     x_t = (WIDTH - tw_t) // 2
