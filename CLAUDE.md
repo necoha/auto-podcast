@@ -25,8 +25,11 @@ AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生
 # 依存関係インストール
 uv sync
 
-# ポッドキャスト生成（手動）
+# ポッドキャスト生成（速報版）
 uv run python podcast_generator.py
+
+# ポッドキャスト生成（深掘り版）
+uv run python deep_podcast_generator.py
 
 # コンテンツ収集テスト
 uv run python -c "from content_manager import ContentManager; cm = ContentManager(); print(cm.create_daily_content(['AI', 'Technology']))"
@@ -37,20 +40,25 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 ### Pipeline
 
 ```
-RSS → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator → gh-pages
-         (feedparser)    (Gemini LLM)     (Gemini TTS)   (feed.xml)        (GitHub Pages)
-                                                                                ↓
-                                                                     Spotify / Apple Podcasts
+【速報版】
+RSS(13) → ContentManager → ScriptGenerator     → TTSGenerator → RSSFeedGenerator → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed.xml)        (GitHub Pages)
+                                                                                        ↓
+【深掘り版】                                                                   Spotify / Apple Podcasts
+RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedGenerator → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed_deep.xml)   (GitHub Pages)
 ```
 
 ### Core Components
 
-1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形
-2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで対話形式の台本生成
-3. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
-4. **RSSFeedGenerator** (`rss_feed_generator.py`) — ポッドキャスト配信用RSS XML生成・更新
-5. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
-6. **PodcastGenerator** (`podcast_generator.py`) — 全体オーケストレーション（曜日ローテーション含む）
+1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形（速報版/深掘り版共有）
+2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
+3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
+4. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
+5. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（パラメータ化、速報版/深掘り版共用）
+6. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
+7. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
+8. **DeepDivePodcastGenerator** (`deep_podcast_generator.py`) — 深掘り版オーケストレーション
 
 ### Key Design Decisions
 
@@ -69,7 +77,7 @@ RSS → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator
 
 ### Key Settings in `config.py`
 
-- `RSS_FEEDS` — 監視するRSSフィード一覧（技術系6 + 経済系4 = 10ソース）
+- `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 6 + 技術系EN 3 + 経済系JP 4 = 13ソース）
 - `TTS_MODEL` — TTSモデル名（default: `gemini-2.5-flash-preview-tts`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）
 - `DAILY_SPEAKERS` — 曜日ローテーションテーブル（7ペア×14人）
@@ -95,8 +103,9 @@ RSS → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator
 
 - **スケジュール**: GitHub Actions cron `0 21 * * *` (06:00 JST)
 - **ホスティング**: GitHub Pages (gh-pagesブランチ)
-- **RSS URL**: `https://necoha.github.io/auto-podcast/feed.xml`
-- **Spotify**: RSSインポート済み。新エピソード自動反映
+- **速報版 RSS URL**: `https://necoha.github.io/auto-podcast/feed.xml`
+- **深掘り版 RSS URL**: `https://necoha.github.io/auto-podcast/feed_deep.xml`
+- **Spotify**: 速報版RSSインポート済み。深掘り版は別途登録が必要
 
 ## Speaker Rotation
 

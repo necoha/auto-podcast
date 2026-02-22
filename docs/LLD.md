@@ -57,7 +57,7 @@ article = {
 
 ### 1.2 ScriptGenerator (`script_generator.py`) — 新規作成
 
-**責務**: Gemini Flash APIを使い、記事情報からポッドキャスト対話台本を生成
+**責務**: Gemini Flash APIを使い、記事情報からポッドキャスト対話台本を生成（速報版）
 
 #### クラス図
 ```mermaid
@@ -75,6 +75,14 @@ classDiagram
         -_parse_response(response: str) Script
         -_apply_pronunciation_fixes(script: Script) Script
     }
+
+    class DeepScriptGenerator {
+        -max_topics: int
+        +__init__(api_key, host_name, guest_name, max_topics)
+        -_build_prompt(articles: List~dict~) str
+    }
+
+    DeepScriptGenerator --|> ScriptGenerator : 継承
 ```
 
 #### メソッド詳細
@@ -127,6 +135,56 @@ response = client.models.generate_content(
     contents=prompt,
 )
 ```
+
+---
+
+### 1.2-D DeepScriptGenerator (`deep_script_generator.py`) — 新規作成
+
+**責務**: ScriptGenerator を継承し、AI記事厳選＋6次元分析の深掘り台本を生成
+
+#### 継承関係
+- `ScriptGenerator` を継承
+- `PRONUNCIATION_MAP`（306エントリ）、`_parse_response`、`_apply_pronunciation_fixes` を親から再利用
+- `system_prompt` と `_build_prompt` をオーバーライド
+
+#### メソッド詳細
+
+| メソッド | 入力 | 出力 | 処理概要 |
+|---------|------|------|---------|
+| `__init__` | api_key, host_name, guest_name, max_topics | - | 親クラス初期化後、`DEEP_SYSTEM_PROMPT_TEMPLATE` で system_prompt を上書き |
+| `_build_prompt` | articles: List[dict] | str | 全記事を提示し、AIに重要な max_topics 件の選定と深掘り台本の生成を指示 |
+
+#### DEEP_SYSTEM_PROMPT_TEMPLATE（概要）
+```
+あなたはポッドキャストの台本ライターです。
+以下のニュース記事群の中から最も重要・注目すべき{max_topics}件を選び、
+それぞれについて深い洞察と分析を含む対話形式のポッドキャスト台本を作成してください。
+
+記事選定の基準:
+- 社会的インパクトが大きいもの
+- 技術的に革新的・興味深いもの
+- 複数ソース（国内外）で報じられている注目度の高いもの
+- リスナーにとって実用的な知見が得られるもの
+
+各トピックで必ず含める6つの分析次元:
+1. 背景・経緯
+2. 技術的な解説
+3. 業界・社会への影響
+4. 異なる視点（賛否両論）
+5. 日本と海外の比較
+6. 今後の展望
+
+要件:
+- 10〜15分の会話（合計3000〜5000文字）
+- 1トピックあたり5〜8往復の深い議論
+- 冒頭で名乗り + 「AIによって自動生成」+ 「深掘りして解説」と趣旨説明
+- 発音・表記ルール: 速報版と同一（カタカナ読み併記、ふりがな等）
+- 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
+```
+
+#### フォールバック: `deep_fallback_script()`
+台本生成失敗時、最大3件の記事を簡易紹介する固定台本を返す。
+引数の `host_name` / `guest_name` で正しい出演者名を使用。
 
 ---
 
@@ -212,17 +270,18 @@ Leda, Orus, Zephyr, ...
 #### 音声仕様
 ```
 TTS方式: Multi-Speaker 1コール（セグメント分割なし）
-末尾パディング: 800ms の無音を挿入
+末尾パディング: 2000ms の無音を挿入（SILENCE_PADDING_SEC=2.0）
 出力フォーマット: WAV (PCM 24kHz 16bit mono)
 後処理: pydub + ffmpeg で MP3 変換 (128kbps)
 リトライ: 最大3回、30秒間隔
+話者: 速報版・深掘り版で同じ曜日ペアを使用
 ```
 
 ---
 
 ### 1.4 RSSFeedGenerator (`rss_feed_generator.py`)
 
-**責務**: ポッドキャスト配信用 RSS 2.0 XML を生成・更新する
+**責務**: ポッドキャスト配信用 RSS 2.0 XML を生成・更新する。速報版・深掘り版の両方に対応（パラメータ化）。
 
 #### クラス図
 ```mermaid
@@ -231,8 +290,12 @@ classDiagram
         -base_url: str
         -feed_dir: str
         -feed_path: str
+        -_feed_filename: str
         -episodes_subdir: str
-        +__init__(base_url, feed_dir)
+        -_podcast_title: str
+        -_podcast_description: str
+        -_podcast_image_url: str
+        +__init__(base_url, feed_dir, feed_filename, podcast_title, podcast_description, podcast_image_url, episodes_subdir)
         +add_episode(mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size) str
         +generate_feed() str
         +cleanup_old_episodes(feed_path, episodes_dir, retention_days) List~str~
@@ -243,6 +306,16 @@ classDiagram
         -_format_rfc2822(dt) str
     }
 ```
+
+#### コンストラクタ パラメータ
+
+| パラメータ | デフォルト | 速報版の値 | 深掘り版の値 |
+|-----------|----------|-----------|------------|
+| `feed_filename` | `config.RSS_FEED_FILENAME` | `feed.xml` | `feed_deep.xml` |
+| `podcast_title` | `config.PODCAST_TITLE` | `テック速報 AI ニュースラジオ` | `テック深掘り AI 解説ラジオ` |
+| `podcast_description` | `config.PODCAST_DESCRIPTION` | （速報版説明文） | （深掘り版説明文） |
+| `podcast_image_url` | `config.PODCAST_IMAGE_URL` | `.../cover.jpg` | `.../cover_deep.jpg` |
+| `episodes_subdir` | `config.EPISODES_DIR` | `episodes` | `episodes_deep` |
 
 #### メソッド詳細
 
@@ -386,27 +459,102 @@ def generate(self) -> EpisodeMetadata | None:
 
 ---
 
+### 1.6-D DeepDivePodcastGenerator (`deep_podcast_generator.py`) — 新規作成
+
+**責務**: 深掘り版の全体オーケストレーション。速報版と同じパイプラインだが、DeepScriptGenerator・別RSS・別ディレクトリを使用。
+
+#### クラス図
+```mermaid
+classDiagram
+    class DeepDivePodcastGenerator {
+        -api_key: str
+        -host_name: str
+        -guest_name: str
+        -content_manager: ContentManager
+        -script_generator: DeepScriptGenerator
+        -tts_generator: TTSGenerator
+        -rss_generator: RSSFeedGenerator
+        -uploader: PodcastUploader
+        +__init__(api_key: str)
+        +generate() EpisodeMetadata
+        -_get_episode_number() int
+        -_convert_to_mp3(wav_path, mp3_path, bitrate) str
+        -_build_metadata(articles, audio_path, episode_num) EpisodeMetadata
+        -_get_audio_duration(audio_path) int
+    }
+
+    DeepDivePodcastGenerator --> ContentManager
+    DeepDivePodcastGenerator --> DeepScriptGenerator
+    DeepDivePodcastGenerator --> TTSGenerator
+    DeepDivePodcastGenerator --> RSSFeedGenerator
+    DeepDivePodcastGenerator --> PodcastUploader
+```
+
+#### 速報版との差分
+
+| 項目 | 速報版 (PodcastGenerator) | 深掘り版 (DeepDivePodcastGenerator) |
+|------|--------------------------|-------------------------------------|
+| 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
+| 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
+| 記事選定 | 全記事をダイジェスト | AIが重要2-3件を厳選 |
+| フォールバック | `fallback_script()` | `deep_fallback_script()` |
+| RSSフィード | `feed.xml` | `feed_deep.xml` |
+| MP3格納先 | `episodes/` | `episodes_deep/` |
+| ファイル名 | `episode_N_YYYYMMDD.mp3` | `deep_N_YYYYMMDD.mp3` |
+| カバーアート | `cover.jpg` | `cover_deep.jpg` |
+| 話者ペア | `get_daily_speakers()` | 同一（同じ曜日ペア） |
+| エピソード番号 | `feed.xml` の item 数 + 1 | `feed_deep.xml` の item 数 + 1 |
+
+#### generate() フロー（疑似コード）
+```python
+def generate(self) -> EpisodeMetadata | None:
+    # 1. コンテンツ収集（速報版と同じソースから全記事取得）
+    articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
+
+    # 2. 深掘り台本生成（AIが記事を厳選＋6次元分析）
+    script = self.script_generator.generate_script(articles)
+    # フォールバック: deep_fallback_script(articles, host_name, guest_name)
+
+    # 3. TTS音声生成（速報版と同じMulti-Speaker TTS）
+    audio_filename = f"deep_{episode_num}_{today}.wav"
+    self.tts_generator.generate_audio(script, audio_path)
+
+    # 3.5 WAV → MP3 変換
+    mp3_path = self._convert_to_mp3(audio_path, mp3_path)
+
+    # 4. RSS更新（feed_deep.xml）
+    self.rss_generator.add_episode(mp3_filename, metadata)
+
+    # 5. メタデータ保存
+    self.uploader.upload(mp3_path, metadata)
+```
+
+---
+
 ### 1.7 Config (`config.py`)
 
 **責務**: 全コンポーネントの設定値を一元管理
+
+#### 速報版設定
 
 | 設定名 | 型 | 値 | 説明 |
 |--------|---|-----|------|
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
 | `LLM_MODEL` | str | `gemini-2.5-flash` | 台本生成用モデル |
 | `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル |
+| `TTS_VOICE` | str | `Kore` | デフォルト音声（フォールバック用） |
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
 | `DAILY_SPEAKERS` | dict | 7曜日分 | 曜日ローテーションテーブル（7ペア×14人） |
-| `RSS_FEEDS` | List[str] | 10フィード | テクノロジー6 + 経済4 |
+| `RSS_FEEDS` | List[str] | 13フィード | テクノロジーJP 6 + テクノロジーEN 3 + 経済JP 4 |
 | `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
-| `PODCAST_TITLE` | str | `AI Auto Podcast` | ポッドキャスト名 |
+| `PODCAST_TITLE` | str | `テック速報 AI ニュースラジオ` | 速報版ポッドキャスト名 |
 | `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |
 | `PODCAST_LANGUAGE` | str | `ja` | 言語コード |
 | `PODCAST_OWNER_EMAIL` | str | env | RSS/Spotify登録用メールアドレス |
 | `PODCAST_DESCRIPTION` | str | (default) | ポッドキャスト説明文 |
-| `PODCAST_IMAGE_URL` | str | (default) | カバー画像URL |
+| `PODCAST_IMAGE_URL` | str | `.../cover.jpg` | カバー画像URL |
 | `MAX_CONTENT_LENGTH` | int | `10000` | コンテンツ文字数制限 |
 | `AUDIO_OUTPUT_DIR` | str | `./audio_files` | 音声ファイル出力先 |
 | `CONTENT_DIR` | str | `./content` | メタデータ保存先 |
@@ -414,19 +562,33 @@ def generate(self) -> EpisodeMetadata | None:
 | `EPISODES_DIR` | str | `episodes` | gh-pages上のMP3格納ディレクトリ |
 | `EPISODE_RETENTION_DAYS` | int | `60` | エピソード保持日数 |
 
-#### RSSフィード一覧（12フィード）
+#### 深掘り版設定（DEEP_* プレフィックス）
+
+| 設定名 | 型 | 値 | 説明 |
+|--------|---|-----|------|
+| `DEEP_PODCAST_TITLE` | str | `テック深掘り AI 解説ラジオ` | 深掘り版ポッドキャスト名 |
+| `DEEP_PODCAST_DESCRIPTION` | str | (default) | 深掘り版説明文 |
+| `DEEP_RSS_FEED_FILENAME` | str | `feed_deep.xml` | 深掘り版RSSファイル名 |
+| `DEEP_EPISODES_DIR` | str | `episodes_deep` | 深掘り版MP3格納ディレクトリ |
+| `DEEP_PODCAST_IMAGE_URL` | str | `.../cover_deep.jpg` | 深掘り版カバー画像URL |
+| `DEEP_MAX_TOPICS` | int | `3` | AIが厳選するトピック数 |
+
+#### RSSフィード一覧（13フィード）
 | カテゴリ | ソース | URL |
 |---------|--------|-----|
-| テクノロジー | ITmedia NEWS | `rss.itmedia.co.jp/rss/2.0/news_bursts.xml` |
-| テクノロジー | Publickey | `www.publickey1.jp/atom.xml` |
-| テクノロジー | GIGAZINE | `gigazine.net/news/rss_2.0/` |
-| テクノロジー | CNET Japan | `japan.cnet.com/rss/index.rdf` |
-| テクノロジー | Impress Watch | `www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf` |
-| テクノロジー | ASCII.jp | `ascii.jp/rss.xml` |
-| 経済 | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
-| 経済 | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
-| 経済 | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
-| 経済 | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
+| テクノロジー(JP) | ITmedia NEWS | `rss.itmedia.co.jp/rss/2.0/news_bursts.xml` |
+| テクノロジー(JP) | Publickey | `www.publickey1.jp/atom.xml` |
+| テクノロジー(JP) | GIGAZINE | `gigazine.net/news/rss_2.0/` |
+| テクノロジー(JP) | CNET Japan | `japan.cnet.com/rss/index.rdf` |
+| テクノロジー(JP) | Impress Watch | `www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf` |
+| テクノロジー(JP) | ASCII.jp | `ascii.jp/rss.xml` |
+| テクノロジー(EN) | TechCrunch | `techcrunch.com/feed/` |
+| テクノロジー(EN) | Ars Technica | `feeds.arstechnica.com/arstechnica/index` |
+| テクノロジー(EN) | Hacker News | `hnrss.org/frontpage?count=10` |
+| 経済(JP) | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
+| 経済(JP) | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
+| 経済(JP) | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
+| 経済(JP) | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
 
 ---
 
@@ -434,8 +596,14 @@ def generate(self) -> EpisodeMetadata | None:
 
 | ファイル種別 | 命名パターン | 例 |
 |------------|-------------|-----|
-| 音声ファイル | `episode_{N}_{YYYYMMDD}.mp3` | `episode_42_20260216.mp3` |
-| メタデータ | `episode_{N}_{YYYYMMDD}.json` | `episode_42_20260216.json` |
+| 速報版音声 | `episode_{N}_{YYYYMMDD}.mp3` | `episode_42_20260216.mp3` |
+| 深掘り版音声 | `deep_{N}_{YYYYMMDD}.mp3` | `deep_1_20260222.mp3` |
+| 速報版メタデータ | `episode_{N}_{YYYYMMDD}.json` | `episode_42_20260216.json` |
+| 深掘り版メタデータ | `deep_{N}_{YYYYMMDD}.json` | `deep_1_20260222.json` |
+| 速報版RSS | `feed.xml` | — |
+| 深掘り版RSS | `feed_deep.xml` | — |
+| 速報版カバー | `cover.jpg` | 1400x1400, シアン/ブルー系 |
+| 深掘り版カバー | `cover_deep.jpg` | 1400x1400, オレンジ/ピンク系 |
 
 ---
 
@@ -509,7 +677,12 @@ name: Generate Podcast
 on:
   schedule:
     - cron: "0 21 * * *"    # 毎日 06:00 JST = 21:00 UTC
-  workflow_dispatch:         # 手動実行対応
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "記事取得の時間範囲（hours, 0=無制限）"
+        required: false
+        default: "24"
 
 jobs:
   generate:
@@ -520,31 +693,57 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv python install && uv sync
       - run: sudo apt-get install -yqq ffmpeg
-      # 既存 feed.xml を復元（クリーン環境でもエピソード蓄積するため）
+
+      # 既存フィード復元（クリーン環境でもエピソード蓄積するため）
       - run: |
           mkdir -p audio_files
           curl -sSf "$PODCAST_BASE_URL/feed.xml" -o audio_files/feed.xml || true
+      - run: |
+          curl -sSf "$PODCAST_BASE_URL/feed_deep.xml" -o audio_files/feed_deep.xml || true
+
+      # 速報版生成 → 深掘り版生成（逐次実行）
       - run: uv run python podcast_generator.py
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
-      # gh-pages worktree で MP3 + feed.xml をデプロイ
-      # cleanup_episodes.py で60日超のエピソードを削除
-      # Artifacts に90日間バックアップ保存
+      - run: uv run python deep_podcast_generator.py
+
+      # デプロイ: gh-pages ブランチに push
+      # - episodes/ に速報版 MP3（deep_* を除外）
+      # - episodes_deep/ に深掘り版 MP3（deep_* のみ）
+      # - feed.xml, feed_deep.xml, cover.jpg, cover_deep.jpg をコピー
+      # - cleanup_episodes.py で速報版・深掘り版両方の60日超エピソードを削除
+
+      # Artifacts に90日間バックアップ（feed.xml, feed_deep.xml, MP3, JSON）
 ```
+
+#### デプロイ時の注意: MP3ファイル振り分け
+
+ワークフローの deploy ステップでは、`audio_files/` 内の全 MP3 を正しいディレクトリに振り分ける必要がある:
+
+| ファイルパターン | コピー先 | 説明 |
+|----------------|---------|------|
+| `episode_*.mp3` | `gh-pages-deploy/episodes/` | 速報版 MP3 |
+| `deep_*.mp3` | `gh-pages-deploy/episodes_deep/` | 深掘り版 MP3 |
+
+> **既知の問題**: 現在のワークフローでは `cp audio_files/*.mp3 gh-pages-deploy/episodes/` が `deep_*.mp3` も `episodes/` にコピーしてしまう。速報版ディレクトリには `episode_*.mp3` のみをコピーすべき。
 
 ```
 gh-pages/
-├── feed.xml              # ポッドキャスト RSS
+├── feed.xml              # 速報版ポッドキャスト RSS
+├── feed_deep.xml         # 深掘り版ポッドキャスト RSS
+├── cover.jpg             # 速報版カバーアート (1400x1400)
+├── cover_deep.jpg        # 深掘り版カバーアート (1400x1400)
 ├── episodes/
 │   ├── episode_1_20260217.mp3
 │   ├── episode_2_20260218.mp3
 │   └── ...
-└── index.html            # 簡易ランディングページ（任意）
+├── episodes_deep/
+│   ├── deep_1_20260222.mp3
+│   └── ...
+└── index.html            # 簡易ランディングページ
 ```
 
 公開URL: `https://necoha.github.io/auto-podcast/`
-RSS URL: `https://necoha.github.io/auto-podcast/feed.xml`
+速報版 RSS URL: `https://necoha.github.io/auto-podcast/feed.xml`
+深掘り版 RSS URL: `https://necoha.github.io/auto-podcast/feed_deep.xml`
 
 ### 5.3 セットアップ手順
 1. GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定

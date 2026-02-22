@@ -92,10 +92,14 @@ jobs:
             cd ..
           }
 
-          # episodes/ ディレクトリを作成し音声ファイルをコピー
+          # episodes/ ディレクトリを作成し速報版音声ファイルをコピー（deep_* を除外）
           mkdir -p gh-pages-deploy/episodes
-          cp audio_files/*.mp3 gh-pages-deploy/episodes/ 2>/dev/null || true
-          cp audio_files/*.wav gh-pages-deploy/episodes/ 2>/dev/null || true
+          for f in audio_files/episode_*.mp3; do
+            [ -f "$f" ] && cp "$f" gh-pages-deploy/episodes/
+          done
+          for f in audio_files/episode_*.wav; do
+            [ -f "$f" ] && cp "$f" gh-pages-deploy/episodes/
+          done
 
           # Deep Dive 用の episodes_deep/ ディレクトリに深掘り音声をコピー
           mkdir -p gh-pages-deploy/episodes_deep
