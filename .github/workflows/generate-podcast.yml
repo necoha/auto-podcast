@@ -72,6 +72,9 @@ jobs:
           PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
         run: uv run python deep_podcast_generator.py
 
+      - name: Validate generated feeds
+        run: uv run python validate_feeds.py audio_files
+
       - name: Deploy to gh-pages
         run: |
           # 生成物が存在するか確認（MP3 優先、なければ WAV）
