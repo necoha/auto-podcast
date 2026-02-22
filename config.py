@@ -39,6 +39,11 @@ RSS_FEEDS = [
     "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf",  # Impress Watch
     "https://ascii.jp/rss.xml",  # ASCII.jp
 
+    # テクノロジー（海外・英語）
+    "https://techcrunch.com/feed/",  # TechCrunch（スタートアップ・AI・VC）
+    "https://feeds.arstechnica.com/arstechnica/index",  # Ars Technica（技術深掘り）
+    "https://hnrss.org/frontpage?count=10",  # Hacker News Top Stories（開発者コミュニティ）
+
     # 経済・ビジネス（日本語）
     "https://business.nikkei.com/rss/sns/nb.rdf",  # 日経ビジネス
     "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター日本語
