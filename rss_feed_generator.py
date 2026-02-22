@@ -86,6 +86,9 @@ class RSSFeedGenerator:
         if tree is None:
             tree = self._create_empty_feed()
 
+        # チャンネルメタデータを最新の config 値に同期
+        self._sync_channel_metadata(tree)
+
         channel = tree.find("channel")
         if channel is None:
             raise RuntimeError("RSS channel 要素が見つかりません")
@@ -236,6 +239,38 @@ class RSSFeedGenerator:
         except ET.ParseError as e:
             logger.warning("既存 feed.xml のパースに失敗: %s — 新規作成します", e)
             return None
+
+    def _sync_channel_metadata(self, tree: ET.ElementTree) -> None:
+        """チャンネルメタデータを現在の config 値に同期する
+
+        既存 feed.xml のタイトル・説明・画像URLなどが config と異なる場合に更新する。
+        """
+        channel = tree.find("channel")
+        if channel is None:
+            return
+
+        # title
+        title_el = channel.find("title")
+        if title_el is not None:
+            title_el.text = self._podcast_title
+
+        # description
+        desc_el = channel.find("description")
+        if desc_el is not None:
+            desc_el.text = self._podcast_description
+
+        # itunes:summary
+        summary_el = channel.find(f"{{{ITUNES_NS}}}summary")
+        if summary_el is not None:
+            summary_el.text = self._podcast_description
+
+        # itunes:image
+        if self._podcast_image_url:
+            img_el = channel.find(f"{{{ITUNES_NS}}}image")
+            if img_el is not None:
+                img_el.set("href", self._podcast_image_url)
+
+        logger.debug("チャンネルメタデータを同期: title=%s", self._podcast_title)
 
     def _create_empty_feed(self) -> ET.ElementTree:
         """チャンネル情報のみの空フィードを構築する"""
