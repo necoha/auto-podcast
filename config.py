@@ -76,3 +76,11 @@ EPISODES_DIR = "episodes"  # gh-pages ブランチ上の MP3 格納ディレク�
 EPISODE_RETENTION_DAYS = 60  # gh-pages 上に保持するエピソード日数（60日超の古いMP3を自動削除）
 PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover.jpg"
 PODCAST_OWNER_EMAIL = os.getenv("PODCAST_OWNER_EMAIL", "")
+
+# ===== Deep Dive Podcast 設定 =====
+DEEP_PODCAST_TITLE = "AI Auto Podcast - Deep Dive"
+DEEP_PODCAST_DESCRIPTION = "最新ニュースを深掘り解説するAI自動生成ポッドキャスト。背景・影響・技術解説・今後の展望まで"
+DEEP_RSS_FEED_FILENAME = "feed_deep.xml"
+DEEP_EPISODES_DIR = "episodes_deep"
+DEEP_PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover_deep.jpg"
+DEEP_MAX_TOPICS = 3  # 深掘りするトピック数

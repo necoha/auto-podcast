@@ -37,13 +37,22 @@ class RSSFeedGenerator:
         self,
         base_url: Optional[str] = None,
         feed_dir: Optional[str] = None,
+        feed_filename: Optional[str] = None,
+        podcast_title: Optional[str] = None,
+        podcast_description: Optional[str] = None,
+        podcast_image_url: Optional[str] = None,
+        episodes_subdir: Optional[str] = None,
     ):
         self.base_url = (base_url or config.PODCAST_BASE_URL).rstrip("/")
         self.feed_dir = feed_dir or config.AUDIO_OUTPUT_DIR
-        self.feed_path = os.path.join(
-            self.feed_dir, getattr(config, "RSS_FEED_FILENAME", "feed.xml")
+        self._feed_filename = feed_filename or getattr(config, "RSS_FEED_FILENAME", "feed.xml")
+        self.feed_path = os.path.join(self.feed_dir, self._feed_filename)
+        self.episodes_subdir = episodes_subdir or getattr(config, "EPISODES_DIR", "episodes")
+        self._podcast_title = podcast_title or config.PODCAST_TITLE
+        self._podcast_description = podcast_description or getattr(
+            config, "PODCAST_DESCRIPTION", config.PODCAST_TITLE
         )
-        self.episodes_subdir = getattr(config, "EPISODES_DIR", "episodes")
+        self._podcast_image_url = podcast_image_url or getattr(config, "PODCAST_IMAGE_URL", "")
 
     # ------------------------------------------------------------------
     # Public API
@@ -236,18 +245,16 @@ class RSSFeedGenerator:
         channel = ET.SubElement(rss, "channel")
 
         # 基本情報
-        ET.SubElement(channel, "title").text = config.PODCAST_TITLE
+        ET.SubElement(channel, "title").text = self._podcast_title
         ET.SubElement(channel, "link").text = self.base_url
-        ET.SubElement(channel, "description").text = getattr(
-            config, "PODCAST_DESCRIPTION", config.PODCAST_TITLE
-        )
+        ET.SubElement(channel, "description").text = self._podcast_description
         ET.SubElement(channel, "language").text = getattr(config, "PODCAST_LANGUAGE", "ja")
         ET.SubElement(channel, "lastBuildDate").text = self._format_rfc2822(
             datetime.now(JST)
         )
 
         # Atom self link（Spotify / Apple 推奨）
-        feed_url = f"{self.base_url}/{getattr(config, 'RSS_FEED_FILENAME', 'feed.xml')}"
+        feed_url = f"{self.base_url}/{self._feed_filename}"
         atom_link = ET.SubElement(channel, f"{{{ATOM_NS}}}link")
         atom_link.set("href", feed_url)
         atom_link.set("rel", "self")
@@ -259,7 +266,7 @@ class RSSFeedGenerator:
         ).text = getattr(config, "PODCAST_AUTHOR", "Auto Podcast Generator")
         ET.SubElement(
             channel, f"{{{ITUNES_NS}}}summary"
-        ).text = getattr(config, "PODCAST_DESCRIPTION", config.PODCAST_TITLE)
+        ).text = self._podcast_description
         cat = ET.SubElement(channel, f"{{{ITUNES_NS}}}category")
         cat.set("text", "Technology")
         ET.SubElement(
@@ -267,7 +274,7 @@ class RSSFeedGenerator:
         ).text = "false"
 
         # itunes:image（Spotify / Apple 必須）
-        image_url = getattr(config, "PODCAST_IMAGE_URL", "")
+        image_url = self._podcast_image_url
         if image_url:
             img = ET.SubElement(channel, f"{{{ITUNES_NS}}}image")
             img.set("href", image_url)

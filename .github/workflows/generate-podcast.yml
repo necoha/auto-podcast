@@ -51,11 +51,26 @@ jobs:
         env:
           PODCAST_BASE_URL: https://necoha.github.io/auto-podcast
 
+      - name: Restore existing feed_deep.xml
+        run: |
+          # gh-pages 上の既存 feed_deep.xml を取得
+          curl -sSf "${PODCAST_BASE_URL}/feed_deep.xml" -o audio_files/feed_deep.xml 2>/dev/null || {
+            echo "既存 feed_deep.xml なし（初回実行）。新規作成します。"
+          }
+        env:
+          PODCAST_BASE_URL: https://necoha.github.io/auto-podcast
+
       - name: Generate podcast
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
         run: uv run python podcast_generator.py
+
+      - name: Generate deep dive podcast
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
+        run: uv run python deep_podcast_generator.py
 
       - name: Deploy to gh-pages
         run: |
@@ -82,14 +97,27 @@ jobs:
           cp audio_files/*.mp3 gh-pages-deploy/episodes/ 2>/dev/null || true
           cp audio_files/*.wav gh-pages-deploy/episodes/ 2>/dev/null || true
 
+          # Deep Dive 用の episodes_deep/ ディレクトリに深掘り音声をコピー
+          mkdir -p gh-pages-deploy/episodes_deep
+          cp audio_files/deep_*.mp3 gh-pages-deploy/episodes_deep/ 2>/dev/null || true
+          cp audio_files/deep_*.wav gh-pages-deploy/episodes_deep/ 2>/dev/null || true
+
           # feed.xml をコピー
           if [ -f audio_files/feed.xml ]; then
             cp audio_files/feed.xml gh-pages-deploy/feed.xml
           fi
 
+          # feed_deep.xml をコピー
+          if [ -f audio_files/feed_deep.xml ]; then
+            cp audio_files/feed_deep.xml gh-pages-deploy/feed_deep.xml
+          fi
+
           # カバー画像をコピー（存在する場合）
           if [ -f cover.jpg ]; then
             cp cover.jpg gh-pages-deploy/cover.jpg
+          fi
+          if [ -f cover_deep.jpg ]; then
+            cp cover_deep.jpg gh-pages-deploy/cover_deep.jpg
           fi
 
       - name: Cleanup old episodes
@@ -98,6 +126,12 @@ jobs:
             uv run python cleanup_episodes.py gh-pages-deploy/feed.xml gh-pages-deploy/episodes
           else
             echo "feed.xml or episodes/ not found, skipping cleanup"
+          fi
+          # Deep Dive 版もクリーンアップ
+          if [ -f gh-pages-deploy/feed_deep.xml ] && [ -d gh-pages-deploy/episodes_deep ]; then
+            uv run python cleanup_episodes.py gh-pages-deploy/feed_deep.xml gh-pages-deploy/episodes_deep
+          else
+            echo "feed_deep.xml or episodes_deep/ not found, skipping deep cleanup"
           fi
 
       - name: Commit and push
@@ -121,6 +155,7 @@ jobs:
           path: |
             audio_files/*.mp3
             audio_files/feed.xml
+            audio_files/feed_deep.xml
             content/*.json
           retention-days: 90
           if-no-files-found: warn
