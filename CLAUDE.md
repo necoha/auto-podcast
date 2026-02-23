@@ -41,12 +41,12 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 
 ```
 【速報版】
-RSS(13) → ContentManager → ScriptGenerator     → TTSGenerator → RSSFeedGenerator → gh-pages
-             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed.xml)        (GitHub Pages)
-                                                                                        ↓
-【深掘り版】                                                                   Spotify / Apple Podcasts
-RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedGenerator → gh-pages
-             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed_deep.xml)   (GitHub Pages)
+RSS(13) → ContentManager → ScriptGenerator     → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
+                                                                                                          ↓
+【深掘り版】                                                                                             Spotify / Apple Podcasts
+RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed_deep.xml)   (CI検証)       (GitHub Pages)
 ```
 
 ### Core Components
@@ -55,16 +55,18 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
 3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
 4. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
-5. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（パラメータ化、速報版/深掘り版共用）
+5. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（パラメータ化、速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
 6. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
 7. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
 8. **DeepDivePodcastGenerator** (`deep_podcast_generator.py`) — 深掘り版オーケストレーション
+9. **ValidateFeeds** (`validate_feeds.py`) — デプロイ前のfeed.xml/feed_deep.xml自動検証（CIでconfig値との整合性保証）
 
 ### Key Design Decisions
 
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
 - **フォールバック**: TTS失敗時はモデル切り替え → リトライ → スキップ
+- **CI検証**: デプロイ前にfeedメタデータをconfig値と自動照合、不整合時はデプロイ中止
 
 ## Configuration
 
@@ -106,6 +108,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 - **速報版 RSS URL**: `https://necoha.github.io/auto-podcast/feed.xml`
 - **深掘り版 RSS URL**: `https://necoha.github.io/auto-podcast/feed_deep.xml`
 - **Spotify**: 速報版RSSインポート済み。深掘り版は別途登録が必要
+- **CI検証**: デプロイ前に `validate_feeds.py` が feed.xml / feed_deep.xml のメタデータを自動検証
 
 ## Speaker Rotation
 
@@ -116,4 +119,5 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 
 - `docs/CRD.md` — 構想・要件定義書（技術選定比較、プラン比較）
 - `docs/HLD.md` — 概要設計書（アーキテクチャ、Mermaidフロー図）
+- `docs/LLD.md` — 詳細設計書（クラス設計、API仕様、CI検証仕様）
 - `docs/LLD.md` — 詳細設計書（クラス設計、API仕様、Mermaidクラス図）

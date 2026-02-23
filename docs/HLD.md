@@ -74,9 +74,10 @@ flowchart TD
 | **ScriptGenerator** | `script_generator.py` | Gemini Flash APIでポッドキャスト対話台本を生成（速報版）。PRONUNCIATION_MAP（306エントリ）による発音補正 |
 | **DeepScriptGenerator** | `deep_script_generator.py` | ScriptGenerator を継承。AI記事厳選＋6次元分析の深掘り台本を生成 |
 | **TTSGenerator** | `tts_generator.py` | Gemini Flash TTS APIで台本から音声ファイルを生成。速報版・深掘り版で共有 |
-| **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新。パラメータ化により速報版・深掘り版の両方に対応 |
+| **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新。パラメータ化により速報版・深掘り版の両方に対応。`_sync_channel_metadata` でconfig値への自動同期を保証 |
 | **PodcastUploader** | `podcast_uploader.py` | メタデータ保存 + gh-pages へのデプロイ |
 | **Config** | `config.py` | 全体設定管理（環境変数・定数・曜日ローテーション・速報版/深掘り版設定） |
+| **ValidateFeeds** | `validate_feeds.py` | デプロイ前のfeed.xml/feed_deep.xml自動検証。config値との整合性をCIで保証 |
 
 ### 2.2 コンポーネント関係図
 
@@ -251,6 +252,7 @@ auto-podcast/
 ├── generate_cover.py              # 速報版カバーアート生成 (Pillow)
 ├── generate_cover_deep.py         # 深掘り版カバーアート生成 (Pillow)
 ├── cleanup_episodes.py            # 古いエピソードの自動削除（60日超）
+├── validate_feeds.py              # デプロイ前フィード自動検証（CIでconfig値との整合性確認）
 │
 ├── pyproject.toml                 # プロジェクト定義 + 依存関係 (uv)
 ├── uv.lock                        # 依存ロックファイル
@@ -332,6 +334,7 @@ jobs:
       - 既存 feed_deep.xml を gh-pages から curl で復元
       - podcast_generator.py 実行（速報版生成 + feed.xml 追記）
       - deep_podcast_generator.py 実行（深掘り版生成 + feed_deep.xml 追記）
+      - validate_feeds.py 実行（feed.xml / feed_deep.xml のメタデータをconfig値と自動照合、不整合時はデプロイ中止）
       - gh-pages ブランチに MP3 + feed.xml + feed_deep.xml を push
       - cover.jpg + cover_deep.jpg を gh-pages にコピー
       - 古いエピソードのクリーンアップ（60日超、速報版+深掘り版両方）

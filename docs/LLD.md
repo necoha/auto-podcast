@@ -300,6 +300,7 @@ classDiagram
         +generate_feed() str
         +cleanup_old_episodes(feed_path, episodes_dir, retention_days) List~str~
         -_load_existing_feed() ElementTree | None
+        -_sync_channel_metadata(tree: ElementTree) None
         -_create_empty_feed() ElementTree
         -_create_item_element(mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size) Element
         -_get_file_size(mp3_filename) int
@@ -321,8 +322,9 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|------|
-| `add_episode` | mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size | str | 既存feed.xmlを読み込み、新エピソードを先頭に追加。feed.xmlパスを返す |
+| `add_episode` | mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size | str | 既存feed.xmlを読み込み → `_sync_channel_metadata` でメタデータ同期 → 新エピソードを先頭に追加。feed.xmlパスを返す |
 | `generate_feed` | - | str | 空のフィードを新規作成（チャンネル情報のみ） |
+| `_sync_channel_metadata` | tree: ElementTree | None | 既存フィードのチャンネルメタデータ（title, description, itunes:summary, itunes:image）を現在のconfig値に同期。config変更時に自動反映を保証する |
 | `_create_item_element` | mp3_filename, metadata | Element | RSS item 要素を構築（enclosure + メタデータ） |
 
 #### RSS 2.0 + iTunes 拡張仕様
@@ -332,7 +334,7 @@ classDiagram
   xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
   xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>AI Auto Podcast</title>
+    <title>テック速報 AI ニュースラジオ</title>
     <link>https://necoha.github.io/auto-podcast</link>
     <language>ja</language>
     <itunes:author>Auto Podcast Generator</itunes:author>
@@ -340,7 +342,7 @@ classDiagram
     <atom:link href=".../feed.xml" rel="self" type="application/rss+xml"/>
 
     <item>
-      <title>第N話 - AI Auto Podcast (YYYY-MM-DD)</title>
+      <title>第N話 - テック速報 AI ニュースラジオ (YYYY-MM-DD)</title>
       <enclosure url=".../episodes/xxx.mp3" length="..." type="audio/mpeg"/>
       <guid isPermaLink="false">episode-N-YYYYMMDD</guid>
       <pubDate>Mon, 17 Feb 2026 00:00:00 +0900</pubDate>
@@ -590,6 +592,36 @@ def generate(self) -> EpisodeMetadata | None:
 | 経済(JP) | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
 | 経済(JP) | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
 
+### 1.8 ValidateFeeds (`validate_feeds.py`) — CI検証スクリプト
+
+**責務**: デプロイ前にfeed.xml / feed_deep.xml の生成物が config.py の期待値と一致するか自動検証する。不一致があればワークフローを失敗させ、壊れた状態のデプロイを防止する。
+
+#### 検証項目
+
+| 検証項目 | 比較対象（config.py） | 失敗時 |
+|---------|---------------------|--------|
+| `<title>` | `PODCAST_TITLE` / `DEEP_PODCAST_TITLE` | `exit(1)` |
+| `<description>` | `PODCAST_DESCRIPTION` / `DEEP_PODCAST_DESCRIPTION` | `exit(1)` |
+| `<itunes:summary>` | 同上 | `exit(1)` |
+| `<itunes:image>` href | `PODCAST_IMAGE_URL` / `DEEP_PODCAST_IMAGE_URL` | `exit(1)` |
+| enclosure URL | `EPISODES_DIR` / `DEEP_EPISODES_DIR` がURLに含まれること | `exit(1)` |
+| エピソード件数 | 1件以上 | `exit(1)` |
+
+#### 使用方法
+```bash
+# ローカルテスト
+uv run python validate_feeds.py /path/to/feed_dir
+
+# GitHub Actions（ワークフロー内）
+uv run python validate_feeds.py audio_files
+```
+
+#### ワークフロー上の位置
+```
+podcast_generator.py → deep_podcast_generator.py → validate_feeds.py → Deploy to gh-pages
+```
+検証失敗時はデプロイステップに到達しないため、Spotify/Apple Podcastsに壊れたフィードが配信されることを防ぐ。
+
 ---
 
 ## 2. ファイル命名規則
@@ -705,6 +737,9 @@ jobs:
       - run: uv run python podcast_generator.py
       - run: uv run python deep_podcast_generator.py
 
+      # デプロイ前検証: feed.xml / feed_deep.xml のメタデータをconfig値と自動照合
+      - run: uv run python validate_feeds.py audio_files
+
       # デプロイ: gh-pages ブランチに push
       # - episodes/ に速報版 MP3（deep_* を除外）
       # - episodes_deep/ に深掘り版 MP3（deep_* のみ）
@@ -722,8 +757,6 @@ jobs:
 |----------------|---------|------|
 | `episode_*.mp3` | `gh-pages-deploy/episodes/` | 速報版 MP3 |
 | `deep_*.mp3` | `gh-pages-deploy/episodes_deep/` | 深掘り版 MP3 |
-
-> **既知の問題**: 現在のワークフローでは `cp audio_files/*.mp3 gh-pages-deploy/episodes/` が `deep_*.mp3` も `episodes/` にコピーしてしまう。速報版ディレクトリには `episode_*.mp3` のみをコピーすべき。
 
 ```
 gh-pages/
