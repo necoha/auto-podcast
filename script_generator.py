@@ -48,6 +48,11 @@ SYSTEM_PROMPT_TEMPLATE = """\
 - 各記事を紹介する際にソース名（NHK、GIGAZINEなど）を明示する
 - 末尾にまとめと「今日も聞いてくれてありがとうございました、また明日お会いしましょう」という締めの挨拶を入れる
 
+著作権に関する注意:
+- 元記事の文章をそのまま引用・転載しないこと
+- あなた自身の言葉で独自に要約・解説・分析すること
+- 事実の伝達にとどめ、元記事の表現や文体を模倣しないこと
+
 発音・表記ルール（TTS読み上げ用）:
 - 英語の固有名詞や技術用語にはカタカナ読みを括弧で併記する
   例: GitHub（ギットハブ）、Kubernetes（クバネティス）、AWS（エーダブリューエス）
@@ -449,12 +454,6 @@ class ScriptGenerator:
             lines.append(f"--- 記事{i} ---")
             lines.append(f"タイトル: {article.get('title', '不明')}")
             lines.append(f"ソース: {article.get('source', '不明')}")
-            summary = article.get('summary', '')
-            if summary:
-                # HTMLタグを簡易除去
-                import re
-                summary = re.sub(r'<[^>]+>', '', summary)
-                lines.append(f"要約: {summary}")
             lines.append(f"URL: {article.get('link', '')}")
             lines.append("")
 
@@ -536,10 +535,7 @@ def fallback_script(articles: List[dict],
 
     for i, article in enumerate(articles, 1):
         title = article.get('title', '不明な記事')
-        summary = article.get('summary', '')
         source = article.get('source', '')
-
-        summary = _re.sub(r'<[^>]+>', '', summary)
 
         script.append(ScriptLine(
             speaker=host_name,
@@ -547,7 +543,7 @@ def fallback_script(articles: List[dict],
         ))
         script.append(ScriptLine(
             speaker=guest_name,
-            text=f"{title}。{summary}"
+            text=f"{title}というニュースです。{source}が報じています。"
         ))
 
     script.append(ScriptLine(

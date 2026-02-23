@@ -60,6 +60,11 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 - トピック間の切り替えには自然な橋渡しを入れる
 - 末尾にまとめと「今日も聞いてくれてありがとうございました、また明日お会いしましょう」という締めの挨拶を入れる
 
+著作権に関する注意:
+- 元記事の文章をそのまま引用・転載しないこと
+- あなた自身の言葉で独自に要約・解説・分析すること
+- 事実の伝達にとどめ、元記事の表現や文体を模倣しないこと
+
 発音・表記ルール（TTS読み上げ用）:
 - 英語の固有名詞や技術用語にはカタカナ読みを括弧で併記する
   例: GitHub（ギットハブ）、Kubernetes（クバネティス）、AWS（エーダブリューエス）
@@ -116,10 +121,6 @@ class DeepScriptGenerator(ScriptGenerator):
             lines.append(f"--- 記事{i} ---")
             lines.append(f"タイトル: {article.get('title', '不明')}")
             lines.append(f"ソース: {article.get('source', '不明')}")
-            summary = article.get('summary', '')
-            if summary:
-                summary = re.sub(r'<[^>]+>', '', summary)
-                lines.append(f"要約: {summary}")
             lines.append(f"URL: {article.get('link', '')}")
             lines.append("")
 
@@ -148,7 +149,6 @@ def deep_fallback_script(articles: List[dict],
     # フォールバックでは最大3件を少し詳しく紹介
     for i, article in enumerate(articles[:3], 1):
         title = article.get('title', '不明な記事')
-        summary = re.sub(r'<[^>]+>', '', article.get('summary', ''))
         source = article.get('source', '')
 
         script.append(ScriptLine(
@@ -157,7 +157,7 @@ def deep_fallback_script(articles: List[dict],
         ))
         script.append(ScriptLine(
             speaker=guest_name,
-            text=f"はい。{title}ということですね。{summary}"
+            text=f"はい。{title}ということですね。{source}が報じています。"
         ))
         script.append(ScriptLine(
             speaker=host_name,

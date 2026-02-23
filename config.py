@@ -61,7 +61,7 @@ CONTENT_DIR = "./content"
 
 # Podcast設定
 PODCAST_TITLE = "テック速報 AI ニュースラジオ"
-PODCAST_DESCRIPTION = "AIが届ける毎朝のテック＆経済ニュースダイジェスト"
+PODCAST_DESCRIPTION = "AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。"
 PODCAST_AUTHOR = "Auto Podcast Generator"
 PODCAST_LANGUAGE = "ja"
 
@@ -79,7 +79,7 @@ PODCAST_OWNER_EMAIL = os.getenv("PODCAST_OWNER_EMAIL", "")
 
 # ===== Deep Dive Podcast 設定 =====
 DEEP_PODCAST_TITLE = "テック深掘り AI 解説ラジオ"
-DEEP_PODCAST_DESCRIPTION = "最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説"
+DEEP_PODCAST_DESCRIPTION = "最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。"
 DEEP_RSS_FEED_FILENAME = "feed_deep.xml"
 DEEP_EPISODES_DIR = "episodes_deep"
 DEEP_PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover_deep.jpg"
