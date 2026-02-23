@@ -91,7 +91,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, guest_name | - | genai.Client初期化。ホスト/ゲスト名でプロンプトテンプレート展開 |
 | `generate_script` | articles: List[dict] | Script | 記事リストからプロンプト構築 → Gemini呼び出し → レスポンス解析 |
-| `_build_prompt` | articles: List[dict] | str | 記事タイトル・要約を含むプロンプトテキスト構築 |
+| `_build_prompt` | articles: List[dict] | str | 記事タイトル・ソース名・URLのみを含むプロンプトテキスト構築（著作権対策によりsummary除去） |
 | `_parse_response` | response: str | Script | Geminiレスポンスを構造化されたScript型に変換 |
 
 #### システムプロンプト（概要）
@@ -107,6 +107,7 @@ classDiagram
 - 自然な相槌・質問・感想を含める
 - 英語の固有名詞にはカタカナ読みを併記
 - TTS読み上げに適した平易な表現
+- 著作権に関する注意: 元記事の文章をそのまま使わず独自に解説
 - JSON形式で出力: [{"speaker": "{host_name}", "text": "..."}, ...]
 ```
 
@@ -152,7 +153,7 @@ response = client.models.generate_content(
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, guest_name, max_topics | - | 親クラス初期化後、`DEEP_SYSTEM_PROMPT_TEMPLATE` で system_prompt を上書き |
-| `_build_prompt` | articles: List[dict] | str | 全記事を提示し、AIに重要な max_topics 件の選定と深掘り台本の生成を指示 |
+| `_build_prompt` | articles: List[dict] | str | 全記事を提示し、AIに重要な max_topics 件の選定と深掘り台本の生成を指示（summaryは渡さない） |
 
 #### DEEP_SYSTEM_PROMPT_TEMPLATE（概要）
 ```
@@ -621,6 +622,36 @@ uv run python validate_feeds.py audio_files
 podcast_generator.py → deep_podcast_generator.py → validate_feeds.py → Deploy to gh-pages
 ```
 検証失敗時はデプロイステップに到達しないため、Spotify/Apple Podcastsに壊れたフィードが配信されることを防ぐ。
+
+### 1.9 著作権対策
+
+Apple Podcasts Content Guidelines 準拠のため、以下の対策を実装。
+
+#### 対策一覧
+
+| # | 対策 | 実装箇所 | 効果 |
+|---|------|----------|------|
+| ① | システムプロンプトに著作権注意事項を追加 | `SYSTEM_PROMPT_TEMPLATE`, `DEEP_SYSTEM_PROMPT_TEMPLATE` | LLMが元記事を転載せず独自の言葉で解説 |
+| ② | `_build_prompt()` から記事summaryを除去 | `script_generator.py`, `deep_script_generator.py` | 元記事本文がLLMに渡らないため転載リスクを根本排除 |
+| ③ | フォールバック台本からもsummary除去 | `fallback_script()`, `deep_fallback_script()` | フォールバック時も著作権安全 |
+| ④ | エピソード説明文にソース記事URLを追加 | `podcast_generator.py`, `deep_podcast_generator.py` | 出典明示によりフェアユース主張を強化 |
+| ⑥ | チャンネル説明文にdisclaimer追加 | `config.py` | 「元記事の著作権は各メディアに帰属します」を明示 |
+
+#### `_build_prompt()` が渡す情報（summary除去後）
+```
+--- 記事1 ---
+タイトル: {title}
+ソース: {source}
+URL: {link}
+```
+
+#### プロンプトに追加された著作権指示
+```
+著作権に関する注意:
+- 元記事の文章をそのまま引用・転載しないこと
+- あなた自身の言葉で独自に要約・解説・分析すること
+- 事実の伝達にとどめ、元記事の表現や文体を模倣しないこと
+```
 
 ---
 

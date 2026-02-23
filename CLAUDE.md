@@ -67,6 +67,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
 - **フォールバック**: TTS失敗時はモデル切り替え → リトライ → スキップ
 - **CI検証**: デプロイ前にfeedメタデータをconfig値と自動照合、不整合時はデプロイ中止
+- **著作権対策**: `_build_prompt`でsummary除去、プロンプトに著作権指示、エピソード説明にソースURL、disclaimer明示
 
 ## Configuration
 
