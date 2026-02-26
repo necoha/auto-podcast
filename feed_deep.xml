@@ -1,5 +1,74 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Thu, 26 Feb 2026 06:41:36 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第4話 - テック深掘り AI 解説ラジオ (2026-02-26)</title><description>配信日: 2026-02-26
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Fri, 27 Feb 2026 06:37:48 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第5話 - テック深掘り AI 解説ラジオ (2026-02-27)</title><description>配信日: 2026-02-27
+出演: リコ &amp; カイト
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（60件の記事からAIが厳選して深掘り解説）
+
+参照元記事:
+  - https://www.itmedia.co.jp/news/articles/2602/26/news131.html
+  - https://www.itmedia.co.jp/news/articles/2602/26/news127.html
+  - https://www.itmedia.co.jp/news/articles/2602/26/news125.html
+  - https://www.itmedia.co.jp/news/articles/2602/26/news113.html
+  - https://www.itmedia.co.jp/news/articles/2602/26/news112.html
+  - https://gigazine.net/news/20260227-expansion-microscopy-cellular-world/
+  - https://gigazine.net/news/20260226-fdm-1-general-computer-action-model/
+  - https://gigazine.net/news/20260226-jimi-hendrix-engineer/
+  - https://gigazine.net/news/20260226-openai-persona-government-built-identity-surveillance/
+  - https://gigazine.net/news/20260226-hacker-claude/
+  - https://japan.cnet.com/article/35244356/
+  - https://japan.cnet.com/article/35244352/
+  - https://japan.cnet.com/article/35244343/
+  - https://japan.cnet.com/article/35244344/
+  - https://japan.cnet.com/article/35244338/
+  - https://www.watch.impress.co.jp/docs/news/2089038.html
+  - https://www.watch.impress.co.jp/docs/news/2089002.html
+  - https://www.watch.impress.co.jp/docs/news/2089000.html
+  - https://www.watch.impress.co.jp/docs/news/2088978.html
+  - https://www.watch.impress.co.jp/docs/news/2088951.html
+  - https://ascii.jp/elem/000/004/376/4376965/?rss
+  - https://ascii.jp/elem/000/004/376/4376030/?rss
+  - https://ascii.jp/elem/000/004/376/4376841/?rss
+  - https://ascii.jp/elem/000/004/376/4376593/?rss
+  - https://ascii.jp/elem/000/004/376/4376956/?rss
+  - https://techcrunch.com/2026/02/26/google-paid-startup-form-energy-1b-for-its-massive-100-hour-battery/
+  - https://techcrunch.com/2026/02/26/so-were-getting-prada-meta-ai-glasses-right/
+  - https://techcrunch.com/2026/02/26/sophia-space-raises-10m-seed-to-demo-novel-space-computers/
+  - https://techcrunch.com/2026/02/26/memory-shortage-could-cause-the-biggest-smartphone-shipments-dip-in-over-a-decade/
+  - https://techcrunch.com/2026/02/26/mistral-ai-inks-a-deal-with-global-consulting-giant-accenture/
+  - https://arstechnica.com/ai/2026/02/google-releases-nano-banana-2-ai-image-generator-promises-pro-results-with-flash-speed/
+  - https://arstechnica.com/cars/2026/02/ford-is-recalling-4-3-million-trucks-and-suvs-to-fix-a-towing-software-bug/
+  - https://arstechnica.com/security/2026/02/new-airsnitch-attack-breaks-wi-fi-encryption-in-homes-offices-and-enterprises/
+  - https://arstechnica.com/gaming/2026/02/new-york-sues-valve-for-enabling-illegal-gambling-with-loot-boxes/
+  - https://arstechnica.com/space/2026/02/a-non-public-document-reveals-that-science-may-not-be-prioritized-on-next-mars-mission/
+  - https://github.com/jayu/rev-dep
+  - https://www.usecardboard.com/
+  - https://osmand.net/blog/fast-routing/
+  - https://calmatters.org/justice/2026/02/alpr-border-patrol-caltrans/
+  - https://amplifying.ai/research/claude-code-picks
+  - https://business.nikkei.com/atcl/audio/22/00001/022600822/
+  - https://business.nikkei.com/atcl/gen/19/00848/022500001/
+  - https://business.nikkei.com/atcl/gen/19/00636/022500079/
+  - https://business.nikkei.com/atcl/gen/19/00846/022400009/
+  - https://business.nikkei.com/atcl/gen/19/00466/022400042/
+  - https://jp.reuters.com/world/security/5E2GIALIVZNB3FIPELR35WJ4F4-2026-02-26/
+  - https://jp.reuters.com/world/mideast/2PZX6DYXVNOHLMU7ACCZV5CPWQ-2026-02-26/
+  - https://jp.reuters.com/markets/japan/JC2SIKRKM5KSTMHOWXJ4UUUXEE-2026-02-26/
+  - https://jp.reuters.com/world/ukraine/NQ3DCPFKWFPHZJJMHN6XL6FITY-2026-02-26/
+  - https://jp.reuters.com/world/us/NJA3V4AQTVLM7HUO3CPJZPRMZU-2026-02-26/
+  - https://news.yahoo.co.jp/pickup/6571339?source=rss
+  - https://news.yahoo.co.jp/pickup/6571301?source=rss
+  - https://news.yahoo.co.jp/pickup/6571304?source=rss
+  - https://news.yahoo.co.jp/pickup/6571292?source=rss
+  - https://news.yahoo.co.jp/pickup/6571325?source=rss
+  - https://www.asahi.com/articles/ASV2M1GM7V2MUTIL00XM.html?ref=rss
+  - https://www.asahi.com/articles/ASV2M2CWXV2MUTIL01WM.html?ref=rss
+  - https://www.asahi.com/articles/ASV2V41N1V2VUTFK00CM.html?ref=rss
+  - https://www.asahi.com/articles/ASV2V40X0V2VULFA02DM.html?ref=rss
+  - https://www.asahi.com/articles/ASV2V3DK0V2VULFA00TM.html?ref=rss
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_5_20260227.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-5-20260227</guid><pubDate>Fri, 27 Feb 2026 06:37:48 +0900</pubDate><itunes:episode>5</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第4話 - テック深掘り AI 解説ラジオ (2026-02-26)</title><description>配信日: 2026-02-26
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
