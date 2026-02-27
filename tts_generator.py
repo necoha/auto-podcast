@@ -30,7 +30,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
-MAX_LINES_PER_CHUNK = 30  # 1チャンクあたりの最大行数
+MAX_LINES_PER_CHUNK = 50  # 1チャンクあたりの最大行数（深掘り版~40-48行が1コールに収まる値）
 
 JST = timezone(timedelta(hours=9))
 
