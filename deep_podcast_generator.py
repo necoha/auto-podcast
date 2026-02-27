@@ -186,19 +186,12 @@ class DeepDivePodcastGenerator:
         sources = sorted(set(a.get("source", "") for a in articles if a.get("source")))
         sources_text = "、".join(sources) if sources else "各種ニュースサイト"
 
-        # ソース記事のURLリスト
-        source_urls = [a.get("link", "") for a in articles if a.get("link")]
-        source_url_lines = [f"  - {url}" for url in source_urls]
-
         desc_parts = [
             f"配信日: {today_str}",
             f"出演: {host_name} & {guest_name}",
             "",
             f"本日のニュースソース: {sources_text}",
             f"（{len(articles)}件の記事からAIが厳選して深掘り解説）",
-            "",
-            "参照元記事:",
-            *source_url_lines,
             "",
             "Gemini AIで自動生成された深掘り解説ポッドキャストです。",
             "元記事の著作権は各メディアに帰属します。",

@@ -183,19 +183,12 @@ class PodcastGenerator:
         sources_text = "、".join(sources) if sources else "各種ニュースサイト"
 
         # 説明文（簡潔に）
-        # ソース記事のURLリスト
-        source_urls = [a.get("link", "") for a in articles if a.get("link")]
-        source_url_lines = [f"  - {url}" for url in source_urls]
-
         desc_parts = [
             f"配信日: {today_str}",
             f"出演: {host_name} & {guest_name}",
             "",
             f"本日のニュースソース: {sources_text}",
             f"（{len(articles)}件の記事をもとに構成）",
-            "",
-            "参照元記事:",
-            *source_url_lines,
             "",
             "Gemini AIで自動生成されたポッドキャストです。",
             "元記事の著作権は各メディアに帰属します。",
