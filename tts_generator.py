@@ -30,7 +30,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
-MAX_LINES_PER_CHUNK = 50  # 1チャンクあたりの最大行数（深掘り版~40-48行が1コールに収まる値）
+MAX_LINES_PER_CHUNK = 25  # 1チャンクあたりの最大行数（TTS出力上限を超えないよう分割）
 
 JST = timezone(timedelta(hours=9))
 
@@ -106,7 +106,7 @@ class TTSGenerator:
         chunk_silence = self._generate_silence(CHUNK_SILENCE_SEC)
 
         for i, chunk in enumerate(chunks):
-            prompt = self._build_multi_speaker_prompt(chunk)
+            prompt = self._build_multi_speaker_prompt(chunk, chunk_index=i, total_chunks=len(chunks))
             logger.info("  チャンク %d/%d (%d行) を生成中...", i + 1, len(chunks), len(chunk))
             pcm_data = self._generate_with_retry(prompt)
             if i > 0:
@@ -165,11 +165,12 @@ Pronunciation:
 ### TRANSCRIPT
 """
 
-    def _build_multi_speaker_prompt(self, script: Script) -> str:
+    def _build_multi_speaker_prompt(self, script: Script, chunk_index: int = 0, total_chunks: int = 1) -> str:
         """台本を Multi-Speaker TTS プロンプトに変換する
 
         台本中の speaker:"A" をホスト名、"B" をゲスト名にマッピング。
         英字固有名詞はカタカナ読みに置換して TTS の誤読を防ぐ。
+        複数チャンクの場合、Voice継続指示を追加して声の一貫性を保つ。
         """
         lines = []
         for line in script:
@@ -177,7 +178,18 @@ Pronunciation:
             text = self._prepare_for_tts(line.text)
             lines.append(f"{name}: {text}")
         transcript = "\n".join(lines)
-        return self.DIRECTOR_NOTES_TEMPLATE + transcript
+        prompt = self.DIRECTOR_NOTES_TEMPLATE + transcript
+
+        # 複数チャンクの2つ目以降: 前チャンクとの声の一貫性を保つ指示
+        if total_chunks > 1 and chunk_index > 0:
+            continuity_note = (
+                f"\n(Note: This is part {chunk_index + 1} of {total_chunks}. "
+                "Continue with the same tone, pace, and energy as the previous part. "
+                "Do not add greetings or introductions.)\n\n"
+            )
+            prompt = continuity_note + prompt
+
+        return prompt
 
     def _prepare_for_tts(self, text: str) -> str:
         """テキストをTTS向けに前処理する
