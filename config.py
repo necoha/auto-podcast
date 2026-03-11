@@ -74,7 +74,7 @@ PODCAST_BASE_URL = "https://necoha.github.io/auto-podcast"
 RSS_FEED_FILENAME = "feed.xml"
 EPISODES_DIR = "episodes"  # gh-pages ブランチ上の MP3 格納ディレクトリ
 EPISODE_RETENTION_DAYS = 60  # gh-pages 上に保持するエピソード日数（60日超の古いMP3を自動削除）
-PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover.jpg"
+PODCAST_IMAGE_URL = "https://necoha.github.io/auto-podcast/cover.jpg?v=2"
 PODCAST_OWNER_EMAIL = os.getenv("PODCAST_OWNER_EMAIL", "")
 
 # ===== Deep Dive Podcast 設定 =====
