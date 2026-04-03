@@ -362,7 +362,8 @@ class ScriptGenerator:
         "冗長": "じょうちょう",
         "逼迫": "ひっぱく",
         "漏洩": "ろうえい",
-        "情報漏洩": "じょうほうろうえい",
+        "情報漫洩": "じょうほうろうえい",
+        "停波": "ていは",
         "改竄": "かいざん",
         "完遂": "かんすい",
         "早急": "さっきゅう",
@@ -411,6 +412,8 @@ class ScriptGenerator:
         "微増": "びぞう",
         "微減": "びげん",
         "潜在的": "せんざいてき",
+        "残念": "ざんねん",
+        "滑走路": "かっそうろ",
         # ===== ニュース頻出表現・基本語 =====
         "浮き彫り": "うきぼり",
         "相次ぐ": "あいつぐ",
@@ -578,17 +581,33 @@ class ScriptGenerator:
     }
 
     def _apply_pronunciation_fixes(self, script: Script) -> Script:
-        """台本テキストに読み替え辞書を適用する"""
+        """台本テキストに読み替え辞書を適用する
+
+        1. LLMが付けた間違った読みを正しい読みで上書き
+        2. 読みが未付与の語句に正しい読みを追加
+        3. プレースホルダーで長い語の再マッチを防止
+        """
         # 長い語句から先にマッチさせ、部分一致の二重置換を防ぐ
         sorted_words = sorted(self.PRONUNCIATION_MAP.keys(), key=len, reverse=True)
         fixed: Script = []
         for line in script:
             text = line.text
-            for word in sorted_words:
+            placeholders: dict = {}
+            for idx, word in enumerate(sorted_words):
                 reading = self.PRONUNCIATION_MAP[word]
-                # 既にカタカナ読みが併記されている場合はスキップ
-                pattern = re.compile(re.escape(word) + r'(?!（)')
-                text = pattern.sub(f"{word}（{reading}）", text)
+                placeholder = f"\x00PH{idx}\x00"
+                # 1. 既に読みが付いている場合: プレースホルダーに置換（間違った読みも上書き）
+                wrong_pattern = re.compile(
+                    re.escape(word) + r'（[ぁ-ゟァ-ヴーｰA-Za-z\s]+）'
+                )
+                text = wrong_pattern.sub(placeholder, text)
+                # 2. 読みが未付与の場合: プレースホルダーに置換
+                bare_pattern = re.compile(re.escape(word) + r'(?!（)')
+                text = bare_pattern.sub(placeholder, text)
+                placeholders[placeholder] = f"{word}（{reading}）"
+            # プレースホルダーを正しいアノテーションに復元
+            for ph, annotated in placeholders.items():
+                text = text.replace(ph, annotated)
             fixed.append(ScriptLine(speaker=line.speaker, text=text))
         return fixed
 
