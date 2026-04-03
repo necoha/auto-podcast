@@ -208,6 +208,8 @@ Pronunciation:
         "そうですね": "ソウデスネ",
         "たしかに": "タシカニ",
         "おっしゃる通り": "オッシャルトオリ",
+        # TTS誤読する固有名詞（PRONUNCIATION_MAPで置換後も残るケースの安全策）
+        "Google": "グーグル",
     }
 
     def _prepare_for_tts(self, text: str) -> str:
