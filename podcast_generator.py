@@ -5,6 +5,7 @@
 
 import logging
 import os
+import time
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional
 
@@ -12,7 +13,7 @@ from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
-from script_generator import ScriptGenerator, Script, fallback_script
+from script_generator import ScriptGenerator, Script, ScriptLine, fallback_script
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
@@ -77,13 +78,30 @@ class PodcastGenerator:
 
         logger.info("  %d件の記事を取得しました", len(articles))
 
-        # 2. 台本生成
+        # 2. 台本生成（503エラー時はリトライ）
         logger.info("2. 台本生成中...")
-        try:
-            script = self.script_generator.generate_script(articles)
-        except Exception as e:
-            logger.warning("台本生成失敗、フォールバック使用: %s", e)
-            script = fallback_script(articles, self.host_name, self.guest_name)
+        script = None
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                script = self.script_generator.generate_script(articles)
+                break
+            except Exception as e:
+                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                if is_503 and attempt < max_retries:
+                    wait = 30 * (attempt + 1)
+                    logger.warning(
+                        "台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
+                        attempt + 1, max_retries + 1, wait, e,
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.warning("台本生成失敗（リトライ上限）: %s", e)
+                    break
+
+        if script is None:
+            logger.warning("台本生成不可、お休み告知に切り替え")
+            script = _休止告知スクリプト(self.host_name, self.guest_name)
 
         logger.info("  台本: %d行", len(script))
 
@@ -252,6 +270,33 @@ class PodcastGenerator:
         logger.info("元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
+
+
+def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
+    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
+    today = datetime.now(JST).strftime("%Y年%m月%d日")
+    return [
+        ScriptLine(
+            speaker=host_name,
+            text=f"おはようございます、{host_name}です。{today}のテック速報です。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text=f"{guest_name}です。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="本日はシステムの都合により、テック速報はお休みとさせていただきます。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text="申し訳ございません。明日はまたニュースをお届けできると思います。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="それではまた明日お会いしましょう。",
+        ),
+    ]
 
 
 # メイン実行部分

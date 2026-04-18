@@ -8,6 +8,7 @@
 
 import logging
 import os
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -16,7 +17,7 @@ from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
-from deep_script_generator import DeepScriptGenerator, deep_fallback_script
+from deep_script_generator import DeepScriptGenerator
 from script_generator import Script
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
@@ -94,12 +95,31 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep]   %d件の記事を取得（ここからAIが厳選）", len(articles))
 
         # 2. 深掘り台本生成（AIが記事を厳選＋深い分析台本を生成）
+        #    503エラー時はリトライ（LLMは500 req/日なので余裕あり）
         logger.info("[Deep] 2. 深掘り台本生成中...")
-        try:
-            script = self.script_generator.generate_script(articles)
-        except Exception as e:
-            logger.warning("[Deep] 台本生成失敗、フォールバック使用: %s", e)
-            script = deep_fallback_script(articles, self.host_name, self.guest_name)
+        script = None
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                script = self.script_generator.generate_script(articles)
+                break
+            except Exception as e:
+                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                if is_503 and attempt < max_retries:
+                    wait = 30 * (attempt + 1)
+                    logger.warning(
+                        "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
+                        attempt + 1, max_retries + 1, wait, e,
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.warning("[Deep] 台本生成失敗（リトライ上限）: %s", e)
+                    break
+
+        if script is None:
+            # リトライしても失敗 → お休み告知を生成して配信
+            logger.warning("[Deep] 台本生成不可、お休み告知に切り替え")
+            script = _休止告知スクリプト(self.host_name, self.guest_name)
 
         logger.info("[Deep]   台本: %d行", len(script))
 
@@ -243,6 +263,35 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep] 元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
+
+
+def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
+    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
+    from script_generator import ScriptLine
+
+    today = datetime.now(JST).strftime("%Y年%m月%d日")
+    return [
+        ScriptLine(
+            speaker=host_name,
+            text=f"おはようございます、{host_name}です。{today}のテック深掘り解説ラジオです。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text=f"{guest_name}です。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="本日はシステムの都合により、深掘り解説はお休みとさせていただきます。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text="通常のテック速報は配信しておりますので、そちらをお楽しみください。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="明日はまた深掘り解説をお届けできると思います。それではまた明日お会いしましょう。",
+        ),
+    ]
 
 
 # メイン実行部分
