@@ -6,14 +6,14 @@
 import logging
 import os
 import time
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
-from script_generator import ScriptGenerator, Script, ScriptLine, fallback_script
+from script_generator import ScriptGenerator, Script, ScriptLine
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
