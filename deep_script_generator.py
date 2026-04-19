@@ -8,7 +8,7 @@ ScriptGeneratorを継承し、PRONUNCIATION_MAP・_parse_response・_apply_pronu
 import json
 import logging
 import re
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from google import genai
 from google.genai import types
@@ -113,7 +113,7 @@ class DeepScriptGenerator(ScriptGenerator):
             max_topics=self.max_topics,
         )
 
-    def _build_prompt(self, articles: List[dict]) -> str:
+    def _build_prompt(self, articles: List[Dict[str, Any]]) -> str:
         """記事情報からプロンプトテキストを構築する（深掘り版）
 
         全記事を提示し、AIに重要な記事の選定と深掘り台本の生成を任せる。
