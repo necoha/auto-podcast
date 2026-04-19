@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from collections import Counter
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 import requests
@@ -26,7 +27,7 @@ class ContentManager:
         self.content_dir = config.CONTENT_DIR
         os.makedirs(self.content_dir, exist_ok=True)
     
-    def fetch_rss_feeds(self, max_articles=5, hours=24):
+    def fetch_rss_feeds(self, max_articles: int = 5, hours: int = 24) -> List[Dict[str, Any]]:
         """RSSフィードから最新記事を取得（日付フィルタ＋重複排除付き）
 
         Args:

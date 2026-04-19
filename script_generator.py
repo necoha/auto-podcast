@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, asdict
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from google import genai
 from google.genai import types
@@ -101,7 +101,7 @@ class ScriptGenerator:
             guest_name=self.guest_name,
         )
 
-    def generate_script(self, articles: List[dict]) -> Script:
+    def generate_script(self, articles: List[Dict[str, Any]]) -> Script:
         """記事リストから対話形式の台本を生成する"""
         if not articles:
             raise ValueError("記事リストが空です")
@@ -621,7 +621,7 @@ class ScriptGenerator:
             fixed.append(ScriptLine(speaker=line.speaker, text=text))
         return fixed
 
-    def _build_prompt(self, articles: List[dict]) -> str:
+    def _build_prompt(self, articles: List[Dict[str, Any]]) -> str:
         """記事情報からプロンプトテキストを構築する"""
         lines = [f"以下の{len(articles)}件のニュース記事をもとに台本を作成してください。\n"]
 

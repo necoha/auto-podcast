@@ -7,9 +7,9 @@ import logging
 import os
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Dict, List, Optional
 
-from pydub import AudioSegment
+from pydub import AudioSegment  # type: ignore[import-untyped]
 
 import config
 from content_manager import ContentManager
@@ -184,7 +184,7 @@ class PodcastGenerator:
 
     def _build_metadata(
         self,
-        articles: list,
+        articles: List[Dict[str, str]],
         audio_path: str,
         episode_num: int,
     ) -> EpisodeMetadata:
@@ -234,8 +234,8 @@ class PodcastGenerator:
     def _get_audio_duration(self, audio_path: str) -> int:
         """音声ファイルの再生秒数を取得する（WAV/MP3対応）"""
         try:
-            audio = AudioSegment.from_file(audio_path)
-            return int(len(audio) / 1000)
+            audio = AudioSegment.from_file(audio_path)  # type: ignore[no-untyped-call]
+            return int(len(audio) / 1000)  # type: ignore[arg-type]
         except Exception:
             return 0
 
@@ -255,8 +255,8 @@ class PodcastGenerator:
         wav_size = os.path.getsize(wav_path)
         logger.info("MP3変換開始: %s (%.1f MB)", wav_path, wav_size / 1024 / 1024)
 
-        audio = AudioSegment.from_wav(wav_path)
-        audio.export(mp3_path, format="mp3", bitrate=bitrate)
+        audio = AudioSegment.from_wav(wav_path)  # type: ignore[no-untyped-call]
+        audio.export(mp3_path, format="mp3", bitrate=bitrate)  # type: ignore[no-untyped-call]
 
         mp3_size = os.path.getsize(mp3_path)
         ratio = wav_size / mp3_size if mp3_size else 0
