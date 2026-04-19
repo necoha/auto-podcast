@@ -65,7 +65,9 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
+- **LLMリトライ**: 台本生成で503エラー時に最大2回リトライ（30秒/60秒間隔）。失敗時は「お休み告知」を配信
 - **フォールバック**: TTS失敗時はモデル切り替え → リトライ → スキップ
+- **重複記事統合**: 速報版プロンプトで全記事に触れつつ同一トピックの重複は統合して紹介
 - **CI検証**: デプロイ前にfeedメタデータをconfig値と自動照合、不整合時はデプロイ中止
 - **著作権対策**: `_build_prompt`でsummary除去、プロンプトに著作権指示、エピソード説明にソースURL、disclaimer明示
 

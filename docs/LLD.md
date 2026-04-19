@@ -183,9 +183,10 @@ response = client.models.generate_content(
 - 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
 ```
 
-#### フォールバック: `deep_fallback_script()`
-台本生成失敗時、最大3件の記事を簡易紹介する固定台本を返す。
-引数の `host_name` / `guest_name` で正しい出演者名を使用。
+#### LLMリトライ + お休み告知
+台本生成で503エラー発生時、最大2回リトライ（30秒/60秒間隔）。
+リトライ失敗時は `_休止告知スクリプト()` で「本日はお休みです」の短い告知（5行）を配信。
+旧 `deep_fallback_script()` は使用廃止。
 
 ---
 
@@ -499,8 +500,8 @@ classDiagram
 |------|--------------------------|-------------------------------------|
 | 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
-| 記事選定 | 全記事をダイジェスト | AIが重要2-3件を厳選 |
-| フォールバック | `fallback_script()` | `deep_fallback_script()` |
+| 記事選定 | 全記事に触れつつ重複統合 | AIが重要2-3件を厳選 |
+| フォールバック | `_休止告知スクリプト()` (お休み告知) | `_休止告知スクリプト()` (お休み告知) |
 | RSSフィード | `feed.xml` | `feed_deep.xml` |
 | MP3格納先 | `episodes/` | `episodes_deep/` |
 | ファイル名 | `episode_N_YYYYMMDD.mp3` | `deep_N_YYYYMMDD.mp3` |
@@ -514,9 +515,9 @@ def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
     articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
 
-    # 2. 深掘り台本生成（AIが記事を厳選＋6次元分析）
+    # 2. 深掘り台本生成（503時は最大2回リトライ）
     script = self.script_generator.generate_script(articles)
-    # フォールバック: deep_fallback_script(articles, host_name, guest_name)
+    # リトライ失敗時: _休止告知スクリプト(host_name, guest_name)
 
     # 3. TTS音声生成（速報版と同じMulti-Speaker TTS）
     audio_filename = f"deep_{episode_num}_{today}.wav"
@@ -684,7 +685,7 @@ URL: {link}
 |---------|--------------|
 | RSS取得失敗（一部） | 取得できたフィードで続行 |
 | RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
-| 台本生成失敗 | 記事テキストを箇条書きにして読み上げテキスト化 |
+| 台本生成失敗(503) | 最大2回リトライ（30秒/60秒間隔）→ 失敗時は「お休み告知」5行スクリプトを配信 |
 | Gemini TTS失敗 | リトライ（最大3回、30秒間隔）→ 失敗時は生成中止 |
 | アップロード失敗 | ローカル保存。次回実行で自然リトライ |
 | レート制限到達 | ログ出力してスキップ。次回実行で再試行 |
