@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sun, 19 Apr 2026 06:36:51 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第59話 - テック速報 AI ニュースラジオ (2026-04-19)</title><description>配信日: 2026-04-19
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Tue, 21 Apr 2026 06:52:11 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第60話 - テック速報 AI ニュースラジオ (2026-04-21)</title><description>配信日: 2026-04-21
+出演: ヒナタ &amp; ソウタ
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（61件の記事をもとに構成）
+
+Gemini AIで自動生成されたポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_60_20260421.mp3" length="1648941" type="audio/mpeg" /><guid isPermaLink="false">episode-60-20260421</guid><pubDate>Tue, 21 Apr 2026 06:47:24 +0900</pubDate><itunes:episode>60</itunes:episode><itunes:duration>102</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第59話 - テック速報 AI ニュースラジオ (2026-04-19)</title><description>配信日: 2026-04-19
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、経済・マネー - 朝日新聞
@@ -579,10 +586,4 @@ Gemini AIで自動生成されたポッドキャストです。</description><en
 本日のニュースソース: ASCII.jp － トップ、CNET Japan 最新情報　総合、GIGAZINE、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （46件の記事をもとに構成）
 
-Gemini AIで自動生成されたポッドキャストです。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_2_20260220v2.mp3" length="9106221" type="audio/mpeg" /><guid isPermaLink="false">episode-2-20260220</guid><pubDate>Fri, 20 Feb 2026 08:55:08 +0900</pubDate><itunes:episode>2</itunes:episode><itunes:duration>569</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第1話 - AI Auto Podcast (2026-02-19)</title><description>配信日: 2026-02-19
-出演: サクラ &amp; レン
-
-本日のニュースソース: ASCII.jp － トップ、CNET Japan 最新情報　総合、GIGAZINE、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（47件の記事をもとに構成）
-
-Gemini AIで自動生成されたポッドキャストです。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_1_20260219.mp3" length="7239213" type="audio/mpeg" /><guid isPermaLink="false">episode-1-20260219</guid><pubDate>Thu, 19 Feb 2026 06:36:04 +0900</pubDate><itunes:episode>1</itunes:episode><itunes:duration>452</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+Gemini AIで自動生成されたポッドキャストです。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_2_20260220v2.mp3" length="9106221" type="audio/mpeg" /><guid isPermaLink="false">episode-2-20260220</guid><pubDate>Fri, 20 Feb 2026 08:55:08 +0900</pubDate><itunes:episode>2</itunes:episode><itunes:duration>569</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
