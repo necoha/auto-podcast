@@ -190,6 +190,58 @@ response = client.models.generate_content(
 
 ---
 
+### 1.2-R ScriptReviewer (`script_reviewer.py`) — 新規作成
+
+**責務**: 生成済み台本をGemini LLMでセルフレビューし、問題があれば修正版を返す。速報版・深掘り版の両方で使用。
+
+#### クラス図
+```mermaid
+classDiagram
+    class ScriptReviewer {
+        -api_key: str
+        -model: str
+        -client: genai.Client
+        +__init__(api_key: str, model: str)
+        +review(script: Script, articles: List[Dict]) Script
+        -_build_review_prompt(script, articles) str
+        -_parse_response(response_text: str) Script
+        -_count_changes(original, reviewed) int
+    }
+```
+
+#### レビュー5項目
+
+| # | チェック項目 | 修正内容 |
+|---|------------|---------|
+| 1 | フォーマット不正 | speaker が "A"/"B" 以外、text が空の行を修正 |
+| 2 | 不自然な会話 | 同一フレーズの繰り返し、唐突な話題転換を修正 |
+| 3 | 記事カバレッジ | 提供記事への言及漏れを追加（重複記事のまとめはOK） |
+| 4 | TTS不適切表現 | URL、コード片、括弧だらけの文を自然な日本語に変換 |
+| 5 | 長さの偏り | 特定トピックだけ極端に長い/短い場合にバランス調整 |
+
+#### メソッド詳細
+
+| メソッド | 入力 | 出力 | 処理概要 |
+|---------|------|------|---------|
+| `__init__` | api_key, model | - | Gemini Client初期化 |
+| `review` | script: Script, articles: List[Dict] | Script | LLMレビュー呼び出し。失敗時は元scriptをそのまま返す |
+| `_build_review_prompt` | script, articles | str | 記事一覧＋台本JSONをプロンプトに構成 |
+| `_parse_response` | response_text | Script | JSON配列 → Script型に変換 |
+| `_count_changes` | original, reviewed | int | 差分行数をカウント（ログ用） |
+
+#### エラーハンドリング
+
+- 503/UNAVAILABLE: 30秒後に1回リトライ → 失敗時は元の台本を返す
+- その他のエラー: 即座に元の台本を返す（レビューはベストエフォート）
+- レビュー結果が空/不正: 例外 → 元の台本を返す
+
+#### API利用コスト
+
+- Gemini 2.5 Flash × 1回/エピソード（速報版＋深掘り版で計2回/日）
+- 無料枠 500 req/日の中で十分対応可能
+
+---
+
 ### 1.3 TTSGenerator (`tts_generator.py`) — 新規作成
 
 **責務**: Gemini Flash TTS APIを使い、台本テキストから音声ファイルを生成
@@ -412,6 +464,7 @@ classDiagram
         -guest_name: str
         -content_manager: ContentManager
         -script_generator: ScriptGenerator
+        -script_reviewer: ScriptReviewer
         -tts_generator: TTSGenerator
         -rss_generator: RSSFeedGenerator
         -uploader: PodcastUploader
@@ -425,6 +478,7 @@ classDiagram
 
     PodcastGenerator --> ContentManager
     PodcastGenerator --> ScriptGenerator
+    PodcastGenerator --> ScriptReviewer
     PodcastGenerator --> TTSGenerator
     PodcastGenerator --> PodcastUploader
 ```
@@ -446,6 +500,9 @@ def generate(self) -> EpisodeMetadata | None:
 
     # 2. 台本生成（+ PRONUNCIATION_MAP発音補正）
     script = self.script_generator.generate_script(articles)
+
+    # 2.5. 台本セルフレビュー（5項目チェック＆修正）
+    script = self.script_reviewer.review(script, articles)
 
     # 3. TTS音声生成（Multi-Speaker 1コール）
     self.tts_generator.generate_audio(script, audio_path)  # → WAV
@@ -476,6 +533,7 @@ classDiagram
         -guest_name: str
         -content_manager: ContentManager
         -script_generator: DeepScriptGenerator
+        -script_reviewer: ScriptReviewer
         -tts_generator: TTSGenerator
         -rss_generator: RSSFeedGenerator
         -uploader: PodcastUploader
@@ -489,6 +547,7 @@ classDiagram
 
     DeepDivePodcastGenerator --> ContentManager
     DeepDivePodcastGenerator --> DeepScriptGenerator
+    DeepDivePodcastGenerator --> ScriptReviewer
     DeepDivePodcastGenerator --> TTSGenerator
     DeepDivePodcastGenerator --> RSSFeedGenerator
     DeepDivePodcastGenerator --> PodcastUploader
@@ -499,6 +558,7 @@ classDiagram
 | 項目 | 速報版 (PodcastGenerator) | 深掘り版 (DeepDivePodcastGenerator) |
 |------|--------------------------|-------------------------------------|
 | 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
+| 台本レビュー | `ScriptReviewer`（5項目チェック） | `ScriptReviewer`（同一） |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
 | 記事選定 | 全記事に触れつつ重複統合 | AIが重要2-3件を厳選 |
 | フォールバック | `_休止告知スクリプト()` (お休み告知) | `_休止告知スクリプト()` (お休み告知) |
