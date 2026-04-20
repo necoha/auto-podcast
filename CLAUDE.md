@@ -41,12 +41,12 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 
 ```
 【速報版】
-RSS(13) → ContentManager → ScriptGenerator     → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
-             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
-                                                                                                          ↓
-【深掘り版】                                                                                             Spotify / Apple Podcasts
-RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
-             (feedparser)    (Gemini LLM)         (Gemini TTS)   (feed_deep.xml)   (CI検証)       (GitHub Pages)
+RSS(13) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
+                                                                                                                            ↓
+【深掘り版】                                                                                                               Spotify / Apple Podcasts
+RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+             (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed_deep.xml)   (CI検証)       (GitHub Pages)
 ```
 
 ### Core Components
@@ -54,18 +54,20 @@ RSS(13) → ContentManager → DeepScriptGenerator → TTSGenerator → RSSFeedG
 1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形（速報版/深掘り版共有）
 2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
 3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
-4. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
-5. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（パラメータ化、速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
-6. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
-7. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
-8. **DeepDivePodcastGenerator** (`deep_podcast_generator.py`) — 深掘り版オーケストレーション
-9. **ValidateFeeds** (`validate_feeds.py`) — デプロイ前のfeed.xml/feed_deep.xml自動検証（CIでconfig値との整合性保証）
+4. **ScriptReviewer** (`script_reviewer.py`) — 生成済み台本をGemini LLMで5項目セルフレビュー（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さバランス）
+5. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
+6. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
+7. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
+8. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
+9. **DeepDivePodcastGenerator** (`deep_podcast_generator.py`) — 深掘り版オーケストレーション
+10. **ValidateFeeds** (`validate_feeds.py`) — デプロイ前のfeed.xml/feed_deep.xml自動検証（CIでconfig値との整合性保証）
 
 ### Key Design Decisions
 
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
 - **LLMリトライ**: 台本生成で503エラー時に最大2回リトライ（30秒/60秒間隔）。失敗時は「お休み告知」を配信
+- **台本セルフレビュー**: 生成後にGemini LLMで5項目自動チェック（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さバランス）。レビュー失敗時は元の台本をそのまま使用
 - **フォールバック**: TTS失敗時はモデル切り替え → リトライ → スキップ
 - **重複記事統合**: 速報版プロンプトで全記事に触れつつ同一トピックの重複は統合して紹介
 - **CI検証**: デプロイ前にfeedメタデータをconfig値と自動照合、不整合時はデプロイ中止

@@ -14,6 +14,7 @@ from pydub import AudioSegment  # type: ignore[import-untyped]
 import config
 from content_manager import ContentManager
 from script_generator import ScriptGenerator, Script, ScriptLine
+from script_reviewer import ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
@@ -46,6 +47,7 @@ class PodcastGenerator:
             host_name=host_name,
             guest_name=guest_name,
         )
+        self.script_reviewer = ScriptReviewer(api_key=self.api_key)
         self.tts_generator = TTSGenerator(
             api_key=self.api_key,
             host_name=host_name,
@@ -104,6 +106,11 @@ class PodcastGenerator:
             script = _休止告知スクリプト(self.host_name, self.guest_name)
 
         logger.info("  台本: %d行", len(script))
+
+        # 2.5. 台本レビュー（自動チェック＆修正）
+        logger.info("2.5. 台本レビュー中...")
+        script = self.script_reviewer.review(script, articles)
+        logger.info("  レビュー後: %d行", len(script))
 
         # 3. 音声生成
         logger.info("3. 音声生成中...")
