@@ -100,7 +100,8 @@ class DeepDivePodcastGenerator:
         #    503エラー時はリトライ（LLMは500 req/日なので余裕あり）
         logger.info("[Deep] 2. 深掘り台本生成中...")
         script = None
-        max_retries = 2
+        is_fallback = False
+        max_retries = 4
         for attempt in range(max_retries + 1):
             try:
                 script = self.script_generator.generate_script(articles)
@@ -109,7 +110,7 @@ class DeepDivePodcastGenerator:
                 is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
                 is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
                 if (is_503 or is_truncated) and attempt < max_retries:
-                    wait = 30 * (attempt + 1)
+                    wait = 60 * (attempt + 1)
                     logger.warning(
                         "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
                         attempt + 1, max_retries + 1, wait, e,
@@ -123,13 +124,18 @@ class DeepDivePodcastGenerator:
             # リトライしても失敗 → お休み告知を生成して配信
             logger.warning("[Deep] 台本生成不可、お休み告知に切り替え")
             script = _休止告知スクリプト(self.host_name, self.guest_name)
+            is_fallback = True
 
         logger.info("[Deep]   台本: %d行", len(script))
 
         # 2.5. 台本レビュー（自動チェック＆修正）
-        logger.info("[Deep] 2.5. 台本レビュー中...")
-        script = self.script_reviewer.review(script, articles)
-        logger.info("[Deep]   レビュー後: %d行", len(script))
+        # お休み告知は固定テンプレなのでレビュー不要
+        if is_fallback:
+            logger.info("[Deep] 2.5. お休み告知のため台本レビューをスキップ")
+        else:
+            logger.info("[Deep] 2.5. 台本レビュー中...")
+            script = self.script_reviewer.review(script, articles)
+            logger.info("[Deep]   レビュー後: %d行", len(script))
 
         # 3. 音声生成
         logger.info("[Deep] 3. 音声生成中...")
@@ -183,7 +189,11 @@ class DeepDivePodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """次のエピソード番号を算出する（feed_deep.xml から）"""
+        """次のエピソード番号を算出する（feed_deep.xml から）
+
+        cleanup で古いエピソードが削除された場合でも item 数ではなく
+        既存エピソード番号の最大値+1で採番するため、重複を防げる。
+        """
         feed_filename = getattr(config, 'DEEP_RSS_FEED_FILENAME', 'feed_deep.xml')
         feed_path = os.path.join(config.AUDIO_OUTPUT_DIR, feed_filename)
         if os.path.exists(feed_path):
@@ -191,6 +201,14 @@ class DeepDivePodcastGenerator:
                 tree = ET.parse(feed_path)
                 channel = tree.find("channel")
                 if channel is not None:
+                    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
+                    nums = []
+                    for item in channel.findall("item"):
+                        ep = item.find("itunes:episode", ns)
+                        if ep is not None and ep.text and ep.text.isdigit():
+                            nums.append(int(ep.text))
+                    if nums:
+                        return max(nums) + 1
                     existing = len(channel.findall("item"))
                     if existing > 0:
                         return existing + 1
