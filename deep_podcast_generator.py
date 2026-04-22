@@ -107,7 +107,8 @@ class DeepDivePodcastGenerator:
                 break
             except Exception as e:
                 is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
-                if is_503 and attempt < max_retries:
+                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
+                if (is_503 or is_truncated) and attempt < max_retries:
                     wait = 30 * (attempt + 1)
                     logger.warning(
                         "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",

@@ -114,6 +114,7 @@ class ScriptGenerator:
             config=types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
                 response_mime_type="application/json",
+                max_output_tokens=65536,
             ),
             contents=prompt,
         )
@@ -121,6 +122,12 @@ class ScriptGenerator:
         script = self._parse_response(response.text)
         script = self._apply_pronunciation_fixes(script)
         logger.info("台本生成完了: %d行", len(script))
+
+        # 生成結果が極端に短い場合は失敗扱いとして上位のfallbackを発動させる
+        # （JSONそのものはパースできたが、途中で打ち切られたケースを検出）
+        if len(script) < 5:
+            raise ValueError(f"台本が短すぎます ({len(script)}行)。トークン上限で打ち切られた可能性があります")
+
         return script
 
     # TTS 読み替え辞書: {パターン: 読み替え}
