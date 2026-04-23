@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Thu, 23 Apr 2026 07:06:02 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第58話 - テック深掘り AI 解説ラジオ (2026-04-23)</title><description>配信日: 2026-04-23
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Fri, 24 Apr 2026 07:06:53 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第59話 - テック深掘り AI 解説ラジオ (2026-04-24)</title><description>配信日: 2026-04-24
+出演: リコ &amp; カイト
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（60件の記事からAIが厳選して深掘り解説）
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_59_20260424.mp3" length="422829" type="audio/mpeg" /><guid isPermaLink="false">episode-59-20260424</guid><pubDate>Fri, 24 Apr 2026 07:05:28 +0900</pubDate><itunes:episode>59</itunes:episode><itunes:duration>26</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第58話 - テック深掘り AI 解説ラジオ (2026-04-23)</title><description>配信日: 2026-04-23
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -570,16 +577,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
   - https://www.asahi.com/articles/ASV2Q1GWVV2QULFA035M.html?ref=rss
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_3_20260224.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-3-20260224</guid><pubDate>Tue, 24 Feb 2026 06:50:38 +0900</pubDate><itunes:episode>3</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第2話 - テック深掘り AI 解説ラジオ (2026-02-23)</title><description>配信日: 2026-02-23
-出演: アオイ &amp; タクミ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（40件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_2_20260223.mp3" length="4893741" type="audio/mpeg" /><guid isPermaLink="false">episode-2-20260223</guid><pubDate>Mon, 23 Feb 2026 06:27:10 +0900</pubDate><itunes:episode>2</itunes:episode><itunes:duration>305</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第1話 - テック深掘り AI 解説ラジオ (2026-02-22)</title><description>配信日: 2026-02-22
-出演: ナツキ &amp; リュウセイ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（44件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_1_20260222.mp3" length="9481773" type="audio/mpeg" /><guid isPermaLink="false">episode-1-20260222</guid><pubDate>Sun, 22 Feb 2026 18:26:42 +0900</pubDate><itunes:episode>1</itunes:episode><itunes:duration>592</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_3_20260224.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-3-20260224</guid><pubDate>Tue, 24 Feb 2026 06:50:38 +0900</pubDate><itunes:episode>3</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
