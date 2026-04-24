@@ -108,7 +108,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 ## Deployment
 
-- **スケジュール**: GitHub Actions cron `0 21 * * *` (06:00 JST)
+- **スケジュール**: GitHub Actions cron `0 14 * * *` (23:00 JST)
 - **ホスティング**: GitHub Pages (gh-pagesブランチ)
 - **速報版 RSS URL**: `https://necoha.github.io/auto-podcast/feed.xml`
 - **深掘り版 RSS URL**: `https://necoha.github.io/auto-podcast/feed_deep.xml`

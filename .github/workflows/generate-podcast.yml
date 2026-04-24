@@ -2,8 +2,8 @@ name: Generate Podcast
 
 on:
   schedule:
-    # 毎日 06:00 JST = 前日 21:00 UTC
-    - cron: "0 21 * * *"
+    # 毎日 23:00 JST = 14:00 UTC（深夜帯でGemini API混雑を回避）
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       hours:
