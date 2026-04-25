@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sat, 25 Apr 2026 00:21:25 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第60話 - テック深掘り AI 解説ラジオ (2026-04-25)</title><description>配信日: 2026-04-25
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sat, 25 Apr 2026 23:45:40 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第61話 - テック深掘り AI 解説ラジオ (2026-04-25)</title><description>配信日: 2026-04-25
+出演: シオリ &amp; ユウマ
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、経済・マネー - 朝日新聞
+（47件の記事からAIが厳選して深掘り解説）
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_61_20260425.mp3" length="12329901" type="audio/mpeg" /><guid isPermaLink="false">episode-61-20260425</guid><pubDate>Sat, 25 Apr 2026 23:45:16 +0900</pubDate><itunes:episode>61</itunes:episode><itunes:duration>770</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第60話 - テック深掘り AI 解説ラジオ (2026-04-25)</title><description>配信日: 2026-04-25
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -524,64 +531,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
   - https://www.asahi.com/articles/ASV2T36R5V2TULFA01LM.html?ref=rss
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_4_20260226.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-4-20260226</guid><pubDate>Thu, 26 Feb 2026 06:41:36 +0900</pubDate><itunes:episode>4</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第3話 - テック深掘り AI 解説ラジオ (2026-02-24)</title><description>配信日: 2026-02-24
-出演: ヒナタ &amp; ソウタ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、ロイター トップニュース、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（51件の記事からAIが厳選して深掘り解説）
-
-参照元記事:
-  - https://www.itmedia.co.jp/news/articles/2602/23/news014.html
-  - https://www.publickey1.jp/blog/26/nistaiai_agent_standards_initiative.html
-  - https://www.publickey1.jp/blog/26/anthropicclaude_code_security.html
-  - https://gigazine.net/news/20260224-wine-reviews-personality-abv-bert/
-  - https://gigazine.net/news/20260223-mozambique-honey-hunters-birds-language/
-  - https://gigazine.net/news/20260223-glances/
-  - https://gigazine.net/news/20260223-puget-bench-davinci-resolve/
-  - https://gigazine.net/news/20260223-evangelion-new-series/
-  - https://japan.cnet.com/article/35244213/
-  - https://japan.cnet.com/article/35244185/
-  - https://www.watch.impress.co.jp/docs/series/itsmo/2086514.html
-  - https://ascii.jp/elem/000/004/375/4375796/?rss
-  - https://ascii.jp/elem/000/004/375/4375795/?rss
-  - https://ascii.jp/elem/000/004/375/4375570/?rss
-  - https://ascii.jp/elem/000/004/375/4375424/?rss
-  - https://ascii.jp/elem/000/004/374/4374398/?rss
-  - https://techcrunch.com/2026/02/23/ex-apple-team-launches-acme-weather-a-new-take-on-weather-forecasting/
-  - https://techcrunch.com/2026/02/23/anthropic-accuses-chinese-ai-labs-of-mining-claude-as-us-debates-ai-chip-exports/
-  - https://techcrunch.com/2026/02/23/uber-autonomous-solutions-av-robotaxi/
-  - https://techcrunch.com/2026/02/23/googles-cloud-ai-lead-on-the-three-frontiers-of-model-capability/
-  - https://techcrunch.com/2026/02/23/americans-are-destroying-flock-surveillance-cameras/
-  - https://arstechnica.com/gaming/2026/02/new-microsoft-gaming-chief-has-no-tolerance-for-bad-ai/
-  - https://arstechnica.com/cars/2026/02/the-2026-mazda-cx-5-driven-it-got-bigger-plus-radical-tech-upgrade/
-  - https://arstechnica.com/ai/2026/02/ais-can-generate-near-verbatim-copies-of-novels-from-training-data/
-  - https://arstechnica.com/culture/2026/02/review-knight-of-the-seven-kingdoms-brings-back-that-westeros-magic/
-  - https://arstechnica.com/features/2026/02/the-first-cars-bold-enough-to-drive-themselves/
-  - https://thenevadaindependent.com/article/vegas-police-are-big-users-of-license-plate-readers-public-has-little-input-because-its-a-gift
-  - https://www.zerohedge.com/markets/ibm-plunges-after-anthropics-latest-update-takes-cobol
-  - https://videocardz.com/newz/stop-killing-games-update-says-eu-petition-advances
-  - https://www.ycombinator.com/companies/sim/jobs/Rj8TVRM-software-engineer-platform
-  - https://www.colino.net/wordpress/archives/2026/02/23/the-challenges-of-porting-shufflepuck-cafe-to-the-8-bits-apple-ii/
-  - https://business.nikkei.com/atcl/audio/22/00001/022000819/
-  - https://business.nikkei.com/atcl/NBD/19/world/00778/
-  - https://business.nikkei.com/atcl/gen/19/00141/021900096/
-  - https://business.nikkei.com/atcl/gen/19/00840/021900007/
-  - https://business.nikkei.com/atcl/gen/19/00847/021800001/
-  - https://jp.reuters.com/world/us/OAQYDZSXJNP4RDDLJMZSNSNAPY-2026-02-23/
-  - https://jp.reuters.com/world/security/A473DY4PMJPRZKAIMHY3UAQFUY-2026-02-23/
-  - https://jp.reuters.com/markets/japan/5AAFL6WUTRIPZIZRC34SJYGIGA-2026-02-23/
-  - https://jp.reuters.com/markets/japan/GALYHDMFOZIONEMM5CXLN34B34-2026-02-23/
-  - https://jp.reuters.com/world/security/E4FI6TLNGNIN5HO34EY27G6COM-2026-02-23/
-  - https://news.yahoo.co.jp/pickup/6570992?source=rss
-  - https://news.yahoo.co.jp/pickup/6570960?source=rss
-  - https://news.yahoo.co.jp/pickup/6570963?source=rss
-  - https://news.yahoo.co.jp/pickup/6570924?source=rss
-  - https://news.yahoo.co.jp/pickup/6570989?source=rss
-  - https://www.asahi.com/articles/ASV2R5CQBV2RUHBI01QM.html?ref=rss
-  - https://www.asahi.com/articles/ASV2N1W39V2NULFA00XM.html?ref=rss
-  - https://www.asahi.com/articles/ASV2N1T70V2NULFA00WM.html?ref=rss
-  - https://www.asahi.com/articles/ASV2Q1PZJV2QULFA01DM.html?ref=rss
-  - https://www.asahi.com/articles/ASV2Q1GWVV2QULFA035M.html?ref=rss
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_3_20260224.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-3-20260224</guid><pubDate>Tue, 24 Feb 2026 06:50:38 +0900</pubDate><itunes:episode>3</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_4_20260226.mp3" length="10515501" type="audio/mpeg" /><guid isPermaLink="false">episode-4-20260226</guid><pubDate>Thu, 26 Feb 2026 06:41:36 +0900</pubDate><itunes:episode>4</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
