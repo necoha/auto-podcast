@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sun, 09 Aug 2026 23:42:49 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第157話 - テック深掘り AI 解説ラジオ (2026-08-09)</title><description>配信日: 2026-08-09
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Thu, 13 Aug 2026 00:05:55 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第158話 - テック深掘り AI 解説ラジオ (2026-08-13)</title><description>配信日: 2026-08-13
+出演: サクラ &amp; レン
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（52件の記事からAIが厳選して深掘り解説）
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_158_20260812.mp3" length="10914093" type="audio/mpeg" /><guid isPermaLink="false">episode-158-20260813</guid><pubDate>Thu, 13 Aug 2026 00:01:24 +0900</pubDate><itunes:episode>158</itunes:episode><itunes:duration>682</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第157話 - テック深掘り AI 解説ラジオ (2026-08-09)</title><description>配信日: 2026-08-09
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
@@ -342,25 +349,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
 （60件の記事からAIが厳選して深掘り解説）
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_109_20260616.mp3" length="11930541" type="audio/mpeg" /><guid isPermaLink="false">episode-109-20260616</guid><pubDate>Tue, 16 Jun 2026 03:31:47 +0900</pubDate><itunes:episode>109</itunes:episode><itunes:duration>745</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第108話 - テック深掘り AI 解説ラジオ (2026-06-13)</title><description>配信日: 2026-06-13
-出演: シオリ &amp; ユウマ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（55件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_108_20260613.mp3" length="13278381" type="audio/mpeg" /><guid isPermaLink="false">episode-108-20260613</guid><pubDate>Sat, 13 Jun 2026 01:48:08 +0900</pubDate><itunes:episode>108</itunes:episode><itunes:duration>829</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第107話 - テック深掘り AI 解説ラジオ (2026-06-12)</title><description>配信日: 2026-06-12
-出演: リコ &amp; カイト
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（55件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_107_20260612.mp3" length="12514221" type="audio/mpeg" /><guid isPermaLink="false">episode-107-20260612</guid><pubDate>Fri, 12 Jun 2026 02:44:37 +0900</pubDate><itunes:episode>107</itunes:episode><itunes:duration>782</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第106話 - テック深掘り AI 解説ラジオ (2026-06-11)</title><description>配信日: 2026-06-11
-出演: サクラ &amp; レン
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（56件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_106_20260611.mp3" length="13796781" type="audio/mpeg" /><guid isPermaLink="false">episode-106-20260611</guid><pubDate>Thu, 11 Jun 2026 02:09:45 +0900</pubDate><itunes:episode>106</itunes:episode><itunes:duration>862</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_109_20260616.mp3" length="11930541" type="audio/mpeg" /><guid isPermaLink="false">episode-109-20260616</guid><pubDate>Tue, 16 Jun 2026 03:31:47 +0900</pubDate><itunes:episode>109</itunes:episode><itunes:duration>745</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
