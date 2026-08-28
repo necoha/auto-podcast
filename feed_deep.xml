@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Wed, 26 Aug 2026 23:52:06 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第166話 - テック深掘り AI 解説ラジオ (2026-08-26)</title><description>配信日: 2026-08-26
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sat, 29 Aug 2026 08:36:20 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第167話 - テック深掘り AI 解説ラジオ (2026-08-29)</title><description>配信日: 2026-08-29
+出演: シオリ &amp; ユウマ
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（55件の記事からAIが厳選して深掘り解説）
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_167_20260829.mp3" length="14545581" type="audio/mpeg" /><guid isPermaLink="false">episode-167-20260829</guid><pubDate>Sat, 29 Aug 2026 08:31:33 +0900</pubDate><itunes:episode>167</itunes:episode><itunes:duration>909</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第166話 - テック深掘り AI 解説ラジオ (2026-08-26)</title><description>配信日: 2026-08-26
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -300,25 +307,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
 （57件の記事からAIが厳選して深掘り解説）
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_124_20260702.mp3" length="11296941" type="audio/mpeg" /><guid isPermaLink="false">episode-124-20260702</guid><pubDate>Thu, 02 Jul 2026 01:27:18 +0900</pubDate><itunes:episode>124</itunes:episode><itunes:duration>705</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第123話 - テック深掘り AI 解説ラジオ (2026-06-30)</title><description>配信日: 2026-06-30
-出演: ヒナタ &amp; ソウタ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（56件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_123_20260630.mp3" length="9833901" type="audio/mpeg" /><guid isPermaLink="false">episode-123-20260630</guid><pubDate>Tue, 30 Jun 2026 02:01:23 +0900</pubDate><itunes:episode>123</itunes:episode><itunes:duration>614</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第122話 - テック深掘り AI 解説ラジオ (2026-06-29)</title><description>配信日: 2026-06-29
-出演: アオイ &amp; タクミ
-
-本日のニュースソース: ASCII.jp － トップ、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
-（37件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_122_20260629.mp3" length="12049581" type="audio/mpeg" /><guid isPermaLink="false">episode-122-20260629</guid><pubDate>Mon, 29 Jun 2026 00:17:54 +0900</pubDate><itunes:episode>122</itunes:episode><itunes:duration>753</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第121話 - テック深掘り AI 解説ラジオ (2026-06-28)</title><description>配信日: 2026-06-28
-出演: ナツキ &amp; リュウセイ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
-（39件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_121_20260628.mp3" length="13565997" type="audio/mpeg" /><guid isPermaLink="false">episode-121-20260628</guid><pubDate>Sun, 28 Jun 2026 00:17:33 +0900</pubDate><itunes:episode>121</itunes:episode><itunes:duration>847</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_124_20260702.mp3" length="11296941" type="audio/mpeg" /><guid isPermaLink="false">episode-124-20260702</guid><pubDate>Thu, 02 Jul 2026 01:27:18 +0900</pubDate><itunes:episode>124</itunes:episode><itunes:duration>705</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
