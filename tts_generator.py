@@ -202,6 +202,16 @@ Pronunciation:
         "ありがとうございました": "アリガトウゴザイマシタ",
         "お会いしましょう": "オアイシマショウ",
         "いきましょう": "イキマショウ",
+        "来ました": "キマシタ",
+        "きました": "キマシタ",
+        "引けを取らない": "ヒケヲトラナイ",
+        "ひけをとらない": "ヒケヲトラナイ",
+        "使えるだけでなく": "ツカエルダケデナク",
+        "つかえるだけでなく": "ツカエルダケデナク",
+        "分野": "ブンヤ",
+        "ぶんや": "ブンヤ",
+        "懸念": "ケネン",
+        "けねん": "ケネン",
         "よろしくお願いしますね": "ヨロシクオネガイシマスネ",
         # 相槌・会話表現
         "なるほど": "ナルホド",
@@ -215,16 +225,10 @@ Pronunciation:
     def _prepare_for_tts(self, text: str) -> str:
         """テキストをTTS向けに前処理する
 
-        1. ひらがな誤読パッチ: 誤読されやすい語句をカタカナ化
-        2. 読みアノテーション除去: 「語句（読み）」→「読み」のみ
+        1. 読みアノテーション除去: 「語句（読み）」→「読み」のみ
+        2. ひらがな誤読パッチ: 誤読されやすい語句をカタカナ化
         """
-        # 1. ひらがな誤読パッチ（長い語句から先にマッチ）
-        for hiragana, katakana in sorted(
-            self.TTS_KANA_PATCHES.items(), key=lambda x: len(x[0]), reverse=True
-        ):
-            text = text.replace(hiragana, katakana)
-
-        # 2. 語句（読み）→ 読みのみ
+        # 1. 語句（読み）→ 読みのみ
         # 語句 = 漢字・英字・数字・記号・スペースの組み合わせ
         # 読み = ひらがな・カタカナ・長音・英字・スペースの組み合わせ
         text = re.sub(
@@ -232,6 +236,13 @@ Pronunciation:
             r'\1',
             text,
         )
+
+        # 2. ひらがな誤読パッチ（長い語句から先にマッチ）
+        for hiragana, katakana in sorted(
+            self.TTS_KANA_PATCHES.items(), key=lambda x: len(x[0]), reverse=True
+        ):
+            text = text.replace(hiragana, katakana)
+
         return text
 
     def _generate_with_retry(self, prompt: str) -> bytes:

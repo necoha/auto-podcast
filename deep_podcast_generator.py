@@ -137,6 +137,8 @@ class DeepDivePodcastGenerator:
             script = self.script_reviewer.review(script, articles)
             logger.info("[Deep]   レビュー後: %d行", len(script))
 
+        script = self.script_generator._apply_pronunciation_fixes(script)
+
         # 3. 音声生成
         logger.info("[Deep] 3. 音声生成中...")
         episode_num = self._get_episode_number()
