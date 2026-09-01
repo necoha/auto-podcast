@@ -27,10 +27,27 @@ SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2  # 16-bit
 
 MAX_RETRIES = 3
-RETRY_DELAY = 30.0  # 429エラー時のリトライ待機秒数
+RETRY_DELAY = 30.0  # 一時的なTTSエラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
 MAX_LINES_PER_CHUNK = 25  # 1チャンクあたりの最大行数（TTS出力上限を超えないよう分割）
+
+TRANSIENT_TTS_ERROR_MARKERS = (
+    "429",
+    "resource_exhausted",
+    "500",
+    "502",
+    "503",
+    "504",
+    "internal",
+    "unavailable",
+    "server disconnected",
+    "connection reset",
+    "connection aborted",
+    "connection error",
+    "timed out",
+    "timeout",
+)
 
 JST = timezone(timedelta(hours=9))
 
@@ -257,14 +274,16 @@ Pronunciation:
                 return self._call_tts_api(prompt)
 
             except Exception as e:
-                err_str = str(e)
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    if attempt < MAX_RETRIES - 1:
-                        logger.warning(
-                            "  レート制限 (試行%d/%d)、リトライします",
-                            attempt + 1, MAX_RETRIES,
-                        )
-                        continue
+                is_transient = any(
+                    marker in str(e).lower()
+                    for marker in TRANSIENT_TTS_ERROR_MARKERS
+                )
+                if is_transient and attempt < MAX_RETRIES - 1:
+                    logger.warning(
+                        "  一時的なTTSエラー (試行%d/%d): %s。リトライします",
+                        attempt + 1, MAX_RETRIES, e,
+                    )
+                    continue
                 raise
         raise RuntimeError(f"TTS生成に{MAX_RETRIES}回失敗しました")
 
