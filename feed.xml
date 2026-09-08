@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Tue, 08 Sep 2026 03:49:12 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第176話 - テック速報 AI ニュースラジオ (2026-09-08)</title><description>配信日: 2026-09-08
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Wed, 09 Sep 2026 02:59:10 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第177話 - テック速報 AI ニュースラジオ (2026-09-09)</title><description>配信日: 2026-09-09
+出演: ミオ &amp; ハルト
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（57件の記事をもとに構成）
+
+Gemini AIで自動生成されたポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_177_20260909.mp3" length="9954861" type="audio/mpeg" /><guid isPermaLink="false">episode-177-20260909</guid><pubDate>Wed, 09 Sep 2026 02:43:17 +0900</pubDate><itunes:episode>177</itunes:episode><itunes:duration>622</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第176話 - テック速報 AI ニュースラジオ (2026-09-08)</title><description>配信日: 2026-09-08
 出演: ヒナタ &amp; ソウタ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -300,11 +307,4 @@ Gemini AIで自動生成されたポッドキャストです。
 （46件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_134_20260711.mp3" length="6159405" type="audio/mpeg" /><guid isPermaLink="false">episode-134-20260711</guid><pubDate>Sat, 11 Jul 2026 23:47:20 +0900</pubDate><itunes:episode>134</itunes:episode><itunes:duration>384</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第133話 - テック速報 AI ニュースラジオ (2026-07-11)</title><description>配信日: 2026-07-11
-出演: シオリ &amp; ユウマ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（55件の記事をもとに構成）
-
-Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_133_20260711.mp3" length="10153773" type="audio/mpeg" /><guid isPermaLink="false">episode-133-20260711</guid><pubDate>Sat, 11 Jul 2026 01:15:26 +0900</pubDate><itunes:episode>133</itunes:episode><itunes:duration>634</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_134_20260711.mp3" length="6159405" type="audio/mpeg" /><guid isPermaLink="false">episode-134-20260711</guid><pubDate>Sat, 11 Jul 2026 23:47:20 +0900</pubDate><itunes:episode>134</itunes:episode><itunes:duration>384</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
