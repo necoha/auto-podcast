@@ -33,6 +33,8 @@ TTS_VOICE_B = "Charon"
 LLM_MODEL = "gemini-2.5-flash"
 
 # コンテンツソース設定
+# 追加・変更前に docs/CRD.md「4.1.1 RSSニュースソース採用・除外基準」を確認する。
+# 承認済みソースのallowlist。CUSTOM_RSS_FEEDSにも同じ基準を適用する。
 RSS_FEEDS = [
     # テクノロジー（日本語）
     "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia NEWS

@@ -72,6 +72,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 - **重複記事統合**: 速報版プロンプトで全記事に触れつつ同一トピックの重複は統合して紹介
 - **CI検証**: デプロイ前にfeedメタデータをconfig値と自動照合、不整合時はデプロイ中止
 - **著作権対策**: `_build_prompt`でsummary除去、プロンプトに著作権指示、エピソード説明にソースURL、disclaimer明示
+- **RSSソース審査**: `RSS_FEEDS`・`CUSTOM_RSS_FEEDS`の追加前に `docs/CRD.md` の「4.1.1 RSSニュースソース採用・除外基準」に従う。既知の除外判断も同節を正本とする
 
 ## Configuration
 
