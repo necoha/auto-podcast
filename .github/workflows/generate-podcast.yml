@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   generate:
@@ -75,9 +76,11 @@ jobs:
         run: uv run python deep_podcast_generator.py
 
       - name: Validate generated feeds
+        id: validate-feeds
         run: uv run python validate_feeds.py audio_files
 
       - name: Deploy to gh-pages
+        id: deploy
         run: |
           # 生成物が存在するか確認（MP3 優先、なければ WAV）
           if ! ls audio_files/*.mp3 1>/dev/null 2>&1 && ! ls audio_files/*.wav 1>/dev/null 2>&1; then
@@ -144,6 +147,7 @@ jobs:
           fi
 
       - name: Commit and push
+        id: publish
         run: |
           cd gh-pages-deploy
           git config user.name "github-actions[bot]"
@@ -157,6 +161,7 @@ jobs:
           git push origin HEAD:gh-pages
 
       - name: Upload episode artifacts
+        id: upload-artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -174,3 +179,61 @@ jobs:
         run: |
           echo "::error::深掘り版の生成に失敗しました。速報版はデプロイ済みです。"
           exit 1
+
+      - name: Close verified TTS issue
+        if: >-
+          ${{
+            always() &&
+            github.event_name == 'schedule' &&
+            steps.generate-deep.outcome == 'success' &&
+            steps.validate-feeds.outcome == 'success' &&
+            steps.deploy.outcome == 'success' &&
+            steps.publish.outcome == 'success' &&
+            steps.upload-artifacts.outcome == 'success'
+          }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = 35;
+            const { owner, repo } = context.repo;
+            const { data: issue } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+
+            if (issue.state !== "open") {
+              core.info(`Issue #${issueNumber} is already closed.`);
+              return;
+            }
+
+            const runUrl = [
+              context.serverUrl,
+              owner,
+              repo,
+              "actions",
+              "runs",
+              context.runId,
+            ].join("/");
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body: [
+                "定期実行で修正後の動作を確認しました。",
+                `- Run: ${runUrl}`,
+                `- Commit: ${context.sha}`,
+                "- 深掘り版生成、フィード検証、gh-pages公開、成果物保存: 成功",
+                "",
+                "受け入れ条件を満たしたため自動クローズします。",
+              ].join("\n"),
+            });
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              state: "closed",
+              state_reason: "completed",
+            });
