@@ -89,6 +89,7 @@ auto-podcast/
 | `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
+| `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
 | `DAILY_SPEAKERS` | 曜日ローテーションテーブル | 7ペア×14人 |
 | `PODCAST_BASE_URL` | GitHub Pages URL | `necoha.github.io/auto-podcast` |
 | `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 環境変数 |
@@ -101,6 +102,12 @@ auto-podcast/
 | Gemini 2.5 Flash Preview TTS | 入出力ともに無料（RPD=10） |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |
+
+TTSは通常、速報版2チャンク＋深掘り版2チャンクの合計4リクエストです。
+一時障害時も各番組5リクエスト、定期実行1回あたり合計10リクエストを上限とします。
+手動再実行も同じプロジェクトの日次枠を消費するため、実行前に
+[Google AI Studio](https://aistudio.google.com/rate-limit?timeRange=last-28-days) で残量を確認してください。
+実際の上限はAI Studioに表示されるプロジェクト単位の割り当てが優先されます。
 
 ## トラブルシューティング
 

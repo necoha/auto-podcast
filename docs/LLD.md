@@ -785,8 +785,9 @@ URL: {link}
 入力: Director's Notes + MultiSpeaker トランスクリプト
 出力: 音声バイナリ（WAV PCM 24kHz 16bit mono）
 レスポンスモダリティ: AUDIO
-APIコール数: 1回/エピソード
-レート制限 (Free Tier): RPM=3, RPD=10
+APIコール数: 通常1〜2回/エピソード（25行単位で分割）、再試行込み最大5回
+レート制限 (Free Tier): RPM=3, RPD=10を設計前提（実割り当てはAI Studioを参照）
+実行上限: 速報版5回 + 深掘り版5回 = 定期実行1回あたり最大10回
 話者: 曜日ローテーション（7ペア×14人）
 ```
 

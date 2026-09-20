@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 24000
 SAMPLE_WIDTH = 2  # 16-bit
 
-MAX_RETRIES = 3
+MAX_RETRIES = 4
 RETRY_DELAY = 30.0  # 一時的なTTSエラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
@@ -50,6 +50,14 @@ TRANSIENT_TTS_ERROR_MARKERS = (
 )
 
 JST = timezone(timedelta(hours=9))
+
+
+class TransientTTSError(RuntimeError):
+    """再試行で回復する可能性があるTTS応答エラー。"""
+
+
+class TTSRequestBudgetExceeded(RuntimeError):
+    """番組単位のTTSリクエスト上限に達したことを示す。"""
 
 
 def get_daily_speakers() -> Tuple[str, str, str, str]:
@@ -83,6 +91,8 @@ class TTSGenerator:
             raise ValueError("GEMINI_API_KEY が設定されていません")
         self.client = genai.Client(api_key=self.api_key)
         self.model = config.TTS_MODEL
+        self.request_budget = config.TTS_MAX_REQUESTS_PER_PODCAST
+        self.requests_made = 0
 
         # 曜日ローテーションから取得（明示的に指定された場合はそちらを優先）
         daily = get_daily_speakers()
@@ -189,7 +199,7 @@ Pronunciation:
         英字固有名詞はカタカナ読みに置換して TTS の誤読を防ぐ。
         複数チャンクの場合、Voice継続指示を追加して声の一貫性を保つ。
         """
-        lines = []
+        lines: List[str] = []
         for line in script:
             name = self.host_name if line.speaker == "A" else self.guest_name
             text = self._prepare_for_tts(line.text)
@@ -266,15 +276,28 @@ Pronunciation:
         """リトライ付き Multi-Speaker TTS API 呼び出し"""
         for attempt in range(MAX_RETRIES):
             try:
+                request_budget = getattr(
+                    self,
+                    "request_budget",
+                    config.TTS_MAX_REQUESTS_PER_PODCAST,
+                )
+                requests_made = getattr(self, "requests_made", 0)
+                if requests_made >= request_budget:
+                    raise TTSRequestBudgetExceeded(
+                        f"TTSリクエスト上限に到達しました "
+                        f"({requests_made}/{request_budget})"
+                    )
+
                 if attempt > 0:
-                    wait = RETRY_DELAY * attempt
+                    wait = RETRY_DELAY * (2 ** (attempt - 1))
                     logger.info("  リトライ待機: %.0f秒...", wait)
                     time.sleep(wait)
 
+                self.requests_made = requests_made + 1
                 return self._call_tts_api(prompt)
 
             except Exception as e:
-                is_transient = any(
+                is_transient = isinstance(e, TransientTTSError) or any(
                     marker in str(e).lower()
                     for marker in TRANSIENT_TTS_ERROR_MARKERS
                 )
@@ -319,13 +342,29 @@ Pronunciation:
             ),
         )
 
-        # レスポンスから音声データ取得
-        part = response.candidates[0].content.parts[0]
-        if not hasattr(part, 'inline_data') or part.inline_data is None:
-            raise RuntimeError("TTS応答に音声データが含まれていません")
+        # レスポンスから最初の有効な音声データを取得
+        candidates = response.candidates or []
+        if not candidates:
+            raise TransientTTSError("TTS応答に候補が含まれていません")
 
-        audio_bytes = part.inline_data.data
-        mime_type = part.inline_data.mime_type or ""
+        candidate = candidates[0]
+        content = candidate.content
+        parts = content.parts if content and content.parts else []
+        audio_bytes = None
+        mime_type = ""
+        for part in parts:
+            inline_data = part.inline_data
+            if inline_data is not None and inline_data.data:
+                audio_bytes = inline_data.data
+                mime_type = inline_data.mime_type or ""
+                break
+
+        if not audio_bytes:
+            finish_reason = getattr(candidate, "finish_reason", None)
+            detail = f" (finish_reason={finish_reason})" if finish_reason else ""
+            raise TransientTTSError(
+                f"TTS応答に音声データが含まれていません{detail}"
+            )
 
         # WAV形式の場合はPCMデータのみ抽出
         if mime_type.startswith("audio/wav") or mime_type.startswith("audio/x-wav"):

@@ -17,7 +17,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -67,6 +67,8 @@ jobs:
         run: uv run python podcast_generator.py
 
       - name: Generate deep dive podcast
+        id: generate-deep
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PODCAST_OWNER_EMAIL: ${{ secrets.PODCAST_OWNER_EMAIL }}
@@ -166,3 +168,9 @@ jobs:
             content/*.json
           retention-days: 90
           if-no-files-found: warn
+
+      - name: Report deep dive generation failure
+        if: steps.generate-deep.outcome == 'failure'
+        run: |
+          echo "::error::深掘り版の生成に失敗しました。速報版はデプロイ済みです。"
+          exit 1

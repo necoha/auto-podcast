@@ -9,6 +9,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # TTS設定
 TTS_MODEL = "gemini-2.5-flash-preview-tts"
 TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
+TTS_MAX_REQUESTS_PER_PODCAST = int(
+    os.getenv("TTS_MAX_REQUESTS_PER_PODCAST", "5")
+)
 
 # 曜日ローテーション（7ペア × ホスト＋ゲスト = 14人）
 # 各タプル: (ホスト名, ホスト音声, ゲスト名, ゲスト音声)
@@ -52,8 +55,9 @@ RSS_FEEDS = [
 ]
 
 # 環境変数からカスタムRSSフィードを追加
-if os.getenv("CUSTOM_RSS_FEEDS"):
-    RSS_FEEDS.extend(os.getenv("CUSTOM_RSS_FEEDS").split(","))
+custom_rss_feeds = os.getenv("CUSTOM_RSS_FEEDS")
+if custom_rss_feeds:
+    RSS_FEEDS.extend(custom_rss_feeds.split(","))
 
 # ファイル管理設定
 AUDIO_OUTPUT_DIR = "./audio_files"
