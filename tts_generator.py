@@ -2,17 +2,19 @@
 TTS音声生成モジュール
 Gemini Flash TTS Multi-Speaker APIを使い、台本テキストから音声ファイルを生成する
 
-Multi-Speaker TTS により台本全体を1回のAPIコールで音声化するため、
-レート制限（Free Tier 3 RPM）の影響を受けない。
+Multi-Speaker TTS で台本を25行単位に音声化し、番組単位のリクエスト予算内で結合する。
 """
 
 import io
 import logging
 import re
+import sys
 import time
 import wave
 import os
+from array import array
 from datetime import datetime, timezone, timedelta
+from math import log1p, sqrt
 from typing import List, Optional, Tuple
 
 from google import genai
@@ -31,6 +33,14 @@ RETRY_DELAY = 30.0  # 一時的なTTSエラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
 MAX_LINES_PER_CHUNK = 25  # 1チャンクあたりの最大行数（TTS出力上限を超えないよう分割）
+REPEATED_PREFIX_ANALYSIS_RATE = 8000
+REPEATED_PREFIX_FRAME_SEC = 0.02
+REPEATED_PREFIX_WINDOW_SEC = 12.0
+REPEATED_PREFIX_SEARCH_START_SEC = 8.0
+REPEATED_PREFIX_SEARCH_END_SEC = 60.0
+REPEATED_PREFIX_SCORE_THRESHOLD = 0.90
+REPEATED_PREFIX_WAVEFORM_THRESHOLD = 0.80
+REPEATED_PREFIX_WAVEFORM_WINDOW_SEC = 5.0
 
 TRANSIENT_TTS_ERROR_MARKERS = (
     "429",
@@ -77,7 +87,7 @@ def get_daily_speakers() -> Tuple[str, str, str, str]:
 class TTSGenerator:
     """Gemini Flash TTS Multi-Speaker APIで台本から音声ファイルを生成する
 
-    台本全体を1回のAPIコールで処理するため、レート制限の問題が発生しない。
+    台本を25行単位で処理し、番組単位のリクエスト予算を超えないよう制御する。
     曜日ローテーションで7ペア×2人 = 14人の出演者を切り替える。
     """
 
@@ -179,10 +189,163 @@ class TTSGenerator:
         num_samples = int(SAMPLE_RATE * seconds)
         return b'\x00' * (num_samples * SAMPLE_WIDTH)
 
+    @staticmethod
+    def _normalized_correlation(left: List[float], right: List[float]) -> float:
+        """同じ長さの数列について正規化相関を返す。"""
+        if not left or len(left) != len(right):
+            return 0.0
+
+        left_mean = sum(left) / len(left)
+        right_mean = sum(right) / len(right)
+        numerator = sum(
+            (left_value - left_mean) * (right_value - right_mean)
+            for left_value, right_value in zip(left, right)
+        )
+        denominator = sqrt(
+            sum((value - left_mean) ** 2 for value in left)
+            * sum((value - right_mean) ** 2 for value in right)
+        )
+        return numerator / denominator if denominator else 0.0
+
+    @classmethod
+    def _find_repeated_prefix(cls, pcm_data: bytes) -> Optional[Tuple[int, float]]:
+        """先頭12秒が後続で再開されている場合、再開位置と相関を返す。"""
+        if len(pcm_data) % SAMPLE_WIDTH:
+            return None
+
+        samples = array('h')
+        samples.frombytes(pcm_data)
+        if sys.byteorder != "little":
+            samples.byteswap()
+
+        sample_stride = max(1, SAMPLE_RATE // REPEATED_PREFIX_ANALYSIS_RATE)
+        samples = samples[::sample_stride]
+        analysis_rate = SAMPLE_RATE // sample_stride
+        minimum_samples = int(
+            (REPEATED_PREFIX_SEARCH_START_SEC + REPEATED_PREFIX_WINDOW_SEC)
+            * analysis_rate
+        )
+        if len(samples) < minimum_samples:
+            return None
+
+        frame_size = max(1, int(analysis_rate * REPEATED_PREFIX_FRAME_SEC))
+        analysis_limit = min(
+            len(samples),
+            int(
+                (REPEATED_PREFIX_SEARCH_END_SEC + REPEATED_PREFIX_WINDOW_SEC)
+                * analysis_rate
+            ),
+        )
+        features: List[Tuple[float, float]] = []
+        for start in range(0, analysis_limit - frame_size + 1, frame_size):
+            frame = samples[start:start + frame_size]
+            rms = sqrt(sum(value * value for value in frame) / frame_size)
+            crossings = sum(
+                (frame[index] >= 0) != (frame[index - 1] >= 0)
+                for index in range(1, frame_size)
+            ) / frame_size
+            features.append((log1p(rms), crossings))
+
+        window_frames = int(
+            REPEATED_PREFIX_WINDOW_SEC / REPEATED_PREFIX_FRAME_SEC
+        )
+        reference_energy = [value[0] for value in features[:window_frames]]
+        reference_crossings = [value[1] for value in features[:window_frames]]
+        search_start = int(
+            REPEATED_PREFIX_SEARCH_START_SEC / REPEATED_PREFIX_FRAME_SEC
+        )
+        search_end = min(
+            int(REPEATED_PREFIX_SEARCH_END_SEC / REPEATED_PREFIX_FRAME_SEC),
+            len(features) - window_frames,
+        )
+
+        best_match: Optional[Tuple[float, float, float, int]] = None
+        for offset in range(search_start, search_end + 1):
+            candidate = features[offset:offset + window_frames]
+            energy_score = cls._normalized_correlation(
+                reference_energy,
+                [value[0] for value in candidate],
+            )
+            crossing_score = cls._normalized_correlation(
+                reference_crossings,
+                [value[1] for value in candidate],
+            )
+            score = (energy_score + crossing_score) / 2
+            if best_match is None or score > best_match[0]:
+                best_match = (score, energy_score, crossing_score, offset)
+
+        if best_match is None:
+            return None
+
+        score, energy_score, crossing_score, offset = best_match
+        if (
+            score < REPEATED_PREFIX_SCORE_THRESHOLD
+            or energy_score < 0.92
+            or crossing_score < 0.85
+        ):
+            return None
+
+        coarse_sample = offset * frame_size
+        refine_radius = int(analysis_rate * 0.04)
+        refine_step = max(1, int(analysis_rate * 0.001))
+        reference_length = min(
+            int(analysis_rate * REPEATED_PREFIX_WAVEFORM_WINDOW_SEC),
+            len(samples) - coarse_sample,
+        )
+        waveform_stride = max(1, analysis_rate // 1000)
+        reference_waveform = [
+            float(samples[index])
+            for index in range(0, reference_length, waveform_stride)
+        ]
+        refined_sample = coarse_sample
+        refined_score = -1.0
+        for candidate_start in range(
+            max(0, coarse_sample - refine_radius),
+            min(len(samples) - reference_length, coarse_sample + refine_radius) + 1,
+            refine_step,
+        ):
+            candidate_waveform = [
+                float(samples[index])
+                for index in range(
+                    candidate_start,
+                    candidate_start + reference_length,
+                    waveform_stride,
+                )
+            ]
+            candidate_score = cls._normalized_correlation(
+                reference_waveform,
+                candidate_waveform,
+            )
+            if candidate_score > refined_score:
+                refined_score = candidate_score
+                refined_sample = candidate_start
+
+        if refined_score < REPEATED_PREFIX_WAVEFORM_THRESHOLD:
+            return None
+
+        original_sample = refined_sample * sample_stride
+        return original_sample * SAMPLE_WIDTH, score
+
+    @classmethod
+    def _trim_repeated_prefix(cls, pcm_data: bytes) -> bytes:
+        """TTSが先頭から読み直した場合、未完了の先頭部分を除去する。"""
+        repeated_prefix = cls._find_repeated_prefix(pcm_data)
+        if repeated_prefix is None:
+            return pcm_data
+
+        byte_offset, score = repeated_prefix
+        logger.warning(
+            "TTS音声の先頭繰り返しを検出: %.2f秒地点 (相関 %.3f)。先頭部分を除去します",
+            byte_offset / SAMPLE_WIDTH / SAMPLE_RATE,
+            score,
+        )
+        return pcm_data[byte_offset:]
+
     DIRECTOR_NOTES_TEMPLATE = """### DIRECTOR'S NOTES
 Language: 日本語（Japanese）
 Style: 明るく親しみやすいテクノロジー系ポッドキャスト。
 Pacing: 落ち着いたテンポで、聞き取りやすく話す。
+Delivery: TRANSCRIPTを先頭から末尾まで一度だけ読み、途中で先頭に戻ったり、発話を繰り返したりしない。
 Pronunciation:
 - 括弧内のカタカナ読みに従って発音すること。
   例: GitHub（ギットハブ） → 「ギットハブ」と読む
@@ -253,7 +416,8 @@ Pronunciation:
         """テキストをTTS向けに前処理する
 
         1. 読みアノテーション除去: 「語句（読み）」→「読み」のみ
-        2. ひらがな誤読パッチ: 誤読されやすい語句をカタカナ化
+        2. 文脈依存語の読みを補正
+        3. ひらがな誤読パッチ: 誤読されやすい語句をカタカナ化
         """
         # 1. 語句（読み）→ 読みのみ
         # 語句 = 漢字・英字・数字・記号・スペースの組み合わせ
@@ -264,7 +428,14 @@ Pronunciation:
             text,
         )
 
-        # 2. ひらがな誤読パッチ（長い語句から先にマッチ）
+        # 2. 複合語内ではない「国」は「くに」と読む
+        text = re.sub(
+            r'(?<![\u4e00-\u9fff\u3400-\u4dbf])国(?![\u4e00-\u9fff\u3400-\u4dbf])',
+            'クニ',
+            text,
+        )
+
+        # 3. ひらがな誤読パッチ（長い語句から先にマッチ）
         for hiragana, katakana in sorted(
             self.TTS_KANA_PATCHES.items(), key=lambda x: len(x[0]), reverse=True
         ):
@@ -372,6 +543,7 @@ Pronunciation:
         elif mime_type.startswith("audio/L16") or mime_type.startswith("audio/pcm"):
             pass  # すでにPCMデータ
 
+        audio_bytes = self._trim_repeated_prefix(audio_bytes)
         logger.info("  音声データ取得: %d bytes, mime=%s", len(audio_bytes), mime_type)
         return audio_bytes
 

@@ -264,7 +264,9 @@ classDiagram
         -_build_multi_speaker_prompt(script: Script) str
         -_generate_with_retry(prompt: str) bytes
         -_generate_silence(seconds: float) bytes
-        -_prepare_for_tts(script: Script) Script
+        -_prepare_for_tts(text: str) str
+        -_find_repeated_prefix(pcm_data: bytes) Optional~Tuple~
+        -_trim_repeated_prefix(pcm_data: bytes) bytes
         -_extract_pcm_from_wav(data: bytes) bytes
         -_save_audio(audio_data: bytes, output_path: str) str
     }
@@ -278,6 +280,9 @@ classDiagram
 | `generate_audio` | script, output_path | str | 台本全体をMulti-Speaker TTS 1コールで音声化 → WAV保存 |
 | `_build_multi_speaker_prompt` | script | str | Director's Notes + 話者名付きトランスクリプト構築 |
 | `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
+| `_prepare_for_tts` | text | str | 承認済みの読みアノテーションを読みへ変換し、単独の「国」など文脈依存語を補正 |
+| `_find_repeated_prefix` | pcm_data | Optional[Tuple] | 先頭12秒の特徴量・波形が後続に再出現する位置を検出 |
+| `_trim_repeated_prefix` | pcm_data | bytes | TTSが先頭から読み直した場合に未完了の先頭部分を除去 |
 | `_save_audio` | audio_data, path | str | 音声データをWAVファイルに書き出し |
 
 #### Gemini TTS API 呼び出し仕様（Multi-Speaker）
@@ -323,11 +328,13 @@ Leda, Orus, Zephyr, ...
 
 #### 音声仕様
 ```
-TTS方式: Multi-Speaker 1コール（セグメント分割なし）
+TTS方式: Multi-Speaker（25行単位でチャンク分割）
 末尾パディング: 2000ms の無音を挿入（SILENCE_PADDING_SEC=2.0）
 出力フォーマット: WAV (PCM 24kHz 16bit mono)
 後処理: pydub + ffmpeg で MP3 変換 (128kbps)
-リトライ: 最大3回、30秒間隔
+リトライ: チャンクごとに最大4試行、30秒/60秒/120秒の指数バックオフ
+リクエスト予算: 1番組あたり最大5回
+反復対策: 台本を一度だけ読む指示 + PCM先頭再出現の検出・除去（API再呼び出しなし）
 話者: 速報版・深掘り版で同じ曜日ペアを使用
 ```
 

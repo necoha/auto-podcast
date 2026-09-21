@@ -514,6 +514,10 @@ class ScriptGenerator:
         "所以": "ゆえん",
         "外貨": "がいか",
         "為替": "かわせ",
+        "日本銀行": "にっぽんぎんこう",
+        "中央銀行": "ちゅうおうぎんこう",
+        "銀行": "ぎんこう",
+        "各行": "かくこう",
         "利率": "りりつ",
         "金利": "きんり",
         "物価": "ぶっか",
@@ -522,6 +526,7 @@ class ScriptGenerator:
         "就任": "しゅうにん",
         "辞任": "じにん",
         # ===== 政治・行政・国際機関 =====
+        "中国": "ちゅうごく",
         "国防総省": "こくぼうそうしょう",
         "国務省": "こくむしょう",
         "国務長官": "こくむちょうかん",
@@ -604,16 +609,23 @@ class ScriptGenerator:
     def _apply_pronunciation_fixes(self, script: Script) -> Script:
         """台本テキストに読み替え辞書を適用する
 
-        1. LLMが付けた間違った読みを正しい読みで上書き
-        2. 読みが未付与の語句に正しい読みを追加
+        1. LLMが漢字語に付けた未検証の読みを除去
+        2. 承認済み辞書の読みを付与
         3. プレースホルダーで長い語の再マッチを防止
         """
         # 長い語句から先にマッチさせ、部分一致の二重置換を防ぐ
         sorted_words = sorted(self.PRONUNCIATION_MAP.keys(), key=len, reverse=True)
         fixed: Script = []
         for line in script:
-            text = line.text
-            placeholders: dict = {}
+            # 漢字語の未検証な読みは破棄し、承認済み辞書だけを再適用する。
+            # 未登録の英語固有名詞に付いたカタカナ読みは維持する。
+            text = re.sub(
+                r'(?<![A-Za-z0-9])([\u4e00-\u9fff\u3400-\u4dbf]+)'
+                r'（[ぁ-ゟァ-ヿーA-Za-z\s]+）',
+                r'\1',
+                line.text,
+            )
+            placeholders: Dict[str, str] = {}
             for idx, word in enumerate(sorted_words):
                 reading = self.PRONUNCIATION_MAP[word]
                 placeholder = f"\x00PH{idx}\x00"
