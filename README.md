@@ -8,6 +8,7 @@
 - **公式APIベース**: UIスクレイピング不要、安定動作
 - **自動化**: GitHub Actionsで毎日06:00 JSTに自動生成・配信
 - **高品質TTS**: Gemini 2.5 Flash Preview TTSによる自然な音声
+- **事実検証**: URL Contextで元記事と数値・年月・制度・主体と指標を照合し、未検証時は見出し限定で配信
 - **14人日替わりローテーション**: 曜日ごとに異なるホスト＋ゲストペア（7ペア）
 - **ポッドキャスト配信**: GitHub Pages + RSS → Spotify / Apple Podcastsで自動配信
 
@@ -86,7 +87,9 @@ auto-podcast/
 | 設定 | 説明 | デフォルト |
 |------|------|-----------|
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
-| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
+| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー9 + 経済4 |
+| `MAX_ARTICLES` | 1フィードあたりの取得上限 | `2` |
+| `MAX_TOTAL_ARTICLES` | 全フィード合計の取得上限 | `20` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
@@ -99,6 +102,7 @@ auto-podcast/
 | サービス | 無料枠 |
 |----------|--------|
 | Gemini 2.5 Flash（LLM） | 500 req/日 |
+| URL Context | 無料（通常2回/日、取得内容はLLM入力トークンに算入） |
 | Gemini 2.5 Flash Preview TTS | 入出力ともに無料（RPD=10） |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |

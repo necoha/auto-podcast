@@ -192,7 +192,7 @@ response = client.models.generate_content(
 
 ### 1.2-R ScriptReviewer (`script_reviewer.py`) — 新規作成
 
-**責務**: 生成済み台本をGemini LLMでセルフレビューし、問題があれば修正版を返す。速報版・深掘り版の両方で使用。
+**責務**: 生成済み台本をURL Contextで元記事と照合し、引用証跡付きの修正版だけを返す。速報版・深掘り版の両方で使用。
 
 #### クラス図
 ```mermaid
@@ -201,15 +201,20 @@ classDiagram
         -api_key: str
         -model: str
         -client: genai.Client
+        +last_verification_urls: List[str]
         +__init__(api_key: str, model: str)
-        +review(script: Script, articles: List[Dict]) Script
+        +review(script: Script, articles: List[Dict], require_all_articles: bool) Script
+        -_review_config() GenerateContentConfig
+        -_parse_grounded_response(response) Script
+        -_extract_grounding_evidence(response) Tuple
+        -_validate_claim_citations(script, response_text, support_ranges) None
         -_build_review_prompt(script, articles) str
         -_parse_response(response_text: str) Script
         -_count_changes(original, reviewed) int
     }
 ```
 
-#### レビュー5項目
+#### レビュー6項目
 
 | # | チェック項目 | 修正内容 |
 |---|------------|---------|
@@ -218,27 +223,31 @@ classDiagram
 | 3 | 記事カバレッジ | 提供記事への言及漏れを追加（重複記事のまとめはOK） |
 | 4 | TTS不適切表現 | URL、コード片、括弧だらけの文を自然な日本語に変換 |
 | 5 | 長さの偏り | 特定トピックだけ極端に長い/短い場合にバランス調整 |
+| 6 | 事実整合性 | URL Contextで数値・年月・制度・主体と指標を確認。引用のない高リスク主張を拒否 |
 
 #### メソッド詳細
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, model | - | Gemini Client初期化 |
-| `review` | script: Script, articles: List[Dict] | Script | LLMレビュー呼び出し。失敗時は元scriptをそのまま返す |
-| `_build_review_prompt` | script, articles | str | 記事一覧＋台本JSONをプロンプトに構成 |
+| `review` | script: Script, articles: List[Dict], require_all_articles | Script | URL Context付きレビュー。証跡不足時は `FactVerificationError` |
+| `_build_review_prompt` | script, articles | str | 記事タイトル・媒体・URL＋台本JSONをプロンプトに構成 |
+| `_extract_url_context_evidence` | response | tuple | 取得成功した元記事URLと引用文字範囲を抽出 |
+| `_validate_claim_citations` | script, response_text, support_ranges | None | 事実行に引用を要求し、数値・年月・制度語は語単位で引用範囲を検証 |
 | `_parse_response` | response_text | Script | JSON配列 → Script型に変換 |
 | `_count_changes` | original, reviewed | int | 差分行数をカウント（ログ用） |
 
 #### エラーハンドリング
 
-- 503/UNAVAILABLE: 30秒後に1回リトライ → 失敗時は元の台本を返す
-- その他のエラー: 即座に元の台本を返す（レビューはベストエフォート）
-- レビュー結果が空/不正: 例外 → 元の台本を返す
+- 429/5xxなどの一時障害: 30秒後に1回リトライ
+- 元記事取得・引用不足: 即時に1回再試行
+- APIキー不正などの恒久エラー: 再試行しない
+- 最終失敗: `FactVerificationError`を送出し、オーケストレーターが記事タイトル限定台本へ切り替える
 
 #### API利用コスト
 
-- Gemini 2.5 Flash × 1回/エピソード（速報版＋深掘り版で計2回/日）
-- 無料枠 500 req/日の中で十分対応可能
+- URL Context付きGemini 2.5 Flash × 1回/エピソード（通常2回/日、再試行込み最大4回/日）
+- URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
 
 ---
 
@@ -277,7 +286,7 @@ classDiagram
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, host_voice, guest_name, guest_voice | - | genai.Client初期化。曜日ローテーションの音声名設定 |
-| `generate_audio` | script, output_path | str | 台本全体をMulti-Speaker TTS 1コールで音声化 → WAV保存 |
+| `generate_audio` | script, output_path | str | 台本を25行単位でMulti-Speaker TTS音声化し、結合してWAV保存 |
 | `_build_multi_speaker_prompt` | script | str | Director's Notes + 話者名付きトランスクリプト構築 |
 | `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
 | `_prepare_for_tts` | text | str | 承認済みの読みアノテーションを読みへ変換し、単独の「国」など文脈依存語を補正 |
@@ -451,6 +460,9 @@ class EpisodeMetadata:
     published_date: str     # 配信日
     source_articles: List[dict]  # 元記事情報
     duration_seconds: int   # 音声の長さ（秒）
+    verification_status: str  # grounded / title_only_fallback / not_applicable
+    verification_sources: List[str]  # URL Contextで取得成功した元記事URL
+    script_lines: List[dict]  # TTSへ渡した最終台本（事後監査用）
 ```
 
 > **配信方式**: MP3 + feed.xml を gh-pages ブランチに push。
@@ -479,7 +491,7 @@ classDiagram
         +generate() EpisodeMetadata
         -_get_episode_number() int
         -_convert_to_mp3(wav_path, mp3_path, bitrate) str
-        -_build_metadata(articles, audio_path, episode_num) EpisodeMetadata
+        -_build_metadata(articles, audio_path, episode_num, script, verification_status, verification_sources) EpisodeMetadata
         -_get_audio_duration(audio_path) int
     }
 
@@ -497,21 +509,24 @@ classDiagram
 | `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。5つのサブコンポーネントを初期化 |
 | `generate` | - | EpisodeMetadata or None | メインフロー: 収集→台本→音声→アップロード |
 | `_get_episode_number` | - | int | feed.xmlの既存item数+1。フォールバックとしてcontent/ JSONカウント |
-| `_build_metadata` | articles, audio_path | EpisodeMetadata | メタデータ構築 |
+| `_build_metadata` | articles, audio_path, episode_num, script, verification_status, verification_sources | EpisodeMetadata | 元記事・検証状態・参照URL・最終台本を含むメタデータ構築 |
 
 #### generate() フロー（疑似コード）
 ```python
 def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（24h以内 + 重複排除）
-    articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
+    articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
 
     # 2. 台本生成（+ PRONUNCIATION_MAP発音補正）
     script = self.script_generator.generate_script(articles)
 
-    # 2.5. 台本セルフレビュー（5項目チェック＆修正）
-    script = self.script_reviewer.review(script, articles)
+    # 2.5. URL Contextで元記事と6項目レビュー
+    try:
+        script = self.script_reviewer.review(script, articles)
+    except FactVerificationError:
+        script = fallback_script(articles)  # 見出し限定
 
-    # 3. TTS音声生成（Multi-Speaker 1コール）
+    # 3. TTS音声生成（Multi-Speaker、25行単位）
     self.tts_generator.generate_audio(script, audio_path)  # → WAV
 
     # 3.5 WAV → MP3 変換 (pydub + ffmpeg, 128kbps)
@@ -548,7 +563,7 @@ classDiagram
         +generate() EpisodeMetadata
         -_get_episode_number() int
         -_convert_to_mp3(wav_path, mp3_path, bitrate) str
-        -_build_metadata(articles, audio_path, episode_num) EpisodeMetadata
+        -_build_metadata(articles, audio_path, episode_num, script, verification_status, verification_sources) EpisodeMetadata
         -_get_audio_duration(audio_path) int
     }
 
@@ -565,10 +580,10 @@ classDiagram
 | 項目 | 速報版 (PodcastGenerator) | 深掘り版 (DeepDivePodcastGenerator) |
 |------|--------------------------|-------------------------------------|
 | 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
-| 台本レビュー | `ScriptReviewer`（5項目チェック） | `ScriptReviewer`（同一） |
+| 台本レビュー | `ScriptReviewer`（6項目 + 元記事の引用証跡） | 同一（選択済みトピックのみ検証） |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
 | 記事選定 | 全記事に触れつつ重複統合 | AIが重要2-3件を厳選 |
-| フォールバック | `_休止告知スクリプト()` (お休み告知) | `_休止告知スクリプト()` (お休み告知) |
+| フォールバック | 生成失敗時は休止告知、事実検証失敗時は見出し限定 | 同左（見出しは最大3件） |
 | RSSフィード | `feed.xml` | `feed_deep.xml` |
 | MP3格納先 | `episodes/` | `episodes_deep/` |
 | ファイル名 | `episode_N_YYYYMMDD.mp3` | `deep_N_YYYYMMDD.mp3` |
@@ -580,7 +595,7 @@ classDiagram
 ```python
 def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
-    articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
+    articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
 
     # 2. 深掘り台本生成（503時は最大2回リトライ）
     script = self.script_generator.generate_script(articles)
@@ -618,7 +633,8 @@ def generate(self) -> EpisodeMetadata | None:
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
 | `DAILY_SPEAKERS` | dict | 7曜日分 | 曜日ローテーションテーブル（7ペア×14人） |
 | `RSS_FEEDS` | List[str] | 13フィード | テクノロジーJP 6 + テクノロジーEN 3 + 経済JP 4 |
-| `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
+| `MAX_ARTICLES` | int | `2` | フィードあたりの最大取得数 |
+| `MAX_TOTAL_ARTICLES` | int | `20` | 重複排除後の全体最大記事数（URL Context上限） |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
 | `PODCAST_TITLE` | str | `テック速報 AI ニュースラジオ` | 速報版ポッドキャスト名 |
 | `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |
@@ -657,7 +673,7 @@ def generate(self) -> EpisodeMetadata | None:
 | テクノロジー(EN) | Ars Technica | `feeds.arstechnica.com/arstechnica/index` |
 | テクノロジー(EN) | Hacker News | `hnrss.org/frontpage?count=10` |
 | 経済(JP) | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
-| 経済(JP) | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
+| 経済(JP) | ロイター（日本語） | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
 | 経済(JP) | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
 | 経済(JP) | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
 

@@ -6,10 +6,9 @@
 import json
 import logging
 import os
-import shutil
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional
+from typing import Dict, List
 
 import config
 
@@ -25,8 +24,11 @@ class EpisodeMetadata:
     description: str
     episode_number: int
     published_date: str
-    source_articles: List[dict]
+    source_articles: List[Dict[str, str]]
     duration_seconds: int = 0
+    verification_status: str = "not_checked"
+    verification_sources: List[str] = field(default_factory=list[str])
+    script_lines: List[Dict[str, str]] = field(default_factory=list[Dict[str, str]])
 
 
 class PodcastUploader:

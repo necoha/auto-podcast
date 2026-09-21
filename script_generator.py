@@ -58,9 +58,11 @@ SYSTEM_PROMPT_TEMPLATE = """\
 - 英語の記事タイトルはそのまま読まず、内容を日本語で簡潔に言い換えて紹介すること
 
 事実確認に関する注意:
-- 提供された記事情報に書かれていない固有名詞・日付・事実を勝手に補完しないこと
-- 製品の発売日・価格・スペックなど、記事に明記されていない具体的な情報は推測で述べない
-- 確信がない情報は「と見られています」「という見方もあります」のように曖昧に表現すること
+- 提供されたタイトル・ソース名・URLだけを事実の根拠とすること
+- 記事情報にない固有名詞・数値・年月・価格・割合・因果関係を補完しないこと
+- 同じ単位でも主体と指標を混同しないこと。中央銀行の政策金利と民間銀行の預金金利は別の指標である
+- 確認できない情報を「と見られています」などの曖昧表現へ変えて残すことも禁止する
+- 情報が不足する場合はタイトルの内容だけを紹介し、背景説明を追加しないこと
 
 発音・表記ルール（TTS読み上げ用）:
 - 英語の固有名詞や技術用語にはカタカナ読みを括弧で併記する
@@ -714,21 +716,21 @@ class ScriptGenerator:
         return script
 
 
-def fallback_script(articles: List[dict],
+def fallback_script(articles: List[Dict[str, Any]],
                     host_name: str = "アオイ",
                     guest_name: str = "タクミ") -> Script:
-    """台本生成失敗時のフォールバック: 記事をそのまま読み上げテキスト化"""
+    """事実確認失敗時のフォールバック: 記事タイトルだけを読み上げる"""
     from datetime import datetime
     import re as _re
 
     script: Script = []
     script.append(ScriptLine(
-        speaker=host_name,
+        speaker="A",
         text=f"おはようございます、{host_name}です。{datetime.now().strftime('%Y年%m月%d日')}のニュースをお届けします。"
     ))
     script.append(ScriptLine(
-        speaker=guest_name,
-        text=f"{guest_name}です。よろしくお願いします。"
+        speaker="B",
+        text=f"{guest_name}です。本日は確認できた記事の見出しをお伝えします。"
     ))
 
     for i, article in enumerate(articles, 1):
@@ -736,20 +738,20 @@ def fallback_script(articles: List[dict],
         source = article.get('source', '')
 
         script.append(ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text=f"続いて{i}つ目のニュースです。{source}からお伝えします。"
         ))
         script.append(ScriptLine(
-            speaker=guest_name,
+            speaker="B",
             text=f"{title}というニュースです。{source}が報じています。"
         ))
 
     script.append(ScriptLine(
-        speaker=host_name,
+        speaker="A",
         text=f"以上、本日のニュースでした。{guest_name}さん、ありがとうございました。"
     ))
     script.append(ScriptLine(
-        speaker=guest_name,
+        speaker="B",
         text="ありがとうございました。また明日お会いしましょう。"
     ))
 

@@ -11,15 +11,15 @@ import os
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import List, Optional
 
 from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
-from deep_script_generator import DeepScriptGenerator
+from deep_script_generator import DeepScriptGenerator, deep_fallback_script
 from script_generator import Script
-from script_reviewer import ScriptReviewer
+from script_reviewer import FactVerificationError, ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
@@ -87,7 +87,7 @@ class DeepDivePodcastGenerator:
 
         # 1. コンテンツ収集（速報版と同じソースから全記事取得）
         logger.info("[Deep] 1. コンテンツ収集中...")
-        max_articles = getattr(config, 'MAX_ARTICLES', 5)
+        max_articles = getattr(config, 'MAX_ARTICLES', 2)
         articles = self.content_manager.fetch_rss_feeds(max_articles=max_articles)
 
         if not articles:
@@ -101,6 +101,8 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep] 2. 深掘り台本生成中...")
         script = None
         is_fallback = False
+        verification_status = "not_applicable"
+        verification_sources: List[str] = []
         max_retries = 4
         for attempt in range(max_retries + 1):
             try:
@@ -134,8 +136,27 @@ class DeepDivePodcastGenerator:
             logger.info("[Deep] 2.5. お休み告知のため台本レビューをスキップ")
         else:
             logger.info("[Deep] 2.5. 台本レビュー中...")
-            script = self.script_reviewer.review(script, articles)
-            logger.info("[Deep]   レビュー後: %d行", len(script))
+            try:
+                script = self.script_reviewer.review(
+                    script,
+                    articles,
+                    require_all_articles=False,
+                )
+                verification_status = "grounded"
+                verification_sources = self.script_reviewer.last_verification_urls
+                logger.info("[Deep]   レビュー後: %d行", len(script))
+            except FactVerificationError as error:
+                logger.error(
+                    "[Deep] 事実確認失敗、見出し限定台本へ切り替え: %s",
+                    error,
+                )
+                script = deep_fallback_script(
+                    articles,
+                    self.host_name,
+                    self.guest_name,
+                )
+                is_fallback = True
+                verification_status = "title_only_fallback"
 
         script = self.script_generator._apply_pronunciation_fixes(script)
 
@@ -162,7 +183,14 @@ class DeepDivePodcastGenerator:
 
         # 4. メタデータ構築 & RSS フィード更新
         logger.info("[Deep] 4. メタデータ構築・RSS フィード更新中...")
-        metadata = self._build_metadata(articles, audio_path, episode_num)
+        metadata = self._build_metadata(
+            articles,
+            audio_path,
+            episode_num,
+            script=script,
+            verification_status=verification_status,
+            verification_sources=verification_sources,
+        )
 
         mp3_filename = os.path.basename(audio_path)
         mp3_size = os.path.getsize(audio_path) if os.path.exists(audio_path) else None
@@ -223,6 +251,9 @@ class DeepDivePodcastGenerator:
         articles: list,
         audio_path: str,
         episode_num: int,
+        script: Script,
+        verification_status: str = "not_checked",
+        verification_sources: Optional[List[str]] = None,
     ) -> EpisodeMetadata:
         """エピソードメタデータを構築する"""
         today_str = datetime.now(JST).date().strftime("%Y-%m-%d")
@@ -260,6 +291,12 @@ class DeepDivePodcastGenerator:
             published_date=today_str,
             source_articles=source_articles,
             duration_seconds=duration,
+            verification_status=verification_status,
+            verification_sources=verification_sources or [],
+            script_lines=[
+                {"speaker": line.speaker, "text": line.text}
+                for line in script
+            ],
         )
 
     def _get_audio_duration(self, audio_path: str) -> int:

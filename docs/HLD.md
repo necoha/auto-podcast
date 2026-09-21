@@ -141,9 +141,10 @@ sequenceDiagram
     participant Cron as GitHub Actions cron
     participant Runner as ubuntu-latest
     participant CM as ContentManager
-    participant RSS as RSS Feeds (13)
+    participant RSS as RSS Feeds (8)
     participant SG as ScriptGenerator
     participant DSG as DeepScriptGenerator
+    participant SR as ScriptReviewer
     participant Gemini as Gemini 2.5 Flash
     participant TTS as TTSGenerator
     participant GTTS as Gemini Flash TTS
@@ -156,8 +157,8 @@ sequenceDiagram
     rect rgb(230, 245, 255)
         Note over Runner,RGEN: === 速報版 (podcast_generator.py) ===
         Runner->>Runner: get_daily_speakers() — 曜日ローテーションで出演者決定
-        Runner->>CM: fetch_rss_feeds(max=5, hours=24)
-        CM->>RSS: 13フィード取得
+        Runner->>CM: fetch_rss_feeds(max=2, hours=24)
+        CM->>RSS: 13フィード取得、全体最大20記事
         RSS-->>CM: 記事リスト
         CM->>CM: 日付フィルタ (24h) → 重複排除 (URL+タイトル類似度)
 
@@ -165,9 +166,13 @@ sequenceDiagram
         SG->>Gemini: generate_content(SYSTEM_PROMPT + 記事)
         Gemini-->>SG: 対話台本 JSON (1500-2500文字)
         SG->>SG: PRONUNCIATION_MAP (306エントリ) で読み仮名付与
+        SG->>SR: 台本 + 元記事URL
+        SR->>Gemini: URL Contextで元記事と照合
+        Gemini-->>SR: 引用証跡付き修正版
+        Note right of SR: 検証失敗時は見出し限定台本
 
         SG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS 1コール
+        TTS->>GTTS: Multi-Speaker TTS（25行単位）
         GTTS-->>TTS: 音声バイナリ (PCM)
         TTS->>TTS: WAV → MP3変換 (128kbps)
 
@@ -178,7 +183,7 @@ sequenceDiagram
     rect rgb(255, 245, 230)
         Note over Runner,RGEN: === 深掘り版 (deep_podcast_generator.py) ===
         Runner->>Runner: get_daily_speakers() — 同じ曜日ペアを使用
-        Runner->>CM: fetch_rss_feeds(max=5, hours=24)
+        Runner->>CM: fetch_rss_feeds(max=2, hours=24)
         CM->>RSS: 同一ソースから取得
         RSS-->>CM: 記事リスト
 
@@ -187,9 +192,13 @@ sequenceDiagram
         Note right of Gemini: AIが重要2-3件を選定<br/>6次元分析台本を生成
         Gemini-->>DSG: 深掘り台本 JSON (3000-5000文字)
         DSG->>DSG: PRONUNCIATION_MAP 再利用（継承）
+        DSG->>SR: 台本 + 元記事URL
+        SR->>Gemini: URL Contextで元記事と照合
+        Gemini-->>SR: 引用証跡付き修正版
+        Note right of SR: 検証失敗時は見出し限定台本
 
         DSG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS 1コール
+        TTS->>GTTS: Multi-Speaker TTS（25行単位）
         GTTS-->>TTS: 音声バイナリ (PCM)
         TTS->>TTS: WAV → MP3変換 (128kbps)
 
@@ -291,11 +300,11 @@ gh-pages/
 |---------|------|------|
 | **言語** | Python 3.11 | `.python-version` で固定 |
 | **パッケージ管理** | uv | pyproject.toml + uv.lock |
-| **LLM** | Gemini 2.5 Flash | 台本生成（無料枠） |
+| **LLM** | Gemini 2.5 Flash | 台本生成 + URL Contextによる元記事との事実照合（無料枠） |
 | **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成（RPD=10を設計前提、1番組最大5リクエスト） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
-| **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4） |
+| **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4、各最大2記事・全体最大20記事） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
 | **API SDK** | google-genai v1.63+ | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
