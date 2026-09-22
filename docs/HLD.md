@@ -36,8 +36,8 @@ flowchart TD
 
     subgraph External["外部サービス"]
         RSS[("RSS Feeds<br/>テクノロジー6(JP) + 3(EN)<br/>+ 経済4(JP) = 13")]
-        GeminiLLM["Gemini 2.5 Flash<br/>台本生成 API"]
-        GeminiTTS["Gemini Flash TTS<br/>Multi-Speaker 音声生成"]
+        GeminiLLM["Gemini 3.8 Flash<br/>台本生成 API"]
+        GeminiTTS["Gemini 3.1 Flash TTS<br/>Multi-Speaker 音声生成"]
         GHP["GitHub Pages<br/>MP3 + RSS ホスティング"]
         Spotify["Spotify / Apple Podcasts<br/>RSS 自動取得"]
     end
@@ -73,7 +73,7 @@ flowchart TD
 | **ContentManager** | `content_manager.py` | RSSフィードからのコンテンツ収集・テキスト処理。速報版・深掘り版で共有 |
 | **ScriptGenerator** | `script_generator.py` | Gemini Flash APIでポッドキャスト対話台本を生成（速報版）。PRONUNCIATION_MAP（306エントリ）による発音補正 |
 | **DeepScriptGenerator** | `deep_script_generator.py` | ScriptGenerator を継承。AI記事厳選＋6次元分析の深掘り台本を生成 |
-| **TTSGenerator** | `tts_generator.py` | Gemini Flash TTS APIで台本から音声ファイルを生成。速報版・深掘り版で共有 |
+| **TTSGenerator** | `tts_generator.py` | Gemini 3.1 Flash TTS Interactions APIで台本から音声ファイルを生成。速報版・深掘り版で共有 |
 | **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新。パラメータ化により速報版・深掘り版の両方に対応。`_sync_channel_metadata` でconfig値への自動同期を保証 |
 | **PodcastUploader** | `podcast_uploader.py` | メタデータ保存 + gh-pages へのデプロイ |
 | **Config** | `config.py` | 全体設定管理（環境変数・定数・曜日ローテーション・速報版/深掘り版設定） |
@@ -121,7 +121,7 @@ graph TD
 
 | 項目 | 旧（Notebook LM） | 新（プランα） |
 |------|-------------------|--------------|
-| 音声生成 | Selenium + Notebook LM | Gemini Flash TTS API |
+| 音声生成 | Selenium + Notebook LM | Gemini 3.1 Flash TTS Interactions API |
 | 台本生成 | Notebook LM 内部 | Gemini Flash API（明示的） |
 | 話者 | 匿名2人固定 | 14人日替わりローテーション（7ペア） |
 | 認証 | OAuth + Cookie + セッション管理 | APIキー1つ |
@@ -145,9 +145,9 @@ sequenceDiagram
     participant SG as ScriptGenerator
     participant DSG as DeepScriptGenerator
     participant SR as ScriptReviewer
-    participant Gemini as Gemini 2.5 Flash
+    participant Gemini as Gemini 3.8 Flash
     participant TTS as TTSGenerator
-    participant GTTS as Gemini Flash TTS
+    participant GTTS as Gemini 3.1 Flash TTS
     participant RGEN as RSSFeedGenerator
     participant GHP as GitHub Pages (gh-pages)
     participant Spotify as Spotify / Apple Podcasts
@@ -300,13 +300,13 @@ gh-pages/
 |---------|------|------|
 | **言語** | Python 3.11 | `.python-version` で固定 |
 | **パッケージ管理** | uv | pyproject.toml + uv.lock |
-| **LLM** | Gemini 2.5 Flash | 台本生成 + URL Contextによる元記事との事実照合（無料枠） |
-| **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成（RPD=10を設計前提、1番組最大5リクエスト） |
+| **LLM** | Gemini 3.8 Flash | 台本生成 + URL Contextによる元記事との事実照合（Stable・無料枠） |
+| **TTS** | Gemini 3.1 Flash TTS Preview | Interactions APIによるMulti-Speaker音声生成（無料枠、1番組最大5リクエスト） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
 | **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4、各最大2記事・全体最大20記事） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
-| **API SDK** | google-genai v1.63+ | Gemini LLM + TTS 統合SDK |
+| **API SDK** | google-genai 1.63.0 | Gemini LLM + experimental Interactions APIを固定して使用 |
 | **環境変数** | python-dotenv | ローカル開発用 |
 | **スケジューリング** | GitHub Actions cron | 毎日 06:00 JST (21:00 UTC) |
 | **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |

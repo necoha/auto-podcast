@@ -7,7 +7,7 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # TTS設定
-TTS_MODEL = "gemini-2.5-flash-preview-tts"
+TTS_MODEL = os.getenv("TTS_MODEL", "gemini-3.1-flash-tts-preview")
 TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
 TTS_MAX_REQUESTS_PER_PODCAST = int(
     os.getenv("TTS_MAX_REQUESTS_PER_PODCAST", "5")
@@ -30,12 +30,13 @@ TTS_VOICE_A = "Kore"
 TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
-LLM_MODEL = "gemini-2.5-flash"
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
 LLM_MAX_ATTEMPTS = 3
 LLM_RETRY_BASE_DELAY_SECONDS = 30
 GEMINI_LLM_TIMEOUT_MS = 180_000
 GEMINI_TTS_TIMEOUT_MS = 300_000
 GEMINI_SDK_MAX_ATTEMPTS = 1
+GEMINI_INTERACTIONS_MAX_RETRIES = 0
 
 # コンテンツソース設定
 # 追加・変更前に docs/CRD.md「4.1.1 RSSニュースソース採用・除外基準」を確認する。

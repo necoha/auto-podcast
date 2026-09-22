@@ -1,7 +1,7 @@
 # LLD - Low-Level Design
 ## AI Auto Podcast 詳細設計書
 
-**採用プラン: α（Gemini Flash + Gemini Flash TTS / 完全無料）**
+**採用プラン: α（Gemini 3.8 Flash + Gemini 3.1 Flash TTS / 完全無料）**
 
 ---
 
@@ -128,7 +128,7 @@ from google.genai import types
 
 client = genai.Client(api_key=api_key)
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.8-flash",
     config=types.GenerateContentConfig(
         system_instruction=system_prompt,
         response_mime_type="application/json",
@@ -246,14 +246,14 @@ classDiagram
 
 #### API利用コスト
 
-- URL Context付きGemini 2.5 Flash × 1回/エピソード（通常2回/日、再試行込み最大4回/日）
+- URL Context付きGemini 3.8 Flash × 1回/エピソード（通常2回/日、再試行込み最大4回/日）
 - URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
 
 ---
 
 ### 1.3 TTSGenerator (`tts_generator.py`) — 新規作成
 
-**責務**: Gemini Flash TTS APIを使い、台本テキストから音声ファイルを生成
+**責務**: Gemini 3.1 Flash TTS Interactions APIを使い、台本テキストから音声ファイルを生成
 
 #### クラス図
 ```mermaid
@@ -303,35 +303,21 @@ client = genai.Client(
     api_key=api_key,
     http_options=types.HttpOptions(
         timeout=300_000,
-        retry_options=types.HttpRetryOptions(attempts=1),
+        retry_options=types.HttpRetryOptions(attempts=0),
     ),
 )
-response = client.models.generate_content(
-    model="gemini-2.5-flash-preview-tts",
-    contents=multi_speaker_prompt,  # Director's Notes + トランスクリプト
-    config=types.GenerateContentConfig(
-        response_modalities=["AUDIO"],
-        speech_config=types.SpeechConfig(
-            multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-                speaker_voice_configs=[
-                    types.SpeakerVoiceConfig(
-                        speaker=host_name,
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_id=host_voice
-                        ),
-                    ),
-                    types.SpeakerVoiceConfig(
-                        speaker=guest_name,
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_id=guest_voice
-                        ),
-                    ),
-                ]
-            )
-        ),
-    ),
+response = client.interactions.create(
+    model="gemini-3.1-flash-tts-preview",
+    input=multi_speaker_prompt,
+    response_format={"type": "audio"},
+    generation_config={
+        "speech_config": [
+            {"speaker": host_name, "voice": host_voice},
+            {"speaker": guest_name, "voice": guest_voice},
+        ],
+    },
 )
-audio_data = response.candidates[0].content.parts[0].inline_data.data
+audio_data = base64.b64decode(response.outputs[0].data)
 ```
 
 #### 利用可能な音声（Gemini TTS）
@@ -633,8 +619,8 @@ def generate(self) -> EpisodeMetadata | None:
 | 設定名 | 型 | 値 | 説明 |
 |--------|---|-----|------|
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
-| `LLM_MODEL` | str | `gemini-2.5-flash` | 台本生成用モデル |
-| `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル |
+| `LLM_MODEL` | str | `gemini-3.8-flash` | 台本生成・URL Context用モデル。環境変数で上書き可能 |
+| `TTS_MODEL` | str | `gemini-3.1-flash-tts-preview` | TTS用モデル。環境変数で上書き可能 |
 | `TTS_VOICE` | str | `Kore` | デフォルト音声（フォールバック用） |
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
@@ -799,24 +785,25 @@ URL: {link}
 ライブラリ: google-genai
 エンドポイント: generativelanguage.googleapis.com
 認証: APIキー
-モデル: gemini-2.5-flash
+モデル: gemini-3.8-flash
 入力: テキスト（記事情報 + システムプロンプト）
 出力: JSON（対話台本）
-レート制限（無料枠）: 15 RPM, 100万トークン/日
+レート制限（無料枠）: プロジェクトごとのAI Studio表示値を参照
 ```
 
-### 4.3 Gemini Flash TTS API（Multi-Speaker 音声生成）
+### 4.3 Gemini 3.1 Flash TTS Interactions API（Multi-Speaker 音声生成）
 ```
 プロトコル: HTTPS
 ライブラリ: google-genai
 エンドポイント: generativelanguage.googleapis.com
 認証: APIキー（台本生成と共通）
-モデル: gemini-2.5-flash-preview-tts
+モデル: gemini-3.1-flash-tts-preview
+API: Interactions API
 入力: Director's Notes + MultiSpeaker トランスクリプト
 出力: 音声バイナリ（WAV PCM 24kHz 16bit mono）
 レスポンスモダリティ: AUDIO
 APIコール数: 通常1〜3回/エピソード（20行単位で分割）、再試行込み最大5回
-レート制限 (Free Tier): RPM=3, RPD=10を設計前提（実割り当てはAI Studioを参照）
+レート制限 (Free Tier): 実割り当てはAI Studioを参照
 実行上限: 速報版5回 + 深掘り版5回 = 定期実行1回あたり最大10回
 話者: 曜日ローテーション（7ペア×14人）
 ```
@@ -917,7 +904,7 @@ gh-pages/
 
 | パッケージ | バージョン | 用途 |
 |-----------|----------|------|
-| google-genai | >=1.0.0 | Gemini API（台本生成 + Multi-Speaker TTS） |
+| google-genai | 1.63.0 | Gemini API（台本生成 + experimental Interactions APIによるMulti-Speaker TTS） |
 | feedparser | >=6.0.10 | RSS/Atomフィード解析 |
 | beautifulsoup4 | >=4.12.2 | HTML本文抽出 |
 | requests | >=2.31.0 | HTTP通信 |

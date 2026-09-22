@@ -97,7 +97,7 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep]   %d件の記事を取得（ここからAIが厳選）", len(articles))
 
         # 2. 深掘り台本生成（AIが記事を厳選＋深い分析台本を生成）
-        #    503エラー時はリトライ（LLMは500 req/日なので余裕あり）
+        #    一時障害時は無料枠を守る範囲でリトライ
         logger.info("[Deep] 2. 深掘り台本生成中...")
         script = None
         is_fallback = False

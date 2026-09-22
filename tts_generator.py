@@ -1,10 +1,12 @@
 """
 TTS音声生成モジュール
-Gemini Flash TTS Multi-Speaker APIを使い、台本テキストから音声ファイルを生成する
+Gemini 3.1 Flash TTS Interactions APIを使い、台本テキストから音声ファイルを生成する
 
 Multi-Speaker TTS で台本を20行単位に音声化し、番組単位のリクエスト予算内で結合する。
 """
 
+import base64
+import binascii
 import io
 import logging
 import re
@@ -85,7 +87,7 @@ def get_daily_speakers() -> Tuple[str, str, str, str]:
 
 
 class TTSGenerator:
-    """Gemini Flash TTS Multi-Speaker APIで台本から音声ファイルを生成する
+    """Gemini 3.1 Flash TTSで台本からMulti-Speaker音声を生成する
 
     台本を20行単位で処理し、番組単位のリクエスト予算を超えないよう制御する。
     曜日ローテーションで7ペア×2人 = 14人の出演者を切り替える。
@@ -104,7 +106,7 @@ class TTSGenerator:
             http_options=types.HttpOptions(
                 timeout=config.GEMINI_TTS_TIMEOUT_MS,
                 retry_options=types.HttpRetryOptions(
-                    attempts=config.GEMINI_SDK_MAX_ATTEMPTS,
+                    attempts=config.GEMINI_INTERACTIONS_MAX_RETRIES,
                 ),
             ),
         )
@@ -491,65 +493,53 @@ Pronunciation:
 
     def _call_tts_api(self, prompt: str) -> bytes:
         """Multi-Speaker TTS API 呼び出し→PCMバイナリを返す"""
-        response = self.client.models.generate_content(
+        response = self.client.interactions.create(
             model=self.model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["AUDIO"],
-                speech_config=types.SpeechConfig(
-                    multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-                        speaker_voice_configs=[
-                            types.SpeakerVoiceConfig(
-                                speaker=self.host_name,
-                                voice_config=types.VoiceConfig(
-                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                        voice_name=self.voice_a,
-                                    )
-                                ),
-                            ),
-                            types.SpeakerVoiceConfig(
-                                speaker=self.guest_name,
-                                voice_config=types.VoiceConfig(
-                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                        voice_name=self.voice_b,
-                                    )
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
+            input=prompt,
+            response_format={"type": "audio"},
+            generation_config={
+                "speech_config": [
+                    {"speaker": self.host_name, "voice": self.voice_a},
+                    {"speaker": self.guest_name, "voice": self.voice_b},
+                ],
+            },
         )
 
-        # レスポンスから最初の有効な音声データを取得
-        candidates = response.candidates or []
-        if not candidates:
-            raise TransientTTSError("TTS応答に候補が含まれていません")
-
-        candidate = candidates[0]
-        content = candidate.content
-        parts = content.parts if content and content.parts else []
-        audio_bytes = None
+        encoded_audio = None
         mime_type = ""
-        for part in parts:
-            inline_data = part.inline_data
-            if inline_data is not None and inline_data.data:
-                audio_bytes = inline_data.data
-                mime_type = inline_data.mime_type or ""
+        for output in response.outputs or []:
+            if output.type == "audio" and output.data:
+                encoded_audio = output.data
+                mime_type = output.mime_type or ""
                 break
 
-        if not audio_bytes:
-            finish_reason = getattr(candidate, "finish_reason", None)
-            detail = f" (finish_reason={finish_reason})" if finish_reason else ""
+        if not encoded_audio:
+            status = getattr(response, "status", None)
+            detail = f" (status={status})" if status else ""
             raise TransientTTSError(
                 f"TTS応答に音声データが含まれていません{detail}"
             )
+
+        try:
+            audio_bytes = base64.b64decode(encoded_audio, validate=True)
+        except (binascii.Error, TypeError, ValueError) as error:
+            raise TransientTTSError(
+                "TTS応答の音声データが不正なBase64です"
+            ) from error
+        if not audio_bytes:
+            raise TransientTTSError("TTS応答の音声データが空です")
 
         # WAV形式の場合はPCMデータのみ抽出
         if mime_type.startswith("audio/wav") or mime_type.startswith("audio/x-wav"):
             audio_bytes = self._extract_pcm_from_wav(audio_bytes)
         elif mime_type.startswith("audio/L16") or mime_type.startswith("audio/pcm"):
             pass  # すでにPCMデータ
+        elif not mime_type and audio_bytes.startswith(b"RIFF"):
+            audio_bytes = self._extract_pcm_from_wav(audio_bytes)
+        elif mime_type:
+            raise TransientTTSError(
+                f"未対応のTTS音声形式です: {mime_type}"
+            )
 
         audio_bytes = self._trim_repeated_prefix(audio_bytes)
         logger.info("  音声データ取得: %d bytes, mime=%s", len(audio_bytes), mime_type)
@@ -561,9 +551,10 @@ Pronunciation:
             buf = io.BytesIO(wav_bytes)
             with wave.open(buf, 'rb') as wf:
                 return wf.readframes(wf.getnframes())
-        except Exception:
-            logger.warning("WAVヘッダー解析失敗、生データとして扱います")
-            return wav_bytes
+        except Exception as error:
+            raise TransientTTSError(
+                "TTS応答のWAVデータを解析できません"
+            ) from error
 
     def _save_audio(self, pcm_data: bytes, output_path: str) -> str:
         """PCMデータをWAVファイルとして保存する"""

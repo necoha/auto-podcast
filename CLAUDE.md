@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生成 → TTS音声合成 → GitHub Pages + RSSで配信する完全無料（$0/月）のポッドキャスト自動生成システム。
 
-**採用プラン（Plan α）**: Gemini 2.5 Flash（LLM + TTS）+ GitHub Actions + GitHub Pages + RSS → Spotify/Apple Podcasts
+**採用プラン（Plan α）**: Gemini 3.8 Flash（LLM）+ Gemini 3.1 Flash TTS Preview + GitHub Actions + GitHub Pages + RSS → Spotify/Apple Podcasts
 
 ## Technology Stack
 
@@ -41,21 +41,21 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 
 ```
 【速報版】
-RSS(8) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+RSS(13) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
              (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
                                                                                                                             ↓
 【深掘り版】                                                                                                               Spotify / Apple Podcasts
-RSS(8) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
              (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed_deep.xml)   (CI検証)       (GitHub Pages)
 ```
 
 ### Core Components
 
 1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形（速報版/深掘り版共有）
-2. **ScriptGenerator** (`script_generator.py`) — Gemini 2.5 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
+2. **ScriptGenerator** (`script_generator.py`) — Gemini 3.8 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
 3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
 4. **ScriptReviewer** (`script_reviewer.py`) — URL Contextで元記事と台本を6項目レビュー（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さ/事実整合性）
-5. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション）
+5. **TTSGenerator** (`tts_generator.py`) — Gemini 3.1 Flash TTS PreviewのInteractions APIで音声合成（Multi-Speaker、曜日ローテーション）
 6. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
 7. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
 8. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
@@ -85,13 +85,16 @@ RSS(8) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGene
 |------|------|------|
 | `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
 | `PODCAST_OWNER_EMAIL` | Yes | RSS/Spotify登録用メールアドレス |
+| `LLM_MODEL` | No | 台本生成モデル。既定値`gemini-3.8-flash`。障害時は旧モデルへロールバック可能 |
+| `TTS_MODEL` | No | 音声生成モデル。既定値`gemini-3.1-flash-tts-preview`。障害時は旧モデルへロールバック可能 |
 
 ### Key Settings in `config.py`
 
 - `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 6 + 技術系EN 3 + 経済系JP 4 = 13ソース）
 - `MAX_ARTICLES` — 1フィードあたりの取得上限（default: `2`）
 - `MAX_TOTAL_ARTICLES` — 全フィード合計の取得上限（default: `20`、URL Contextの20 URL制限内）
-- `TTS_MODEL` — TTSモデル名（default: `gemini-2.5-flash-preview-tts`）
+- `LLM_MODEL` — 台本生成・URL Contextモデル名（default: `gemini-3.8-flash`）
+- `TTS_MODEL` — TTSモデル名（default: `gemini-3.1-flash-tts-preview`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）
 - `DAILY_SPEAKERS` — 曜日ローテーションテーブル（7ペア×14人）
 - `AUDIO_OUTPUT_DIR` — 音声ファイル出力先
@@ -101,9 +104,9 @@ RSS(8) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGene
 
 ## Free Tier Limits
 
-- **Gemini 2.5 Flash（LLM）**: 500 req/日、入出力無料
+- **Gemini 3.8 Flash（LLM）**: 入出力無料（実際の上限はAI Studio参照）
 - **URL Context**: 無料（通常2回/日、取得内容はGemini入力トークンに算入）
-- **Gemini 2.5 Flash Preview TTS**: 入出力ともに無料（RPD=10）
+- **Gemini 3.1 Flash TTS Preview**: 入出力無料（実際の上限はAI Studio参照）
 - **GitHub Actions**: 2000分/月
 - **GitHub Pages**: 1GB推奨、帯域100GB/月
 

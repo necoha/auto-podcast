@@ -1,6 +1,9 @@
 # pyright: reportPrivateUsage=false
 
+import base64
+import io
 import unittest
+import wave
 from array import array
 from math import pi, sin
 from types import SimpleNamespace
@@ -15,38 +18,30 @@ from tts_generator import (
 )
 
 
-def _response(*parts: Any, finish_reason: str = "STOP") -> SimpleNamespace:
-    return SimpleNamespace(
-        candidates=[
-            SimpleNamespace(
-                content=SimpleNamespace(parts=list(parts)),
-                finish_reason=finish_reason,
-            )
-        ]
-    )
+def _response(*outputs: Any, status: str = "completed") -> SimpleNamespace:
+    return SimpleNamespace(outputs=list(outputs), status=status)
 
 
-def _audio_part(
+def _audio_output(
     data: bytes | None,
-    mime_type: str = "audio/L16;codec=pcm;rate=24000",
+    mime_type: str = "audio/pcm;rate=24000",
 ) -> SimpleNamespace:
-    return SimpleNamespace(
-        inline_data=SimpleNamespace(data=data, mime_type=mime_type)
-    )
+    encoded = base64.b64encode(data).decode("ascii") if data is not None else None
+    return SimpleNamespace(type="audio", data=encoded, mime_type=mime_type)
 
 
 def _generator(*responses: Any) -> tuple[TTSGenerator, Mock]:
     generator = TTSGenerator.__new__(TTSGenerator)
-    generate_content = Mock(side_effect=responses)
+    create_interaction = Mock(side_effect=responses)
     cast(Any, generator).client = SimpleNamespace(
-        models=SimpleNamespace(generate_content=generate_content)
+        interactions=SimpleNamespace(create=create_interaction)
     )
     generator.model = "test-model"
     generator.host_name = "Host"
     generator.voice_a = "Kore"
     generator.guest_name = "Guest"
     generator.voice_b = "Charon"
-    return generator, generate_content
+    return generator, create_interaction
 
 
 def _wave(seconds: float, seed: int = 0) -> bytes:
@@ -76,7 +71,7 @@ class TTSResponseTests(unittest.TestCase):
 
         http_options = client.call_args.kwargs["http_options"]
         self.assertEqual(http_options.timeout, 300_000)
-        self.assertEqual(http_options.retry_options.attempts, 1)
+        self.assertEqual(http_options.retry_options.attempts, 0)
 
     def test_split_script_keeps_turn_pairs_within_twenty_lines(self):
         script = [
@@ -94,21 +89,35 @@ class TTSResponseTests(unittest.TestCase):
         self.assertTrue(all(chunk[0].speaker == "A" for chunk in chunks))
 
     def test_empty_audio_is_retried(self):
-        generator, generate_content = _generator(
-            _response(_audio_part(None), finish_reason="OTHER"),
-            _response(_audio_part(b"pcm")),
+        generator, create_interaction = _generator(
+            _response(_audio_output(None), status="incomplete"),
+            _response(_audio_output(b"pcm")),
         )
 
         with patch("tts_generator.RETRY_DELAY", 0):
             result = generator._generate_with_retry("test prompt")
 
         self.assertEqual(result, b"pcm")
-        self.assertEqual(generate_content.call_count, 2)
+        self.assertEqual(create_interaction.call_count, 2)
 
-    def test_missing_candidates_is_transient(self):
-        generator, _ = _generator(SimpleNamespace(candidates=[]))
+    def test_missing_outputs_is_transient(self):
+        generator, _ = _generator(SimpleNamespace(outputs=[], status="failed"))
 
-        with self.assertRaisesRegex(TransientTTSError, "候補"):
+        with self.assertRaisesRegex(TransientTTSError, "音声データ"):
+            generator._call_tts_api("test prompt")
+
+    def test_invalid_base64_is_transient(self):
+        generator, _ = _generator(
+            _response(
+                SimpleNamespace(
+                    type="audio",
+                    data="not-base64!",
+                    mime_type="audio/pcm",
+                )
+            )
+        )
+
+        with self.assertRaisesRegex(TransientTTSError, "Base64"):
             generator._call_tts_api("test prompt")
 
     def test_transient_errors_use_exponential_backoff(self):
@@ -156,15 +165,55 @@ class TTSResponseTests(unittest.TestCase):
         self.assertEqual(generator._call_tts_api.call_count, 3)
         self.assertEqual(generator.requests_made, 3)
 
-    def test_audio_is_found_in_later_part(self):
-        generator, _ = _generator(
+    def test_audio_is_found_in_later_output(self):
+        generator, create_interaction = _generator(
             _response(
-                SimpleNamespace(inline_data=None),
-                _audio_part(b"pcm"),
+                SimpleNamespace(type="text", data="ignored", mime_type=None),
+                _audio_output(b"pcm"),
             )
         )
 
         self.assertEqual(generator._call_tts_api("test prompt"), b"pcm")
+        request = create_interaction.call_args.kwargs
+        self.assertEqual(request["model"], "test-model")
+        self.assertEqual(request["response_format"], {"type": "audio"})
+        self.assertEqual(
+            request["generation_config"]["speech_config"],
+            [
+                {"speaker": "Host", "voice": "Kore"},
+                {"speaker": "Guest", "voice": "Charon"},
+            ],
+        )
+
+    def test_wav_output_is_converted_to_pcm(self):
+        pcm = b"\x01\x00\x02\x00"
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(24000)
+            wav_file.writeframes(pcm)
+        generator, _ = _generator(
+            _response(_audio_output(wav_buffer.getvalue(), "audio/wav"))
+        )
+
+        self.assertEqual(generator._call_tts_api("test prompt"), pcm)
+
+    def test_invalid_wav_is_transient(self):
+        generator, _ = _generator(
+            _response(_audio_output(b"not-a-wave", "audio/wav"))
+        )
+
+        with self.assertRaisesRegex(TransientTTSError, "WAV"):
+            generator._call_tts_api("test prompt")
+
+    def test_unsupported_audio_format_is_transient(self):
+        generator, _ = _generator(
+            _response(_audio_output(b"compressed", "audio/mp3"))
+        )
+
+        with self.assertRaisesRegex(TransientTTSError, "audio/mp3"):
+            generator._call_tts_api("test prompt")
 
     def test_repeated_prefix_is_trimmed(self):
         prefix = _wave(0.8)

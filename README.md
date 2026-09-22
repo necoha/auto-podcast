@@ -4,10 +4,10 @@
 
 ## 特徴
 
-- **完全無料（$0/月）**: Gemini 2.5 Flash無料枠のみで運用
+- **完全無料（$0/月）**: Gemini 3.8 Flash / 3.1 Flash TTS無料枠で運用
 - **公式APIベース**: UIスクレイピング不要、安定動作
 - **自動化**: GitHub Actionsで毎日06:00 JSTに自動生成・配信
-- **高品質TTS**: Gemini 2.5 Flash Preview TTSによる自然な音声
+- **高品質TTS**: Gemini 3.1 Flash TTS Previewによる自然な音声
 - **事実検証**: URL Contextで元記事と数値・年月・制度・主体と指標を照合し、未検証時は見出し限定で配信
 - **14人日替わりローテーション**: 曜日ごとに異なるホスト＋ゲストペア（7ペア）
 - **ポッドキャスト配信**: GitHub Pages + RSS → Spotify / Apple Podcastsで自動配信
@@ -90,10 +90,11 @@ auto-podcast/
 | `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー9 + 経済4 |
 | `MAX_ARTICLES` | 1フィードあたりの取得上限 | `2` |
 | `MAX_TOTAL_ARTICLES` | 全フィード合計の取得上限 | `20` |
+| `LLM_MODEL` | 台本生成・URL Contextモデル | `gemini-3.8-flash` |
 | `LLM_MAX_ATTEMPTS` | 台本生成の最大試行回数 | `3` |
 | `GEMINI_LLM_TIMEOUT_MS` | LLM・URL Contextの1リクエスト上限 | `180000` |
 | `GEMINI_TTS_TIMEOUT_MS` | TTSの1リクエスト上限 | `300000` |
-| `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
+| `TTS_MODEL` | TTS使用モデル | `gemini-3.1-flash-tts-preview` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
 | `DAILY_SPEAKERS` | 曜日ローテーションテーブル | 7ペア×14人 |
@@ -104,9 +105,9 @@ auto-podcast/
 
 | サービス | 無料枠 |
 |----------|--------|
-| Gemini 2.5 Flash（LLM） | 500 req/日 |
+| Gemini 3.8 Flash（LLM） | 入出力無料（実際の上限はAI Studio参照） |
 | URL Context | 無料（通常2回/日、取得内容はLLM入力トークンに算入） |
-| Gemini 2.5 Flash Preview TTS | 入出力ともに無料（RPD=10） |
+| Gemini 3.1 Flash TTS Preview | 入出力無料（実際の上限はAI Studio参照） |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |
 
