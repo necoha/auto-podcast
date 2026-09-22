@@ -524,10 +524,12 @@ Pronunciation:
         if not audio_bytes:
             raise TransientTTSError("TTS応答の音声データが空です")
 
+        normalized_mime_type = mime_type.lower()
+
         # WAV形式の場合はPCMデータのみ抽出
-        if mime_type.startswith("audio/wav") or mime_type.startswith("audio/x-wav"):
+        if normalized_mime_type.startswith("audio/wav") or normalized_mime_type.startswith("audio/x-wav"):
             audio_bytes = self._extract_pcm_from_wav(audio_bytes)
-        elif mime_type.startswith("audio/L16") or mime_type.startswith("audio/pcm"):
+        elif normalized_mime_type.startswith("audio/l16") or normalized_mime_type.startswith("audio/pcm"):
             pass  # すでにPCMデータ
         elif not mime_type and audio_bytes.startswith(b"RIFF"):
             audio_bytes = self._extract_pcm_from_wav(audio_bytes)

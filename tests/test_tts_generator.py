@@ -208,7 +208,7 @@ class TTSResponseTests(unittest.TestCase):
                                 {
                                     "type": "audio",
                                     "data": base64.b64encode(b"pcm").decode("ascii"),
-                                    "mime_type": "audio/pcm",
+                                    "mime_type": "audio/l16; rate=24000; channels=1",
                                 }
                             ],
                         }
@@ -288,6 +288,18 @@ class TTSResponseTests(unittest.TestCase):
         )
 
         self.assertEqual(generator._call_tts_api("test prompt"), pcm)
+
+    def test_production_l16_mime_type_is_treated_as_pcm(self):
+        generator, _ = _generator(
+            _response(
+                _audio_output(
+                    b"pcm",
+                    "audio/l16; rate=24000; channels=1",
+                )
+            )
+        )
+
+        self.assertEqual(generator._call_tts_api("test prompt"), b"pcm")
 
     def test_invalid_wav_is_transient(self):
         generator, _ = _generator(
