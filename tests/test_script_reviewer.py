@@ -345,17 +345,23 @@ class UrlContextReviewTests(unittest.TestCase):
         )
         reviewer = _reviewer(response, response)
 
-        with self.assertRaises(FactVerificationError):
-            reviewer.review(
-                [ScriptLine(speaker="A", text="元台本です。")],
-                [
-                    {
-                        "title": "記事",
-                        "source": "新聞",
-                        "link": "https://example.com/fact",
-                    }
-                ],
-            )
+        with self.assertLogs("script_reviewer", level="INFO") as logs:
+            with self.assertRaises(FactVerificationError):
+                reviewer.review(
+                    [ScriptLine(speaker="A", text="元台本です。")],
+                    [
+                        {
+                            "title": "記事",
+                            "source": "新聞",
+                            "link": "https://example.com/fact",
+                        }
+                    ],
+                )
+
+        output = "\n".join(logs.output)
+        self.assertIn("URL Context検証対象: https://example.com/fact", output)
+        self.assertIn("status=URL_RETRIEVAL_STATUS_ERROR", output)
+        self.assertIn("url=https://example.com/fact", output)
 
     def test_partial_url_retrieval_fails_closed(self):
         text = json.dumps(

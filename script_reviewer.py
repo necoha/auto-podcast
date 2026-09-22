@@ -120,6 +120,8 @@ class ScriptReviewer:
         self.last_verification_urls = []
 
         article_urls = self._article_urls(articles)
+        for article_url in article_urls:
+            logger.info("URL Context検証対象: %s", article_url)
         prompt = self._build_review_prompt(
             script,
             articles,
@@ -219,8 +221,19 @@ class ScriptReviewer:
         url_context_metadata = candidates[0].url_context_metadata
         if url_context_metadata is not None:
             for url_metadata in url_context_metadata.url_metadata or []:
+                status = url_metadata.url_retrieval_status
+                status_value = (
+                    status.value
+                    if isinstance(status, types.UrlRetrievalStatus)
+                    else status
+                )
+                logger.info(
+                    "URL Context取得結果: status=%s url=%s",
+                    status_value or "UNSPECIFIED",
+                    url_metadata.retrieved_url or "(URLなし)",
+                )
                 if (
-                    url_metadata.url_retrieval_status
+                    status
                     == types.UrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS
                     and url_metadata.retrieved_url
                     and url_metadata.retrieved_url not in urls
