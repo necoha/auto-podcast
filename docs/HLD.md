@@ -306,7 +306,7 @@ gh-pages/
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
 | **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4、各最大2記事・全体最大20記事） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
-| **API SDK** | google-genai 1.63.0 | Gemini LLM + experimental Interactions APIを固定して使用 |
+| **API SDK** | google-genai 2.25.0 | Gemini LLM + Interactions APIの新スキーマを固定して使用 |
 | **環境変数** | python-dotenv | ローカル開発用 |
 | **スケジューリング** | GitHub Actions cron | 毎日 06:00 JST (21:00 UTC) |
 | **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |

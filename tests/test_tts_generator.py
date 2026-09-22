@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 import unittest
 import wave
 from array import array
@@ -9,6 +10,10 @@ from math import pi, sin
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, call, patch
+
+import httpx
+from google import genai
+from google.genai import types
 
 from script_generator import ScriptLine
 from tts_generator import (
@@ -19,7 +24,10 @@ from tts_generator import (
 
 
 def _response(*outputs: Any, status: str = "completed") -> SimpleNamespace:
-    return SimpleNamespace(outputs=list(outputs), status=status)
+    return SimpleNamespace(
+        output_audio=outputs[-1] if outputs else None,
+        status=status,
+    )
 
 
 def _audio_output(
@@ -71,7 +79,7 @@ class TTSResponseTests(unittest.TestCase):
 
         http_options = client.call_args.kwargs["http_options"]
         self.assertEqual(http_options.timeout, 300_000)
-        self.assertEqual(http_options.retry_options.attempts, 0)
+        self.assertEqual(http_options.retry_options.attempts, -1)
 
     def test_split_script_keeps_turn_pairs_within_twenty_lines(self):
         script = [
@@ -167,10 +175,7 @@ class TTSResponseTests(unittest.TestCase):
 
     def test_audio_is_found_in_later_output(self):
         generator, create_interaction = _generator(
-            _response(
-                SimpleNamespace(type="text", data="ignored", mime_type=None),
-                _audio_output(b"pcm"),
-            )
+            _response(_audio_output(b"pcm"))
         )
 
         self.assertEqual(generator._call_tts_api("test prompt"), b"pcm")
@@ -184,6 +189,91 @@ class TTSResponseTests(unittest.TestCase):
                 {"speaker": "Guest", "voice": "Charon"},
             ],
         )
+
+    def test_google_genai_v2_serializes_and_parses_interaction(self):
+        captured: dict[str, Any] = {}
+
+        def handle_request(request: httpx.Request) -> httpx.Response:
+            captured["url"] = str(request.url)
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "id": "test-interaction",
+                    "status": "completed",
+                    "steps": [
+                        {
+                            "type": "model_output",
+                            "content": [
+                                {
+                                    "type": "audio",
+                                    "data": base64.b64encode(b"pcm").decode("ascii"),
+                                    "mime_type": "audio/pcm",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+
+        generator = TTSGenerator.__new__(TTSGenerator)
+        cast(Any, generator).client = genai.Client(
+            api_key="test-key",
+            http_options=types.HttpOptions(
+                httpx_client=httpx.Client(
+                    transport=httpx.MockTransport(handle_request)
+                ),
+                retry_options=types.HttpRetryOptions(attempts=-1),
+            ),
+        )
+        generator.model = "gemini-3.1-flash-tts-preview"
+        generator.host_name = "Host"
+        generator.voice_a = "Kore"
+        generator.guest_name = "Guest"
+        generator.voice_b = "Puck"
+
+        self.assertEqual(generator._call_tts_api("test prompt"), b"pcm")
+        self.assertTrue(captured["url"].endswith("/v1beta/interactions"))
+        self.assertEqual(
+            captured["body"]["generation_config"]["speech_config"],
+            [
+                {"speaker": "Host", "voice": "Kore"},
+                {"speaker": "Guest", "voice": "Puck"},
+            ],
+        )
+
+    def test_google_genai_v2_disables_hidden_retries(self):
+        request_count = 0
+
+        def handle_request(request: httpx.Request) -> httpx.Response:
+            nonlocal request_count
+            request_count += 1
+            return httpx.Response(
+                500,
+                request=request,
+                json={"error": {"message": "temporary", "code": 500}},
+            )
+
+        generator = TTSGenerator.__new__(TTSGenerator)
+        cast(Any, generator).client = genai.Client(
+            api_key="test-key",
+            http_options=types.HttpOptions(
+                httpx_client=httpx.Client(
+                    transport=httpx.MockTransport(handle_request)
+                ),
+                retry_options=types.HttpRetryOptions(attempts=-1),
+            ),
+        )
+        generator.model = "gemini-3.1-flash-tts-preview"
+        generator.host_name = "Host"
+        generator.voice_a = "Kore"
+        generator.guest_name = "Guest"
+        generator.voice_b = "Puck"
+
+        with self.assertRaises(Exception):
+            generator._call_tts_api("test prompt")
+
+        self.assertEqual(request_count, 1)
 
     def test_wav_output_is_converted_to_pcm(self):
         pcm = b"\x01\x00\x02\x00"

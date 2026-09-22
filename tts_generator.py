@@ -489,7 +489,6 @@ Pronunciation:
                     )
                     continue
                 raise
-        raise RuntimeError(f"TTS生成に{MAX_RETRIES}回失敗しました")
 
     def _call_tts_api(self, prompt: str) -> bytes:
         """Multi-Speaker TTS API 呼び出し→PCMバイナリを返す"""
@@ -505,13 +504,9 @@ Pronunciation:
             },
         )
 
-        encoded_audio = None
-        mime_type = ""
-        for output in response.outputs or []:
-            if output.type == "audio" and output.data:
-                encoded_audio = output.data
-                mime_type = output.mime_type or ""
-                break
+        audio_output = getattr(response, "output_audio", None)
+        encoded_audio = self._content_field(audio_output, "data")
+        mime_type = self._content_field(audio_output, "mime_type") or ""
 
         if not encoded_audio:
             status = getattr(response, "status", None)
@@ -544,6 +539,13 @@ Pronunciation:
         audio_bytes = self._trim_repeated_prefix(audio_bytes)
         logger.info("  音声データ取得: %d bytes, mime=%s", len(audio_bytes), mime_type)
         return audio_bytes
+
+    @staticmethod
+    def _content_field(content: object, name: str):
+        """Interactions APIのコンテンツから辞書・モデル共通で値を取得する。"""
+        if isinstance(content, dict):
+            return content.get(name) or content.get("mimeType" if name == "mime_type" else name)
+        return getattr(content, name, None)
 
     def _extract_pcm_from_wav(self, wav_bytes: bytes) -> bytes:
         """WAVバイナリからPCMデータ部分のみを抽出する"""

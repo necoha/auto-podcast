@@ -303,7 +303,8 @@ client = genai.Client(
     api_key=api_key,
     http_options=types.HttpOptions(
         timeout=300_000,
-        retry_options=types.HttpRetryOptions(attempts=0),
+        # google-genai 2.25.0では-1がInteractions内部再試行なしに対応
+        retry_options=types.HttpRetryOptions(attempts=-1),
     ),
 )
 response = client.interactions.create(
@@ -317,7 +318,7 @@ response = client.interactions.create(
         ],
     },
 )
-audio_data = base64.b64decode(response.outputs[0].data)
+audio_data = base64.b64decode(response.output_audio.data)
 ```
 
 #### 利用可能な音声（Gemini TTS）
@@ -904,7 +905,7 @@ gh-pages/
 
 | パッケージ | バージョン | 用途 |
 |-----------|----------|------|
-| google-genai | 1.63.0 | Gemini API（台本生成 + experimental Interactions APIによるMulti-Speaker TTS） |
+| google-genai | 2.25.0 | Gemini API（台本生成 + 新Interactions APIによるMulti-Speaker TTS） |
 | feedparser | >=6.0.10 | RSS/Atomフィード解析 |
 | beautifulsoup4 | >=4.12.2 | HTML本文抽出 |
 | requests | >=2.31.0 | HTTP通信 |
