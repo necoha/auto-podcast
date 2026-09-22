@@ -183,10 +183,10 @@ response = client.models.generate_content(
 - 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
 ```
 
-#### LLMリトライ + お休み告知
+#### LLMリトライ + 見出し限定フォールバック
 台本生成で503エラー発生時、最大2回リトライ（30秒/60秒間隔）。
-リトライ失敗時は `_休止告知スクリプト()` で「本日はお休みです」の短い告知（5行）を配信。
-旧 `deep_fallback_script()` は使用廃止。
+1リクエストは3分でタイムアウトし、SDK内部では再試行しない。
+全3試行の失敗時は、速報版は最大5件、深掘り版は最大3件の記事タイトルだけを読む台本へ切り替える。
 
 ---
 
@@ -286,7 +286,7 @@ classDiagram
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, host_voice, guest_name, guest_voice | - | genai.Client初期化。曜日ローテーションの音声名設定 |
-| `generate_audio` | script, output_path | str | 台本を25行単位でMulti-Speaker TTS音声化し、結合してWAV保存 |
+| `generate_audio` | script, output_path | str | 台本を20行単位でMulti-Speaker TTS音声化し、結合してWAV保存 |
 | `_build_multi_speaker_prompt` | script | str | Director's Notes + 話者名付きトランスクリプト構築 |
 | `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
 | `_prepare_for_tts` | text | str | 承認済みの読みアノテーションを読みへ変換し、単独の「国」など文脈依存語を補正 |
@@ -299,7 +299,13 @@ classDiagram
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=api_key)
+client = genai.Client(
+    api_key=api_key,
+    http_options=types.HttpOptions(
+        timeout=300_000,
+        retry_options=types.HttpRetryOptions(attempts=1),
+    ),
+)
 response = client.models.generate_content(
     model="gemini-2.5-flash-preview-tts",
     contents=multi_speaker_prompt,  # Director's Notes + トランスクリプト
@@ -337,11 +343,12 @@ Leda, Orus, Zephyr, ...
 
 #### 音声仕様
 ```
-TTS方式: Multi-Speaker（25行単位でチャンク分割）
+TTS方式: Multi-Speaker（20行単位でチャンク分割）
 末尾パディング: 2000ms の無音を挿入（SILENCE_PADDING_SEC=2.0）
 出力フォーマット: WAV (PCM 24kHz 16bit mono)
 後処理: pydub + ffmpeg で MP3 変換 (128kbps)
 リトライ: チャンクごとに最大4試行、30秒/60秒/120秒の指数バックオフ
+HTTP制御: 1リクエスト5分でタイムアウト、SDK内部の暗黙リトライは無効
 リクエスト予算: 1番組あたり最大5回
 反復対策: 台本を一度だけ読む指示 + PCM先頭再出現の検出・除去（API再呼び出しなし）
 話者: 速報版・深掘り版で同じ曜日ペアを使用
@@ -526,7 +533,7 @@ def generate(self) -> EpisodeMetadata | None:
     except FactVerificationError:
         script = fallback_script(articles)  # 見出し限定
 
-    # 3. TTS音声生成（Multi-Speaker、25行単位）
+    # 3. TTS音声生成（Multi-Speaker、20行単位）
     self.tts_generator.generate_audio(script, audio_path)  # → WAV
 
     # 3.5 WAV → MP3 変換 (pydub + ffmpeg, 128kbps)
@@ -768,8 +775,8 @@ URL: {link}
 |---------|--------------|
 | RSS取得失敗（一部） | 取得できたフィードで続行 |
 | RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
-| 台本生成失敗(503) | 最大2回リトライ（30秒/60秒間隔）→ 失敗時は「お休み告知」5行スクリプトを配信 |
-| Gemini TTS失敗 | リトライ（最大3回、30秒間隔）→ 失敗時は生成中止 |
+| 台本生成失敗(503) | 1回3分、最大3試行（30秒/60秒間隔）→ 失敗時は見出し限定台本を配信 |
+| Gemini TTS失敗 | 1回5分、最大4試行（30秒/60秒/120秒間隔）→ 失敗時は生成中止 |
 | アップロード失敗 | ローカル保存。次回実行で自然リトライ |
 | レート制限到達 | ログ出力してスキップ。次回実行で再試行 |
 
@@ -808,7 +815,7 @@ URL: {link}
 入力: Director's Notes + MultiSpeaker トランスクリプト
 出力: 音声バイナリ（WAV PCM 24kHz 16bit mono）
 レスポンスモダリティ: AUDIO
-APIコール数: 通常1〜2回/エピソード（25行単位で分割）、再試行込み最大5回
+APIコール数: 通常1〜3回/エピソード（20行単位で分割）、再試行込み最大5回
 レート制限 (Free Tier): RPM=3, RPD=10を設計前提（実割り当てはAI Studioを参照）
 実行上限: 速報版5回 + 深掘り版5回 = 定期実行1回あたり最大10回
 話者: 曜日ローテーション（7ペア×14人）

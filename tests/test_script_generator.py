@@ -2,7 +2,11 @@
 
 import unittest
 
-from script_generator import ScriptGenerator, ScriptLine
+from script_generator import (
+    ScriptGenerator,
+    ScriptLine,
+    is_transient_generation_error,
+)
 from tts_generator import TTSGenerator
 
 
@@ -52,6 +56,18 @@ class PronunciationTests(unittest.TestCase):
         self.assertEqual(
             prepared,
             "クニの制度、中国、米国、各国、国際関係、国家戦略",
+        )
+
+
+class GenerationRetryTests(unittest.TestCase):
+    def test_timeout_is_transient(self):
+        self.assertTrue(
+            is_transient_generation_error(RuntimeError("Request timed out"))
+        )
+
+    def test_quota_error_is_not_retried(self):
+        self.assertFalse(
+            is_transient_generation_error(RuntimeError("429 RESOURCE_EXHAUSTED"))
         )
 
 

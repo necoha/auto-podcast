@@ -13,7 +13,12 @@ from pydub import AudioSegment  # type: ignore[import-untyped]
 
 import config
 from content_manager import ContentManager
-from script_generator import ScriptGenerator, Script, ScriptLine, fallback_script
+from script_generator import (
+    ScriptGenerator,
+    Script,
+    fallback_script,
+    is_transient_generation_error,
+)
 from script_reviewer import FactVerificationError, ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
@@ -86,19 +91,19 @@ class PodcastGenerator:
         is_fallback = False
         verification_status = "not_applicable"
         verification_sources: List[str] = []
-        max_retries = 4
-        for attempt in range(max_retries + 1):
+        max_attempts = config.LLM_MAX_ATTEMPTS
+        for attempt in range(max_attempts):
             try:
                 script = self.script_generator.generate_script(articles)
                 break
             except Exception as e:
-                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                is_transient = is_transient_generation_error(e)
                 is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_503 or is_truncated) and attempt < max_retries:
-                    wait = 60 * (attempt + 1)
+                if (is_transient or is_truncated) and attempt < max_attempts - 1:
+                    wait = config.LLM_RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
                     logger.warning(
                         "台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
-                        attempt + 1, max_retries + 1, wait, e,
+                        attempt + 1, max_attempts, wait, e,
                     )
                     time.sleep(wait)
                 else:
@@ -106,16 +111,17 @@ class PodcastGenerator:
                     break
 
         if script is None:
-            logger.warning("台本生成不可、お休み告知に切り替え")
-            script = _休止告知スクリプト(self.host_name, self.guest_name)
+            logger.warning("台本生成不可、見出し限定台本に切り替え")
+            script = fallback_script(articles, self.host_name, self.guest_name)
             is_fallback = True
+            verification_status = "title_only_fallback"
 
         logger.info("  台本: %d行", len(script))
 
         # 2.5. 台本レビュー（自動チェック＆修正）
-        # お休み告知は固定テンプレなのでレビュー不要
+        # フォールバック台本は記事タイトルのみなのでレビュー不要
         if is_fallback:
-            logger.info("2.5. お休み告知のため台本レビューをスキップ")
+            logger.info("2.5. フォールバック台本のためレビューをスキップ")
         else:
             logger.info("2.5. 台本レビュー中...")
             try:
@@ -326,34 +332,6 @@ class PodcastGenerator:
         logger.info("元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
-
-
-def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
-    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
-    today = datetime.now(JST).strftime("%Y年%m月%d日")
-    return [
-        ScriptLine(
-            speaker=host_name,
-            text=f"おはようございます、{host_name}です。{today}のテック速報です。",
-        ),
-        ScriptLine(
-            speaker=guest_name,
-            text=f"{guest_name}です。",
-        ),
-        ScriptLine(
-            speaker=host_name,
-            text="本日はシステムの都合により、テック速報はお休みとさせていただきます。",
-        ),
-        ScriptLine(
-            speaker=guest_name,
-            text="申し訳ございません。明日はまたニュースをお届けできると思います。",
-        ),
-        ScriptLine(
-            speaker=host_name,
-            text="それではまた明日お会いしましょう。",
-        ),
-    ]
-
 
 # メイン実行部分
 if __name__ == "__main__":

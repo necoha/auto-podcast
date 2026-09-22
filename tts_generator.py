@@ -2,7 +2,7 @@
 TTS音声生成モジュール
 Gemini Flash TTS Multi-Speaker APIを使い、台本テキストから音声ファイルを生成する
 
-Multi-Speaker TTS で台本を25行単位に音声化し、番組単位のリクエスト予算内で結合する。
+Multi-Speaker TTS で台本を20行単位に音声化し、番組単位のリクエスト予算内で結合する。
 """
 
 import io
@@ -32,7 +32,7 @@ MAX_RETRIES = 4
 RETRY_DELAY = 30.0  # 一時的なTTSエラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
-MAX_LINES_PER_CHUNK = 25  # 1チャンクあたりの最大行数（TTS出力上限を超えないよう分割）
+MAX_LINES_PER_CHUNK = 20  # 長時間のTTS応答待ちを避けるため数分単位に分割
 REPEATED_PREFIX_ANALYSIS_RATE = 8000
 REPEATED_PREFIX_FRAME_SEC = 0.02
 REPEATED_PREFIX_WINDOW_SEC = 12.0
@@ -87,7 +87,7 @@ def get_daily_speakers() -> Tuple[str, str, str, str]:
 class TTSGenerator:
     """Gemini Flash TTS Multi-Speaker APIで台本から音声ファイルを生成する
 
-    台本を25行単位で処理し、番組単位のリクエスト予算を超えないよう制御する。
+    台本を20行単位で処理し、番組単位のリクエスト予算を超えないよう制御する。
     曜日ローテーションで7ペア×2人 = 14人の出演者を切り替える。
     """
 
@@ -99,7 +99,15 @@ class TTSGenerator:
         self.api_key = api_key or config.GEMINI_API_KEY
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
-        self.client = genai.Client(api_key=self.api_key)
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                timeout=config.GEMINI_TTS_TIMEOUT_MS,
+                retry_options=types.HttpRetryOptions(
+                    attempts=config.GEMINI_SDK_MAX_ATTEMPTS,
+                ),
+            ),
+        )
         self.model = config.TTS_MODEL
         self.request_budget = config.TTS_MAX_REQUESTS_PER_PODCAST
         self.requests_made = 0
@@ -173,8 +181,8 @@ class TTSGenerator:
 
         for line in script:
             current.append(line)
-            # max_linesに達し、話者Aの発話で区切る（次のトピックの導入になりやすい）
-            if len(current) >= max_lines and line.speaker == "A":
+            # Aの導入に対するBの応答を同じチャンクに収める。
+            if len(current) >= max_lines and line.speaker == "B":
                 chunks.append(current)
                 current = []
 

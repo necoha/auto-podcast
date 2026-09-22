@@ -172,7 +172,7 @@ sequenceDiagram
         Note right of SR: 検証失敗時は見出し限定台本
 
         SG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS（25行単位）
+        TTS->>GTTS: Multi-Speaker TTS（20行単位）
         GTTS-->>TTS: 音声バイナリ (PCM)
         TTS->>TTS: WAV → MP3変換 (128kbps)
 
@@ -198,7 +198,7 @@ sequenceDiagram
         Note right of SR: 検証失敗時は見出し限定台本
 
         DSG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS（25行単位）
+        TTS->>GTTS: Multi-Speaker TTS（20行単位）
         GTTS-->>TTS: 音声バイナリ (PCM)
         TTS->>TTS: WAV → MP3変換 (128kbps)
 
@@ -225,7 +225,7 @@ flowchart TD
 
     B --> C["TTSGenerator<br/>音声生成"]
     C -->|成功| D["音声ファイル"]
-    C -->|失敗| C2["リトライ<br/>（最大3回、30秒間隔）"]
+    C -->|失敗| C2["リトライ<br/>（最大4試行、30/60/120秒）"]
     C2 -->|成功| D
     C2 -->|失敗| C3["❌ 生成中止<br/>次回実行に委ねる"]
 
@@ -385,7 +385,7 @@ jobs:
 |--------|------|
 | **コンテンツ収集** | フィード単位でエラーキャッチ、取得できたフィードで続行 |
 | **台本生成** | Gemini API失敗 → 記事テキストをそのまま読み上げテキストとして使用 |
-| **音声生成** | Gemini TTS失敗 → リトライ（最大3回、30秒間隔）→ 失敗時は生成中止、次回実行に委ねる |
+| **音声生成** | 1回5分でタイムアウト → 最大4試行（30/60/120秒）→ 失敗時は生成中止、次回実行に委ねる |
 | **アップロード** | 失敗 → ローカル保存。次回実行で自然リトライ |
 | **レート制限** | Gemini無料枠の制限に到達 → ログ出力して次回実行にスキップ |
 

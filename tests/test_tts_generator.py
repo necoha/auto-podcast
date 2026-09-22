@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
+from script_generator import ScriptLine
 from tts_generator import (
     TTSGenerator,
     TTSRequestBudgetExceeded,
@@ -63,6 +64,35 @@ def _wave(seconds: float, seed: int = 0) -> bytes:
 
 
 class TTSResponseTests(unittest.TestCase):
+    @patch("tts_generator.genai.Client")
+    def test_client_uses_bounded_http_policy(self, client: Mock):
+        TTSGenerator(
+            api_key="test-key",
+            host_name="Host",
+            host_voice="Kore",
+            guest_name="Guest",
+            guest_voice="Charon",
+        )
+
+        http_options = client.call_args.kwargs["http_options"]
+        self.assertEqual(http_options.timeout, 300_000)
+        self.assertEqual(http_options.retry_options.attempts, 1)
+
+    def test_split_script_keeps_turn_pairs_within_twenty_lines(self):
+        script = [
+            ScriptLine(
+                speaker="A" if index % 2 == 0 else "B",
+                text=f"line {index}",
+            )
+            for index in range(45)
+        ]
+
+        chunks = TTSGenerator._split_script(script, 20)
+
+        self.assertEqual([len(chunk) for chunk in chunks], [20, 20, 5])
+        self.assertTrue(all(chunk[-1].speaker == "B" for chunk in chunks[:-1]))
+        self.assertTrue(all(chunk[0].speaker == "A" for chunk in chunks))
+
     def test_empty_audio_is_retried(self):
         generator, generate_content = _generator(
             _response(_audio_part(None), finish_reason="OTHER"),

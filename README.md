@@ -90,6 +90,9 @@ auto-podcast/
 | `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー9 + 経済4 |
 | `MAX_ARTICLES` | 1フィードあたりの取得上限 | `2` |
 | `MAX_TOTAL_ARTICLES` | 全フィード合計の取得上限 | `20` |
+| `LLM_MAX_ATTEMPTS` | 台本生成の最大試行回数 | `3` |
+| `GEMINI_LLM_TIMEOUT_MS` | LLM・URL Contextの1リクエスト上限 | `180000` |
+| `GEMINI_TTS_TIMEOUT_MS` | TTSの1リクエスト上限 | `300000` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
@@ -107,7 +110,7 @@ auto-podcast/
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |
 
-TTSは通常、速報版2チャンク＋深掘り版2チャンクの合計4リクエストです。
+TTSは台本を20行単位で分割します。
 一時障害時も各番組5リクエスト、定期実行1回あたり合計10リクエストを上限とします。
 手動再実行も同じプロジェクトの日次枠を消費するため、実行前に
 [Google AI Studio](https://aistudio.google.com/rate-limit?timeRange=last-28-days) で残量を確認してください。

@@ -3,7 +3,7 @@
 import unittest
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import Mock
+from unittest.mock import Mock, call, patch
 
 from deep_podcast_generator import DeepDivePodcastGenerator
 from podcast_generator import PodcastGenerator
@@ -59,6 +59,49 @@ def _configure_generator(generator: Any) -> None:
 
 
 class FactGateIntegrationTests(unittest.TestCase):
+    def test_breaking_news_stops_retrying_and_uses_title_fallback(self):
+        generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
+        _configure_generator(generator)
+        generator.script_generator.generate_script = Mock(
+            side_effect=[RuntimeError("503 UNAVAILABLE")] * 3
+        )
+
+        with patch("podcast_generator.time.sleep") as sleep:
+            generator.generate()
+
+        self.assertEqual(generator.script_generator.generate_script.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(30), call(60)])
+        generator.script_reviewer.review.assert_not_called()
+        script = generator.tts_generator.generate_audio.call_args.args[0]
+        self.assertIn("見出しAというニュースです", script[3].text)
+        self.assertEqual(
+            generator._build_metadata.call_args.kwargs["verification_status"],
+            "title_only_fallback",
+        )
+
+    def test_deep_dive_stops_retrying_and_uses_title_fallback(self):
+        generator = cast(
+            Any,
+            DeepDivePodcastGenerator.__new__(DeepDivePodcastGenerator),
+        )
+        _configure_generator(generator)
+        generator.script_generator.generate_script = Mock(
+            side_effect=[RuntimeError("503 UNAVAILABLE")] * 3
+        )
+
+        with patch("deep_podcast_generator.time.sleep") as sleep:
+            generator.generate()
+
+        self.assertEqual(generator.script_generator.generate_script.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(30), call(60)])
+        generator.script_reviewer.review.assert_not_called()
+        script = generator.tts_generator.generate_audio.call_args.args[0]
+        self.assertIn("見出しAというニュースです", script[3].text)
+        self.assertEqual(
+            generator._build_metadata.call_args.kwargs["verification_status"],
+            "title_only_fallback",
+        )
+
     def test_breaking_news_discards_unverified_script(self):
         generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
         _configure_generator(generator)

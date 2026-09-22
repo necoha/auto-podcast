@@ -31,6 +31,11 @@ TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
 LLM_MODEL = "gemini-2.5-flash"
+LLM_MAX_ATTEMPTS = 3
+LLM_RETRY_BASE_DELAY_SECONDS = 30
+GEMINI_LLM_TIMEOUT_MS = 180_000
+GEMINI_TTS_TIMEOUT_MS = 300_000
+GEMINI_SDK_MAX_ATTEMPTS = 1
 
 # コンテンツソース設定
 # 追加・変更前に docs/CRD.md「4.1.1 RSSニュースソース採用・除外基準」を確認する。

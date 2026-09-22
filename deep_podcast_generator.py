@@ -18,7 +18,7 @@ from pydub import AudioSegment
 import config
 from content_manager import ContentManager
 from deep_script_generator import DeepScriptGenerator, deep_fallback_script
-from script_generator import Script
+from script_generator import Script, is_transient_generation_error
 from script_reviewer import FactVerificationError, ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
@@ -103,19 +103,19 @@ class DeepDivePodcastGenerator:
         is_fallback = False
         verification_status = "not_applicable"
         verification_sources: List[str] = []
-        max_retries = 4
-        for attempt in range(max_retries + 1):
+        max_attempts = config.LLM_MAX_ATTEMPTS
+        for attempt in range(max_attempts):
             try:
                 script = self.script_generator.generate_script(articles)
                 break
             except Exception as e:
-                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                is_transient = is_transient_generation_error(e)
                 is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_503 or is_truncated) and attempt < max_retries:
-                    wait = 60 * (attempt + 1)
+                if (is_transient or is_truncated) and attempt < max_attempts - 1:
+                    wait = config.LLM_RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
                     logger.warning(
                         "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
-                        attempt + 1, max_retries + 1, wait, e,
+                        attempt + 1, max_attempts, wait, e,
                     )
                     time.sleep(wait)
                 else:
@@ -123,17 +123,21 @@ class DeepDivePodcastGenerator:
                     break
 
         if script is None:
-            # リトライしても失敗 → お休み告知を生成して配信
-            logger.warning("[Deep] 台本生成不可、お休み告知に切り替え")
-            script = _休止告知スクリプト(self.host_name, self.guest_name)
+            logger.warning("[Deep] 台本生成不可、見出し限定台本に切り替え")
+            script = deep_fallback_script(
+                articles,
+                self.host_name,
+                self.guest_name,
+            )
             is_fallback = True
+            verification_status = "title_only_fallback"
 
         logger.info("[Deep]   台本: %d行", len(script))
 
         # 2.5. 台本レビュー（自動チェック＆修正）
-        # お休み告知は固定テンプレなのでレビュー不要
+        # フォールバック台本は記事タイトルのみなのでレビュー不要
         if is_fallback:
-            logger.info("[Deep] 2.5. お休み告知のため台本レビューをスキップ")
+            logger.info("[Deep] 2.5. フォールバック台本のためレビューをスキップ")
         else:
             logger.info("[Deep] 2.5. 台本レビュー中...")
             try:
@@ -328,36 +332,6 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep] 元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
-
-
-def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
-    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
-    from script_generator import ScriptLine
-
-    today = datetime.now(JST).strftime("%Y年%m月%d日")
-    return [
-        ScriptLine(
-            speaker=host_name,
-            text=f"おはようございます、{host_name}です。{today}のテック深掘り解説ラジオです。",
-        ),
-        ScriptLine(
-            speaker=guest_name,
-            text=f"{guest_name}です。",
-        ),
-        ScriptLine(
-            speaker=host_name,
-            text="本日はシステムの都合により、深掘り解説はお休みとさせていただきます。",
-        ),
-        ScriptLine(
-            speaker=guest_name,
-            text="通常のテック速報は配信しておりますので、そちらをお楽しみください。",
-        ),
-        ScriptLine(
-            speaker=host_name,
-            text="明日はまた深掘り解説をお届けできると思います。それではまた明日お会いしましょう。",
-        ),
-    ]
-
 
 # メイン実行部分
 if __name__ == "__main__":

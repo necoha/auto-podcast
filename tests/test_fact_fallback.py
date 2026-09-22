@@ -21,6 +21,23 @@ class FactFallbackTests(unittest.TestCase):
         self.assertIn("見出しBというニュースです", text)
         self.assertNotIn("影響", text)
 
+    def test_breaking_fallback_is_limited_to_one_tts_chunk(self):
+        articles = [
+            {
+                "title": f"見出し{i}",
+                "source": f"媒体{i}",
+                "link": f"https://example.com/{i}",
+            }
+            for i in range(18)
+        ]
+
+        script = fallback_script(articles, "ホスト", "ゲスト")
+        text = "\n".join(line.text for line in script)
+
+        self.assertEqual(len(script), 14)
+        self.assertIn("見出し4というニュースです", text)
+        self.assertNotIn("見出し5というニュースです", text)
+
     def test_deep_fallback_does_not_invent_analysis(self):
         script = deep_fallback_script(ARTICLES, "ホスト", "ゲスト")
         text = "\n".join(line.text for line in script)

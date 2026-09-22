@@ -27,6 +27,27 @@ class ScriptLine:
 # Script型 = ScriptLineのリスト
 Script = List[ScriptLine]
 
+TRANSIENT_GENERATION_ERROR_MARKERS = (
+    "500",
+    "502",
+    "503",
+    "504",
+    "internal",
+    "unavailable",
+    "server disconnected",
+    "connection reset",
+    "connection aborted",
+    "connection error",
+    "timed out",
+    "timeout",
+)
+
+
+def is_transient_generation_error(error: Exception) -> bool:
+    """短時間の再試行で回復し得る台本生成エラーか判定する。"""
+    message = str(error).lower()
+    return any(marker in message for marker in TRANSIENT_GENERATION_ERROR_MARKERS)
+
 
 SYSTEM_PROMPT_TEMPLATE = """\
 あなたはポッドキャストの台本ライターです。
@@ -94,7 +115,15 @@ class ScriptGenerator:
         self.api_key = api_key or config.GEMINI_API_KEY
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
-        self.client = genai.Client(api_key=self.api_key)
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                timeout=config.GEMINI_LLM_TIMEOUT_MS,
+                retry_options=types.HttpRetryOptions(
+                    attempts=config.GEMINI_SDK_MAX_ATTEMPTS,
+                ),
+            ),
+        )
         self.model = config.LLM_MODEL
         self.host_name = host_name or "アオイ"
         self.guest_name = guest_name or "タクミ"
@@ -718,8 +747,9 @@ class ScriptGenerator:
 
 def fallback_script(articles: List[Dict[str, Any]],
                     host_name: str = "アオイ",
-                    guest_name: str = "タクミ") -> Script:
-    """事実確認失敗時のフォールバック: 記事タイトルだけを読み上げる"""
+                    guest_name: str = "タクミ",
+                    max_articles: int = 5) -> Script:
+    """事実確認失敗時のフォールバック: 最大5件のタイトルだけを読み上げる"""
     from datetime import datetime
     import re as _re
 
@@ -733,7 +763,7 @@ def fallback_script(articles: List[Dict[str, Any]],
         text=f"{guest_name}です。本日は確認できた記事の見出しをお伝えします。"
     ))
 
-    for i, article in enumerate(articles, 1):
+    for i, article in enumerate(articles[:max_articles], 1):
         title = article.get('title', '不明な記事')
         source = article.get('source', '')
 

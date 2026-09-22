@@ -97,7 +97,15 @@ class ScriptReviewer:
     ):
         self.api_key = api_key or config.GEMINI_API_KEY
         self.model = model
-        self.client = genai.Client(api_key=self.api_key)
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                timeout=config.GEMINI_LLM_TIMEOUT_MS,
+                retry_options=types.HttpRetryOptions(
+                    attempts=config.GEMINI_SDK_MAX_ATTEMPTS,
+                ),
+            ),
+        )
         self.last_verification_urls: List[str] = []
 
     def review(
