@@ -1,289 +1,282 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Wed, 23 Sep 2026 11:17:27 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第186話 - テック速報 AI ニュースラジオ (2026-09-23)</title><description>配信日: 2026-09-23
+<rss xmlns:ns0="http://www.w3.org/2005/Atom" xmlns:ns1="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック速報 AI ニュースラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Wed, 23 Sep 2026 11:17:27 +0900</lastBuildDate><ns0:link href="https://necoha.github.io/auto-podcast/feed.xml" rel="self" type="application/rss+xml" /><ns1:author>Auto Podcast Generator</ns1:author><ns1:summary>AIが届ける毎朝のテック＆経済ニュースダイジェスト。元記事の著作権は各メディアに帰属します。</ns1:summary><ns1:category text="Technology" /><ns1:explicit>false</ns1:explicit><ns1:image href="https://necoha.github.io/auto-podcast/cover.jpg?v=2" /><ns1:owner><ns1:name>Auto Podcast Generator</ns1:name><ns1:email>cloha.mikage@gmail.com</ns1:email></ns1:owner><item><title>第186話 - テック速報 AI ニュースラジオ (2026-09-23)</title><description>配信日: 2026-09-23
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （18件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_186_20260923.mp3" length="1658157" type="audio/mpeg" /><guid isPermaLink="false">episode-186-20260923</guid><pubDate>Wed, 23 Sep 2026 11:17:27 +0900</pubDate><itunes:episode>186</itunes:episode><itunes:duration>103</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第185話 - テック速報 AI ニュースラジオ (2026-09-23)</title><description>配信日: 2026-09-23
-出演: ミオ &amp; ハルト
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
-（18件の記事をもとに構成）
-
-Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_185_20260923.mp3" length="1609005" type="audio/mpeg" /><guid isPermaLink="false">episode-185-20260923</guid><pubDate>Wed, 23 Sep 2026 08:57:24 +0900</pubDate><itunes:episode>185</itunes:episode><itunes:duration>100</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第184話 - テック速報 AI ニュースラジオ (2026-09-21)</title><description>配信日: 2026-09-21
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_186_20260923.mp3" length="1658157" type="audio/mpeg" /><guid isPermaLink="false">episode-186-20260923</guid><pubDate>Wed, 23 Sep 2026 11:17:27 +0900</pubDate><ns1:episode>186</ns1:episode><ns1:duration>103</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第184話 - テック速報 AI ニュースラジオ (2026-09-21)</title><description>配信日: 2026-09-21
 出演: アオイ &amp; タクミ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （33件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_184_20260921.mp3" length="4704429" type="audio/mpeg" /><guid isPermaLink="false">episode-184-20260921</guid><pubDate>Mon, 21 Sep 2026 02:09:00 +0900</pubDate><itunes:episode>184</itunes:episode><itunes:duration>293</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第183話 - テック速報 AI ニュースラジオ (2026-09-19)</title><description>配信日: 2026-09-19
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_184_20260921.mp3" length="4704429" type="audio/mpeg" /><guid isPermaLink="false">episode-184-20260921</guid><pubDate>Mon, 21 Sep 2026 02:09:00 +0900</pubDate><ns1:episode>184</ns1:episode><ns1:duration>293</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第183話 - テック速報 AI ニュースラジオ (2026-09-19)</title><description>配信日: 2026-09-19
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （50件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_183_20260919.mp3" length="6267693" type="audio/mpeg" /><guid isPermaLink="false">episode-183-20260919</guid><pubDate>Sat, 19 Sep 2026 02:24:49 +0900</pubDate><itunes:episode>183</itunes:episode><itunes:duration>391</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第182話 - テック速報 AI ニュースラジオ (2026-09-16)</title><description>配信日: 2026-09-16
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_183_20260919.mp3" length="6267693" type="audio/mpeg" /><guid isPermaLink="false">episode-183-20260919</guid><pubDate>Sat, 19 Sep 2026 02:24:49 +0900</pubDate><ns1:episode>183</ns1:episode><ns1:duration>391</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第182話 - テック速報 AI ニュースラジオ (2026-09-16)</title><description>配信日: 2026-09-16
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_182_20260916.mp3" length="10715181" type="audio/mpeg" /><guid isPermaLink="false">episode-182-20260916</guid><pubDate>Wed, 16 Sep 2026 02:55:44 +0900</pubDate><itunes:episode>182</itunes:episode><itunes:duration>669</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第181話 - テック速報 AI ニュースラジオ (2026-09-14)</title><description>配信日: 2026-09-14
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_182_20260916.mp3" length="10715181" type="audio/mpeg" /><guid isPermaLink="false">episode-182-20260916</guid><pubDate>Wed, 16 Sep 2026 02:55:44 +0900</pubDate><ns1:episode>182</ns1:episode><ns1:duration>669</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第181話 - テック速報 AI ニュースラジオ (2026-09-14)</title><description>配信日: 2026-09-14
 出演: アオイ &amp; タクミ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （43件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_181_20260914.mp3" length="6747693" type="audio/mpeg" /><guid isPermaLink="false">episode-181-20260914</guid><pubDate>Mon, 14 Sep 2026 02:11:51 +0900</pubDate><itunes:episode>181</itunes:episode><itunes:duration>421</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第180話 - テック速報 AI ニュースラジオ (2026-09-12)</title><description>配信日: 2026-09-12
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_181_20260914.mp3" length="6747693" type="audio/mpeg" /><guid isPermaLink="false">episode-181-20260914</guid><pubDate>Mon, 14 Sep 2026 02:11:51 +0900</pubDate><ns1:episode>181</ns1:episode><ns1:duration>421</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第180話 - テック速報 AI ニュースラジオ (2026-09-12)</title><description>配信日: 2026-09-12
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （55件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_180_20260912.mp3" length="8450733" type="audio/mpeg" /><guid isPermaLink="false">episode-180-20260912</guid><pubDate>Sat, 12 Sep 2026 02:30:35 +0900</pubDate><itunes:episode>180</itunes:episode><itunes:duration>528</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第179話 - テック速報 AI ニュースラジオ (2026-09-11)</title><description>配信日: 2026-09-11
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_180_20260912.mp3" length="8450733" type="audio/mpeg" /><guid isPermaLink="false">episode-180-20260912</guid><pubDate>Sat, 12 Sep 2026 02:30:35 +0900</pubDate><ns1:episode>180</ns1:episode><ns1:duration>528</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第179話 - テック速報 AI ニュースラジオ (2026-09-11)</title><description>配信日: 2026-09-11
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_179_20260911.mp3" length="8924205" type="audio/mpeg" /><guid isPermaLink="false">episode-179-20260911</guid><pubDate>Fri, 11 Sep 2026 02:26:42 +0900</pubDate><itunes:episode>179</itunes:episode><itunes:duration>557</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第178話 - テック速報 AI ニュースラジオ (2026-09-10)</title><description>配信日: 2026-09-10
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_179_20260911.mp3" length="8924205" type="audio/mpeg" /><guid isPermaLink="false">episode-179-20260911</guid><pubDate>Fri, 11 Sep 2026 02:26:42 +0900</pubDate><ns1:episode>179</ns1:episode><ns1:duration>557</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第178話 - テック速報 AI ニュースラジオ (2026-09-10)</title><description>配信日: 2026-09-10
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_178_20260910.mp3" length="7735725" type="audio/mpeg" /><guid isPermaLink="false">episode-178-20260910</guid><pubDate>Thu, 10 Sep 2026 02:27:48 +0900</pubDate><itunes:episode>178</itunes:episode><itunes:duration>483</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第177話 - テック速報 AI ニュースラジオ (2026-09-09)</title><description>配信日: 2026-09-09
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_178_20260910.mp3" length="7735725" type="audio/mpeg" /><guid isPermaLink="false">episode-178-20260910</guid><pubDate>Thu, 10 Sep 2026 02:27:48 +0900</pubDate><ns1:episode>178</ns1:episode><ns1:duration>483</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第177話 - テック速報 AI ニュースラジオ (2026-09-09)</title><description>配信日: 2026-09-09
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_177_20260909.mp3" length="9954861" type="audio/mpeg" /><guid isPermaLink="false">episode-177-20260909</guid><pubDate>Wed, 09 Sep 2026 02:43:17 +0900</pubDate><itunes:episode>177</itunes:episode><itunes:duration>622</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第176話 - テック速報 AI ニュースラジオ (2026-09-08)</title><description>配信日: 2026-09-08
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_177_20260909.mp3" length="9954861" type="audio/mpeg" /><guid isPermaLink="false">episode-177-20260909</guid><pubDate>Wed, 09 Sep 2026 02:43:17 +0900</pubDate><ns1:episode>177</ns1:episode><ns1:duration>622</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第176話 - テック速報 AI ニュースラジオ (2026-09-08)</title><description>配信日: 2026-09-08
 出演: ヒナタ &amp; ソウタ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （52件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_176_20260908.mp3" length="11280045" type="audio/mpeg" /><guid isPermaLink="false">episode-176-20260908</guid><pubDate>Tue, 08 Sep 2026 03:33:02 +0900</pubDate><itunes:episode>176</itunes:episode><itunes:duration>704</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第175話 - テック速報 AI ニュースラジオ (2026-09-06)</title><description>配信日: 2026-09-06
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_176_20260908.mp3" length="11280045" type="audio/mpeg" /><guid isPermaLink="false">episode-176-20260908</guid><pubDate>Tue, 08 Sep 2026 03:33:02 +0900</pubDate><ns1:episode>176</ns1:episode><ns1:duration>704</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第175話 - テック速報 AI ニュースラジオ (2026-09-06)</title><description>配信日: 2026-09-06
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （41件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_175_20260906.mp3" length="10192173" type="audio/mpeg" /><guid isPermaLink="false">episode-175-20260906</guid><pubDate>Sun, 06 Sep 2026 01:24:47 +0900</pubDate><itunes:episode>175</itunes:episode><itunes:duration>636</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第174話 - テック速報 AI ニュースラジオ (2026-09-05)</title><description>配信日: 2026-09-05
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_175_20260906.mp3" length="10192173" type="audio/mpeg" /><guid isPermaLink="false">episode-175-20260906</guid><pubDate>Sun, 06 Sep 2026 01:24:47 +0900</pubDate><ns1:episode>175</ns1:episode><ns1:duration>636</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第174話 - テック速報 AI ニュースラジオ (2026-09-05)</title><description>配信日: 2026-09-05
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （55件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_174_20260905.mp3" length="9413421" type="audio/mpeg" /><guid isPermaLink="false">episode-174-20260905</guid><pubDate>Sat, 05 Sep 2026 02:16:23 +0900</pubDate><itunes:episode>174</itunes:episode><itunes:duration>588</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第173話 - テック速報 AI ニュースラジオ (2026-09-04)</title><description>配信日: 2026-09-04
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_174_20260905.mp3" length="9413421" type="audio/mpeg" /><guid isPermaLink="false">episode-174-20260905</guid><pubDate>Sat, 05 Sep 2026 02:16:23 +0900</pubDate><ns1:episode>174</ns1:episode><ns1:duration>588</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第173話 - テック速報 AI ニュースラジオ (2026-09-04)</title><description>配信日: 2026-09-04
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （58件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_173_20260904.mp3" length="8790573" type="audio/mpeg" /><guid isPermaLink="false">episode-173-20260904</guid><pubDate>Fri, 04 Sep 2026 02:25:13 +0900</pubDate><itunes:episode>173</itunes:episode><itunes:duration>549</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第172話 - テック速報 AI ニュースラジオ (2026-09-03)</title><description>配信日: 2026-09-03
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_173_20260904.mp3" length="8790573" type="audio/mpeg" /><guid isPermaLink="false">episode-173-20260904</guid><pubDate>Fri, 04 Sep 2026 02:25:13 +0900</pubDate><ns1:episode>173</ns1:episode><ns1:duration>549</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第172話 - テック速報 AI ニュースラジオ (2026-09-03)</title><description>配信日: 2026-09-03
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （59件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_172_20260903.mp3" length="8689581" type="audio/mpeg" /><guid isPermaLink="false">episode-172-20260903</guid><pubDate>Thu, 03 Sep 2026 02:35:34 +0900</pubDate><itunes:episode>172</itunes:episode><itunes:duration>543</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第171話 - テック速報 AI ニュースラジオ (2026-08-31)</title><description>配信日: 2026-08-31
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_172_20260903.mp3" length="8689581" type="audio/mpeg" /><guid isPermaLink="false">episode-172-20260903</guid><pubDate>Thu, 03 Sep 2026 02:35:34 +0900</pubDate><ns1:episode>172</ns1:episode><ns1:duration>543</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第171話 - テック速報 AI ニュースラジオ (2026-08-31)</title><description>配信日: 2026-08-31
 出演: アオイ &amp; タクミ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （38件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_171_20260831.mp3" length="8152749" type="audio/mpeg" /><guid isPermaLink="false">episode-171-20260831</guid><pubDate>Mon, 31 Aug 2026 02:55:03 +0900</pubDate><itunes:episode>171</itunes:episode><itunes:duration>509</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第170話 - テック速報 AI ニュースラジオ (2026-08-29)</title><description>配信日: 2026-08-29
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_171_20260831.mp3" length="8152749" type="audio/mpeg" /><guid isPermaLink="false">episode-171-20260831</guid><pubDate>Mon, 31 Aug 2026 02:55:03 +0900</pubDate><ns1:episode>171</ns1:episode><ns1:duration>509</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第170話 - テック速報 AI ニュースラジオ (2026-08-29)</title><description>配信日: 2026-08-29
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （55件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_170_20260829.mp3" length="10752045" type="audio/mpeg" /><guid isPermaLink="false">episode-170-20260829</guid><pubDate>Sat, 29 Aug 2026 08:22:48 +0900</pubDate><itunes:episode>170</itunes:episode><itunes:duration>671</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第169話 - テック速報 AI ニュースラジオ (2026-08-26)</title><description>配信日: 2026-08-26
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_170_20260829.mp3" length="10752045" type="audio/mpeg" /><guid isPermaLink="false">episode-170-20260829</guid><pubDate>Sat, 29 Aug 2026 08:22:48 +0900</pubDate><ns1:episode>170</ns1:episode><ns1:duration>671</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第169話 - テック速報 AI ニュースラジオ (2026-08-26)</title><description>配信日: 2026-08-26
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_169_20260826.mp3" length="8400813" type="audio/mpeg" /><guid isPermaLink="false">episode-169-20260826</guid><pubDate>Wed, 26 Aug 2026 23:36:45 +0900</pubDate><itunes:episode>169</itunes:episode><itunes:duration>524</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第168話 - テック速報 AI ニュースラジオ (2026-08-24)</title><description>配信日: 2026-08-24
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_169_20260826.mp3" length="8400813" type="audio/mpeg" /><guid isPermaLink="false">episode-169-20260826</guid><pubDate>Wed, 26 Aug 2026 23:36:45 +0900</pubDate><ns1:episode>169</ns1:episode><ns1:duration>524</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第168話 - テック速報 AI ニュースラジオ (2026-08-24)</title><description>配信日: 2026-08-24
 出演: アオイ &amp; タクミ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （52件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_168_20260824.mp3" length="9423021" type="audio/mpeg" /><guid isPermaLink="false">episode-168-20260824</guid><pubDate>Mon, 24 Aug 2026 23:34:42 +0900</pubDate><itunes:episode>168</itunes:episode><itunes:duration>588</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第167話 - テック速報 AI ニュースラジオ (2026-08-23)</title><description>配信日: 2026-08-23
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_168_20260824.mp3" length="9423021" type="audio/mpeg" /><guid isPermaLink="false">episode-168-20260824</guid><pubDate>Mon, 24 Aug 2026 23:34:42 +0900</pubDate><ns1:episode>168</ns1:episode><ns1:duration>588</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第167話 - テック速報 AI ニュースラジオ (2026-08-23)</title><description>配信日: 2026-08-23
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （37件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_167_20260823.mp3" length="8739885" type="audio/mpeg" /><guid isPermaLink="false">episode-167-20260823</guid><pubDate>Sun, 23 Aug 2026 23:22:00 +0900</pubDate><itunes:episode>167</itunes:episode><itunes:duration>546</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第166話 - テック速報 AI ニュースラジオ (2026-08-20)</title><description>配信日: 2026-08-20
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_167_20260823.mp3" length="8739885" type="audio/mpeg" /><guid isPermaLink="false">episode-167-20260823</guid><pubDate>Sun, 23 Aug 2026 23:22:00 +0900</pubDate><ns1:episode>167</ns1:episode><ns1:duration>546</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第166話 - テック速報 AI ニュースラジオ (2026-08-20)</title><description>配信日: 2026-08-20
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （58件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_166_20260820.mp3" length="9893805" type="audio/mpeg" /><guid isPermaLink="false">episode-166-20260820</guid><pubDate>Thu, 20 Aug 2026 23:27:30 +0900</pubDate><itunes:episode>166</itunes:episode><itunes:duration>618</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第165話 - テック速報 AI ニュースラジオ (2026-08-16)</title><description>配信日: 2026-08-16
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_166_20260820.mp3" length="9893805" type="audio/mpeg" /><guid isPermaLink="false">episode-166-20260820</guid><pubDate>Thu, 20 Aug 2026 23:27:30 +0900</pubDate><ns1:episode>166</ns1:episode><ns1:duration>618</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第165話 - テック速報 AI ニュースラジオ (2026-08-16)</title><description>配信日: 2026-08-16
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （37件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_165_20260816.mp3" length="6334509" type="audio/mpeg" /><guid isPermaLink="false">episode-165-20260816</guid><pubDate>Sun, 16 Aug 2026 23:14:08 +0900</pubDate><itunes:episode>165</itunes:episode><itunes:duration>395</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第164話 - テック速報 AI ニュースラジオ (2026-08-15)</title><description>配信日: 2026-08-15
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_165_20260816.mp3" length="6334509" type="audio/mpeg" /><guid isPermaLink="false">episode-165-20260816</guid><pubDate>Sun, 16 Aug 2026 23:14:08 +0900</pubDate><ns1:episode>165</ns1:episode><ns1:duration>395</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第164話 - テック速報 AI ニュースラジオ (2026-08-15)</title><description>配信日: 2026-08-15
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （37件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_164_20260815.mp3" length="10073901" type="audio/mpeg" /><guid isPermaLink="false">episode-164-20260815</guid><pubDate>Sat, 15 Aug 2026 23:14:31 +0900</pubDate><itunes:episode>164</itunes:episode><itunes:duration>629</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第163話 - テック速報 AI ニュースラジオ (2026-08-14)</title><description>配信日: 2026-08-14
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_164_20260815.mp3" length="10073901" type="audio/mpeg" /><guid isPermaLink="false">episode-164-20260815</guid><pubDate>Sat, 15 Aug 2026 23:14:31 +0900</pubDate><ns1:episode>164</ns1:episode><ns1:duration>629</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第163話 - テック速報 AI ニュースラジオ (2026-08-14)</title><description>配信日: 2026-08-14
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （51件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_163_20260814.mp3" length="9072045" type="audio/mpeg" /><guid isPermaLink="false">episode-163-20260814</guid><pubDate>Fri, 14 Aug 2026 23:48:53 +0900</pubDate><itunes:episode>163</itunes:episode><itunes:duration>566</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第162話 - テック速報 AI ニュースラジオ (2026-08-13)</title><description>配信日: 2026-08-13
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_163_20260814.mp3" length="9072045" type="audio/mpeg" /><guid isPermaLink="false">episode-163-20260814</guid><pubDate>Fri, 14 Aug 2026 23:48:53 +0900</pubDate><ns1:episode>163</ns1:episode><ns1:duration>566</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第162話 - テック速報 AI ニュースラジオ (2026-08-13)</title><description>配信日: 2026-08-13
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （50件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_162_20260813.mp3" length="7408941" type="audio/mpeg" /><guid isPermaLink="false">episode-162-20260813</guid><pubDate>Thu, 13 Aug 2026 23:53:30 +0900</pubDate><itunes:episode>162</itunes:episode><itunes:duration>462</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第161話 - テック速報 AI ニュースラジオ (2026-08-12)</title><description>配信日: 2026-08-12
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_162_20260813.mp3" length="7408941" type="audio/mpeg" /><guid isPermaLink="false">episode-162-20260813</guid><pubDate>Thu, 13 Aug 2026 23:53:30 +0900</pubDate><ns1:episode>162</ns1:episode><ns1:duration>462</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第161話 - テック速報 AI ニュースラジオ (2026-08-12)</title><description>配信日: 2026-08-12
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （52件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_161_20260812.mp3" length="8943021" type="audio/mpeg" /><guid isPermaLink="false">episode-161-20260812</guid><pubDate>Wed, 12 Aug 2026 23:54:15 +0900</pubDate><itunes:episode>161</itunes:episode><itunes:duration>558</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第160話 - テック速報 AI ニュースラジオ (2026-08-09)</title><description>配信日: 2026-08-09
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_161_20260812.mp3" length="8943021" type="audio/mpeg" /><guid isPermaLink="false">episode-161-20260812</guid><pubDate>Wed, 12 Aug 2026 23:54:15 +0900</pubDate><ns1:episode>161</ns1:episode><ns1:duration>558</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第160話 - テック速報 AI ニュースラジオ (2026-08-09)</title><description>配信日: 2026-08-09
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （34件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_160_20260809.mp3" length="10694445" type="audio/mpeg" /><guid isPermaLink="false">episode-160-20260809</guid><pubDate>Sun, 09 Aug 2026 23:28:47 +0900</pubDate><itunes:episode>160</itunes:episode><itunes:duration>668</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第159話 - テック速報 AI ニュースラジオ (2026-08-08)</title><description>配信日: 2026-08-08
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_160_20260809.mp3" length="10694445" type="audio/mpeg" /><guid isPermaLink="false">episode-160-20260809</guid><pubDate>Sun, 09 Aug 2026 23:28:47 +0900</pubDate><ns1:episode>160</ns1:episode><ns1:duration>668</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第159話 - テック速報 AI ニュースラジオ (2026-08-08)</title><description>配信日: 2026-08-08
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （43件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_159_20260808.mp3" length="16215597" type="audio/mpeg" /><guid isPermaLink="false">episode-159-20260808</guid><pubDate>Sat, 08 Aug 2026 23:32:55 +0900</pubDate><itunes:episode>159</itunes:episode><itunes:duration>1013</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第158話 - テック速報 AI ニュースラジオ (2026-08-07)</title><description>配信日: 2026-08-07
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_159_20260808.mp3" length="16215597" type="audio/mpeg" /><guid isPermaLink="false">episode-159-20260808</guid><pubDate>Sat, 08 Aug 2026 23:32:55 +0900</pubDate><ns1:episode>159</ns1:episode><ns1:duration>1013</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第158話 - テック速報 AI ニュースラジオ (2026-08-07)</title><description>配信日: 2026-08-07
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_158_20260807.mp3" length="10525485" type="audio/mpeg" /><guid isPermaLink="false">episode-158-20260807</guid><pubDate>Fri, 07 Aug 2026 23:49:12 +0900</pubDate><itunes:episode>158</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第157話 - テック速報 AI ニュースラジオ (2026-08-06)</title><description>配信日: 2026-08-06
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_158_20260807.mp3" length="10525485" type="audio/mpeg" /><guid isPermaLink="false">episode-158-20260807</guid><pubDate>Fri, 07 Aug 2026 23:49:12 +0900</pubDate><ns1:episode>158</ns1:episode><ns1:duration>657</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第157話 - テック速報 AI ニュースラジオ (2026-08-06)</title><description>配信日: 2026-08-06
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_157_20260806.mp3" length="8970285" type="audio/mpeg" /><guid isPermaLink="false">episode-157-20260806</guid><pubDate>Thu, 06 Aug 2026 00:57:27 +0900</pubDate><itunes:episode>157</itunes:episode><itunes:duration>560</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第156話 - テック速報 AI ニュースラジオ (2026-08-05)</title><description>配信日: 2026-08-05
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_157_20260806.mp3" length="8970285" type="audio/mpeg" /><guid isPermaLink="false">episode-157-20260806</guid><pubDate>Thu, 06 Aug 2026 00:57:27 +0900</pubDate><ns1:episode>157</ns1:episode><ns1:duration>560</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第156話 - テック速報 AI ニュースラジオ (2026-08-05)</title><description>配信日: 2026-08-05
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_156_20260805.mp3" length="10905261" type="audio/mpeg" /><guid isPermaLink="false">episode-156-20260805</guid><pubDate>Wed, 05 Aug 2026 01:13:05 +0900</pubDate><itunes:episode>156</itunes:episode><itunes:duration>681</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第155話 - テック速報 AI ニュースラジオ (2026-08-04)</title><description>配信日: 2026-08-04
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_156_20260805.mp3" length="10905261" type="audio/mpeg" /><guid isPermaLink="false">episode-156-20260805</guid><pubDate>Wed, 05 Aug 2026 01:13:05 +0900</pubDate><ns1:episode>156</ns1:episode><ns1:duration>681</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第155話 - テック速報 AI ニュースラジオ (2026-08-04)</title><description>配信日: 2026-08-04
 出演: ヒナタ &amp; ソウタ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （55件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_155_20260804.mp3" length="9070893" type="audio/mpeg" /><guid isPermaLink="false">episode-155-20260804</guid><pubDate>Tue, 04 Aug 2026 01:20:36 +0900</pubDate><itunes:episode>155</itunes:episode><itunes:duration>566</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第154話 - テック速報 AI ニュースラジオ (2026-08-02)</title><description>配信日: 2026-08-02
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_155_20260804.mp3" length="9070893" type="audio/mpeg" /><guid isPermaLink="false">episode-155-20260804</guid><pubDate>Tue, 04 Aug 2026 01:20:36 +0900</pubDate><ns1:episode>155</ns1:episode><ns1:duration>566</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第154話 - テック速報 AI ニュースラジオ (2026-08-02)</title><description>配信日: 2026-08-02
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （39件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_154_20260802.mp3" length="12085293" type="audio/mpeg" /><guid isPermaLink="false">episode-154-20260802</guid><pubDate>Sun, 02 Aug 2026 23:58:53 +0900</pubDate><itunes:episode>154</itunes:episode><itunes:duration>755</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第153話 - テック速報 AI ニュースラジオ (2026-08-01)</title><description>配信日: 2026-08-01
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_154_20260802.mp3" length="12085293" type="audio/mpeg" /><guid isPermaLink="false">episode-154-20260802</guid><pubDate>Sun, 02 Aug 2026 23:58:53 +0900</pubDate><ns1:episode>154</ns1:episode><ns1:duration>755</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第153話 - テック速報 AI ニュースラジオ (2026-08-01)</title><description>配信日: 2026-08-01
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （40件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_153_20260801.mp3" length="10401837" type="audio/mpeg" /><guid isPermaLink="false">episode-153-20260801</guid><pubDate>Sat, 01 Aug 2026 23:58:30 +0900</pubDate><itunes:episode>153</itunes:episode><itunes:duration>650</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第152話 - テック速報 AI ニュースラジオ (2026-08-01)</title><description>配信日: 2026-08-01
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_153_20260801.mp3" length="10401837" type="audio/mpeg" /><guid isPermaLink="false">episode-153-20260801</guid><pubDate>Sat, 01 Aug 2026 23:58:30 +0900</pubDate><ns1:episode>153</ns1:episode><ns1:duration>650</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第152話 - テック速報 AI ニュースラジオ (2026-08-01)</title><description>配信日: 2026-08-01
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_152_20260801.mp3" length="6404781" type="audio/mpeg" /><guid isPermaLink="false">episode-152-20260801</guid><pubDate>Sat, 01 Aug 2026 00:56:17 +0900</pubDate><itunes:episode>152</itunes:episode><itunes:duration>400</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第151話 - テック速報 AI ニュースラジオ (2026-07-31)</title><description>配信日: 2026-07-31
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_152_20260801.mp3" length="6404781" type="audio/mpeg" /><guid isPermaLink="false">episode-152-20260801</guid><pubDate>Sat, 01 Aug 2026 00:56:17 +0900</pubDate><ns1:episode>152</ns1:episode><ns1:duration>400</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第151話 - テック速報 AI ニュースラジオ (2026-07-31)</title><description>配信日: 2026-07-31
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_151_20260731.mp3" length="308781" type="audio/mpeg" /><guid isPermaLink="false">episode-151-20260731</guid><pubDate>Fri, 31 Jul 2026 00:56:11 +0900</pubDate><itunes:episode>151</itunes:episode><itunes:duration>19</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第150話 - テック速報 AI ニュースラジオ (2026-07-30)</title><description>配信日: 2026-07-30
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_151_20260731.mp3" length="308781" type="audio/mpeg" /><guid isPermaLink="false">episode-151-20260731</guid><pubDate>Fri, 31 Jul 2026 00:56:11 +0900</pubDate><ns1:episode>151</ns1:episode><ns1:duration>19</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第150話 - テック速報 AI ニュースラジオ (2026-07-30)</title><description>配信日: 2026-07-30
 出演: サクラ &amp; レン
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （57件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_150_20260730.mp3" length="8779821" type="audio/mpeg" /><guid isPermaLink="false">episode-150-20260730</guid><pubDate>Thu, 30 Jul 2026 00:49:16 +0900</pubDate><itunes:episode>150</itunes:episode><itunes:duration>548</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第149話 - テック速報 AI ニュースラジオ (2026-07-29)</title><description>配信日: 2026-07-29
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_150_20260730.mp3" length="8779821" type="audio/mpeg" /><guid isPermaLink="false">episode-150-20260730</guid><pubDate>Thu, 30 Jul 2026 00:49:16 +0900</pubDate><ns1:episode>150</ns1:episode><ns1:duration>548</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第149話 - テック速報 AI ニュースラジオ (2026-07-29)</title><description>配信日: 2026-07-29
 出演: ミオ &amp; ハルト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_149_20260729.mp3" length="9175341" type="audio/mpeg" /><guid isPermaLink="false">episode-149-20260729</guid><pubDate>Wed, 29 Jul 2026 01:03:01 +0900</pubDate><itunes:episode>149</itunes:episode><itunes:duration>573</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第148話 - テック速報 AI ニュースラジオ (2026-07-28)</title><description>配信日: 2026-07-28
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_149_20260729.mp3" length="9175341" type="audio/mpeg" /><guid isPermaLink="false">episode-149-20260729</guid><pubDate>Wed, 29 Jul 2026 01:03:01 +0900</pubDate><ns1:episode>149</ns1:episode><ns1:duration>573</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第148話 - テック速報 AI ニュースラジオ (2026-07-28)</title><description>配信日: 2026-07-28
 出演: ヒナタ &amp; ソウタ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
 （56件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_148_20260728.mp3" length="8891181" type="audio/mpeg" /><guid isPermaLink="false">episode-148-20260728</guid><pubDate>Tue, 28 Jul 2026 01:10:32 +0900</pubDate><itunes:episode>148</itunes:episode><itunes:duration>555</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第147話 - テック速報 AI ニュースラジオ (2026-07-26)</title><description>配信日: 2026-07-26
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_148_20260728.mp3" length="8891181" type="audio/mpeg" /><guid isPermaLink="false">episode-148-20260728</guid><pubDate>Tue, 28 Jul 2026 01:10:32 +0900</pubDate><ns1:episode>148</ns1:episode><ns1:duration>555</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第147話 - テック速報 AI ニュースラジオ (2026-07-26)</title><description>配信日: 2026-07-26
 出演: ナツキ &amp; リュウセイ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （31件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_147_20260726.mp3" length="8949933" type="audio/mpeg" /><guid isPermaLink="false">episode-147-20260726</guid><pubDate>Sun, 26 Jul 2026 23:59:45 +0900</pubDate><itunes:episode>147</itunes:episode><itunes:duration>559</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第146話 - テック速報 AI ニュースラジオ (2026-07-25)</title><description>配信日: 2026-07-25
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_147_20260726.mp3" length="8949933" type="audio/mpeg" /><guid isPermaLink="false">episode-147-20260726</guid><pubDate>Sun, 26 Jul 2026 23:59:45 +0900</pubDate><ns1:episode>147</ns1:episode><ns1:duration>559</ns1:duration><ns1:explicit>false</ns1:explicit></item><item><title>第146話 - テック速報 AI ニュースラジオ (2026-07-25)</title><description>配信日: 2026-07-25
 出演: シオリ &amp; ユウマ
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
 （44件の記事をもとに構成）
 
 Gemini AIで自動生成されたポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_146_20260725.mp3" length="8663085" type="audio/mpeg" /><guid isPermaLink="false">episode-146-20260725</guid><pubDate>Sat, 25 Jul 2026 23:57:44 +0900</pubDate><itunes:episode>146</itunes:episode><itunes:duration>541</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes/episode_146_20260725.mp3" length="8663085" type="audio/mpeg" /><guid isPermaLink="false">episode-146-20260725</guid><pubDate>Sat, 25 Jul 2026 23:57:44 +0900</pubDate><ns1:episode>146</ns1:episode><ns1:duration>541</ns1:duration><ns1:explicit>false</ns1:explicit></item></channel></rss>
