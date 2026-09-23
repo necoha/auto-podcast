@@ -210,38 +210,8 @@ class PodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """次のエピソード番号を算出する
-
-        feed.xml の既存エピソードのうち最大の <itunes:episode> +1 を返す。
-        cleanup で古いエピソードが削除された場合でも item 数ではなく実番号で採番するため、
-        重複を防げる。
-        フォールバックとして content/ の JSON カウントも使う。
-        """
-        # feed.xml から既存エピソード番号の最大値を取得
-        feed_path = os.path.join(config.AUDIO_OUTPUT_DIR,
-                                 getattr(config, "RSS_FEED_FILENAME", "feed.xml"))
-        if os.path.exists(feed_path):
-            try:
-                import xml.etree.ElementTree as ET
-                tree = ET.parse(feed_path)
-                channel = tree.find("channel")
-                if channel is not None:
-                    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
-                    nums: List[int] = []
-                    for item in channel.findall("item"):
-                        ep = item.find("itunes:episode", ns)
-                        if ep is not None and ep.text and ep.text.isdigit():
-                            nums.append(int(ep.text))
-                    if nums:
-                        return max(nums) + 1
-                    # itunes:episode が無い場合は item 数で代用
-                    existing = len(channel.findall("item"))
-                    if existing > 0:
-                        return existing + 1
-            except Exception:
-                pass
-        # フォールバック: content/ ディレクトリ
-        return self.uploader.get_episode_count() + 1
+        """同日の再実行では既存回を再利用し、それ以外は次の回を返す。"""
+        return self.rss_generator.get_episode_number(datetime.now(JST).date())
 
     def _build_metadata(
         self,

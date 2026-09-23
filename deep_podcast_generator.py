@@ -8,7 +8,6 @@
 
 import logging
 import os
-import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -234,32 +233,8 @@ class DeepDivePodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """次のエピソード番号を算出する（feed_deep.xml から）
-
-        cleanup で古いエピソードが削除された場合でも item 数ではなく
-        既存エピソード番号の最大値+1で採番するため、重複を防げる。
-        """
-        feed_filename = getattr(config, 'DEEP_RSS_FEED_FILENAME', 'feed_deep.xml')
-        feed_path = os.path.join(config.AUDIO_OUTPUT_DIR, feed_filename)
-        if os.path.exists(feed_path):
-            try:
-                tree = ET.parse(feed_path)
-                channel = tree.find("channel")
-                if channel is not None:
-                    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
-                    nums = []
-                    for item in channel.findall("item"):
-                        ep = item.find("itunes:episode", ns)
-                        if ep is not None and ep.text and ep.text.isdigit():
-                            nums.append(int(ep.text))
-                    if nums:
-                        return max(nums) + 1
-                    existing = len(channel.findall("item"))
-                    if existing > 0:
-                        return existing + 1
-            except Exception:
-                pass
-        return 1
+        """同日の再実行では既存回を再利用し、それ以外は次の回を返す。"""
+        return self.rss_generator.get_episode_number(datetime.now(JST).date())
 
     def _build_metadata(
         self,

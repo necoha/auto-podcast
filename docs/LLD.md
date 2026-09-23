@@ -361,6 +361,7 @@ classDiagram
         -_podcast_image_url: str
         +__init__(base_url, feed_dir, feed_filename, podcast_title, podcast_description, podcast_image_url, episodes_subdir)
         +add_episode(mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size) str
+        +get_episode_number(target_date) int
         +generate_feed() str
         +cleanup_old_episodes(feed_path, episodes_dir, retention_days) List~str~
         -_load_existing_feed() ElementTree | None
@@ -386,7 +387,8 @@ classDiagram
 
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|------|
-| `add_episode` | mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size | str | 既存feed.xmlを読み込み → `_sync_channel_metadata` でメタデータ同期 → 新エピソードを先頭に追加。feed.xmlパスを返す |
+| `add_episode` | mp3_filename, title, description, episode_number, duration_seconds, pub_date, mp3_size | str | 既存feed.xmlを読み込み → 同日の既存itemを置換 → 新エピソードを先頭に追加。feed.xmlパスを返す |
+| `get_episode_number` | target_date | int | 対象日の既存回番号があれば再利用。なければ既存最大番号+1 |
 | `generate_feed` | - | str | 空のフィードを新規作成（チャンネル情報のみ） |
 | `_sync_channel_metadata` | tree: ElementTree | None | 既存フィードのチャンネルメタデータ（title, description, itunes:summary, itunes:image）を現在のconfig値に同期。config変更時に自動反映を保証する |
 | `_create_item_element` | mp3_filename, metadata | Element | RSS item 要素を構築（enclosure + メタデータ） |
@@ -502,7 +504,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。5つのサブコンポーネントを初期化 |
 | `generate` | - | EpisodeMetadata or None | メインフロー: 収集→台本→音声→アップロード |
-| `_get_episode_number` | - | int | feed.xmlの既存item数+1。フォールバックとしてcontent/ JSONカウント |
+| `_get_episode_number` | - | int | 同日の再実行では既存回番号を再利用し、それ以外は既存最大番号+1 |
 | `_build_metadata` | articles, audio_path, episode_num, script, verification_status, verification_sources | EpisodeMetadata | 元記事・検証状態・参照URL・最終台本を含むメタデータ構築 |
 
 #### generate() フロー（疑似コード）
