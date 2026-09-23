@@ -208,6 +208,7 @@ classDiagram
         -api_key: str
         -model: str
         -client: genai.Client
+        -interactions_client: genai.Client
         +last_verification_urls: List[str]
         +last_retrieval_statuses: Dict[str, str]
         +fact_card_request_count: int
@@ -241,7 +242,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key, model | - | Gemini Client初期化 |
 | `review` | script: Script, articles: List[Dict], require_all_articles | Script | URL Context付きレビュー。証跡不足時は `FactVerificationError` |
-| `extract_fact_cards` | articles, batch_size, preferred_model | Dict[str, ArticleFactCard] | 最大5 URLずつ処理。部分成功を保持し、URL別状態・API回数・処理時間を記録 |
+| `extract_fact_cards` | articles, batch_size, preferred_model | Dict[str, ArticleFactCard] | Interactions APIで最大5 URLずつ処理。部分成功を保持し、URL別状態・API回数・処理時間を記録 |
 | `_build_review_prompt` | script, articles | str | 記事タイトル・媒体・URL＋台本JSONをプロンプトに構成 |
 | `_extract_url_context_evidence` | response | tuple | 取得成功した元記事URLと引用文字範囲を抽出 |
 | `_validate_claim_citations` | script, response_text, support_ranges | None | 事実行に引用を要求し、数値・年月・制度語は語単位で引用範囲を検証 |
@@ -257,8 +258,8 @@ classDiagram
 
 #### API利用
 
-- 速報版: 最大20件を5 URLずつ、通常最大4リクエスト。バッチ障害時のみ次のStableモデルへ切替
-- 深掘り版: 選定済み最大3 URLを1リクエスト（証跡不足時は最大1回モデル切替）
+- 速報版: Interactions APIで最大20件を5 URLずつ、通常最大4リクエスト。`url_context_result`で取得状態、`url_citation`でURL別引用範囲を検証し、バッチ障害時のみ次のStableモデルへ切替
+- 深掘り版: `generateContent` APIで選定済み最大3 URLを1リクエスト（証跡不足時は最大1回モデル切替）
 - URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
 
 ---

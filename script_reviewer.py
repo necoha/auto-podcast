@@ -78,6 +78,37 @@ FACT_CARD_SYSTEM_PROMPT = """\
     }
 ]
 """
+
+FACT_CARD_RESPONSE_FORMAT = {
+    "type": "text",
+    "mime_type": "application/json",
+    "schema": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "article_number": {"type": "integer"},
+                "summary": {"type": "string"},
+                "key_facts": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 3,
+                },
+                "background": {"type": "string"},
+                "impact": {"type": "string"},
+            },
+            "required": [
+                "article_number",
+                "summary",
+                "key_facts",
+                "background",
+                "impact",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
 HIGH_RISK_FACT_PATTERN = re.compile(
     r"\d+(?:[.,]\d+)?(?:[%％年月日円ドル人件倍兆億万])?"
     r"|施行|導入|開始|解除|引き上げ|引き下げ|利上げ|利下げ"
@@ -158,6 +189,15 @@ class ScriptReviewer:
                 ),
             ),
         )
+        self.interactions_client = genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                timeout=config.GEMINI_LLM_TIMEOUT_MS,
+                retry_options=types.HttpRetryOptions(
+                    attempts=config.GEMINI_INTERACTIONS_MAX_RETRIES,
+                ),
+            ),
+        )
         self.last_verification_urls: List[str] = []
         self.last_retrieval_statuses: Dict[str, str] = {}
         self.fact_card_request_count = 0
@@ -211,10 +251,11 @@ class ScriptReviewer:
                         attempt + 1,
                         len(models),
                     )
-                    response = self.client.models.generate_content(
+                    response = self.interactions_client.interactions.create(
                         model=model,
-                        config=self._fact_card_config(),
-                        contents=self._build_fact_card_prompt(batch),
+                        input=self._build_fact_card_prompt(batch),
+                        tools=[{"type": "url_context"}],
+                        response_format=FACT_CARD_RESPONSE_FORMAT,
                     )
                     batch_cards = self._parse_fact_card_response(response, batch)
                     break
@@ -265,19 +306,10 @@ class ScriptReviewer:
         return tuple(configured_models)
 
     @staticmethod
-    def _fact_card_config() -> types.GenerateContentConfig:
-        return types.GenerateContentConfig(
-            system_instruction=FACT_CARD_SYSTEM_PROMPT,
-            temperature=0,
-            max_output_tokens=8192,
-            tools=[types.Tool(url_context=types.UrlContext())],
-        )
-
-    @staticmethod
     def _build_fact_card_prompt(
         indexed_articles: List[tuple[int, Dict[str, Any]]],
     ) -> str:
-        lines = ["## 取得対象記事"]
+        lines = [FACT_CARD_SYSTEM_PROMPT, "## 取得対象記事"]
         for article_number, article in indexed_articles:
             lines.append(
                 f"{article_number}. {article.get('title', '不明')}"
@@ -288,15 +320,16 @@ class ScriptReviewer:
 
     def _parse_fact_card_response(
         self,
-        response: types.GenerateContentResponse,
+        response: object,
         indexed_articles: List[tuple[int, Dict[str, Any]]],
     ) -> Dict[str, ArticleFactCard]:
-        response_text = getattr(response, "text", None)
+        response_text, support_ranges_by_url = (
+            self._extract_interaction_text_and_citations(response)
+        )
         if not response_text:
             raise FactVerificationError("事実カード応答が空です")
 
-        attempts = self._extract_url_context_attempts(response)
-        support_ranges_by_url = self._extract_support_ranges_by_url(response)
+        attempts = self._extract_interaction_url_results(response)
         articles_by_number = dict(indexed_articles)
         successful_original_urls: set[str] = set()
         retrieved_url_by_original: Dict[str, str] = {}
@@ -435,6 +468,63 @@ class ScriptReviewer:
     def _normalize_url_for_match(url: str) -> str:
         parsed = urlparse(url)
         return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{parsed.path.rstrip('/')}"
+
+    @staticmethod
+    def _interaction_field(value: object, name: str):
+        if isinstance(value, dict):
+            return value.get(name)
+        return getattr(value, name, None)
+
+    @classmethod
+    def _extract_interaction_url_results(
+        cls,
+        response: object,
+    ) -> List[tuple[str, str]]:
+        attempts: List[tuple[str, str]] = []
+        for step in cls._interaction_field(response, "steps") or []:
+            if cls._interaction_field(step, "type") != "url_context_result":
+                continue
+            for result in cls._interaction_field(step, "result") or []:
+                url = cls._interaction_field(result, "url") or ""
+                status = cls._interaction_field(result, "status") or "error"
+                attempts.append((url, f"URL_RETRIEVAL_STATUS_{str(status).upper()}"))
+        return attempts
+
+    @classmethod
+    def _extract_interaction_text_and_citations(
+        cls,
+        response: object,
+    ) -> tuple[str, Dict[str, List[tuple[int, int]]]]:
+        text_parts: List[str] = []
+        ranges_by_url: Dict[str, List[tuple[int, int]]] = {}
+        text_offset = 0
+        for step in cls._interaction_field(response, "steps") or []:
+            if cls._interaction_field(step, "type") != "model_output":
+                continue
+            for content in cls._interaction_field(step, "content") or []:
+                if cls._interaction_field(content, "type") != "text":
+                    continue
+                text = cls._interaction_field(content, "text") or ""
+                text_parts.append(text)
+                for annotation in cls._interaction_field(content, "annotations") or []:
+                    if cls._interaction_field(annotation, "type") != "url_citation":
+                        continue
+                    url = cls._interaction_field(annotation, "url")
+                    start = cls._interaction_field(annotation, "start_index")
+                    end = cls._interaction_field(annotation, "end_index")
+                    if (
+                        not isinstance(url, str)
+                        or not isinstance(start, int)
+                        or not isinstance(end, int)
+                        or end <= start
+                    ):
+                        continue
+                    normalized_url = cls._normalize_url_for_match(url)
+                    ranges_by_url.setdefault(normalized_url, []).append(
+                        (text_offset + start, text_offset + end)
+                    )
+                text_offset += len(text)
+        return "".join(text_parts), ranges_by_url
 
     def review(
         self,
@@ -613,57 +703,6 @@ class ScriptReviewer:
                     support_ranges.append((start, end))
 
         return urls, support_ranges, statuses
-
-    @staticmethod
-    def _extract_url_context_attempts(
-        response: types.GenerateContentResponse,
-    ) -> List[tuple[str, str]]:
-        """リクエスト順を維持したURL取得結果を返す。"""
-        candidates = response.candidates or []
-        if not candidates or candidates[0].url_context_metadata is None:
-            return []
-
-        attempts: List[tuple[str, str]] = []
-        for metadata in candidates[0].url_context_metadata.url_metadata or []:
-            status = metadata.url_retrieval_status
-            status_value = (
-                status.value
-                if isinstance(status, types.UrlRetrievalStatus)
-                else status
-            )
-            attempts.append((
-                metadata.retrieved_url or "",
-                str(status_value) if status_value else "UNSPECIFIED",
-            ))
-        return attempts
-
-    @staticmethod
-    def _extract_support_ranges_by_url(
-        response: types.GenerateContentResponse,
-    ) -> Dict[str, List[tuple[int, int]]]:
-        """引用範囲を根拠URLごとに分ける。"""
-        candidates = response.candidates or []
-        if not candidates or candidates[0].grounding_metadata is None:
-            return {}
-
-        grounding_metadata = candidates[0].grounding_metadata
-        chunks = grounding_metadata.grounding_chunks or []
-        ranges_by_url: Dict[str, List[tuple[int, int]]] = {}
-        for support in grounding_metadata.grounding_supports or []:
-            segment = support.segment
-            start = segment.start_index if segment else None
-            end = segment.end_index if segment else None
-            if not isinstance(start, int) or not isinstance(end, int) or end <= start:
-                continue
-            for chunk_index in support.grounding_chunk_indices or []:
-                if chunk_index < 0 or chunk_index >= len(chunks):
-                    continue
-                web = chunks[chunk_index].web
-                if web is None or not web.uri:
-                    continue
-                normalized_url = ScriptReviewer._normalize_url_for_match(web.uri)
-                ranges_by_url.setdefault(normalized_url, []).append((start, end))
-        return ranges_by_url
 
     @staticmethod
     def _validate_claim_citations(

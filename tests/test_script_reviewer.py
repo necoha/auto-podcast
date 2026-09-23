@@ -6,7 +6,10 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, patch
 
+import httpx
+from google import genai
 from google.genai import types
+from google.genai._gaos.types import interactions as interaction_types
 
 from script_generator import ScriptLine
 from script_reviewer import ArticleFactCard, FactVerificationError, ScriptReviewer
@@ -59,6 +62,9 @@ def _reviewer(*responses: Any) -> ScriptReviewer:
     cast(Any, reviewer).client = SimpleNamespace(
         models=SimpleNamespace(generate_content=Mock(side_effect=responses))
     )
+    cast(Any, reviewer).interactions_client = SimpleNamespace(
+        interactions=SimpleNamespace(create=Mock(side_effect=responses))
+    )
     return reviewer
 
 
@@ -69,44 +75,43 @@ def _fact_card_response(
     supported: bool = True,
 ) -> SimpleNamespace:
     text = json.dumps(cards, ensure_ascii=False)
-    supports = []
     successful_urls = [
         url
         for url, status in url_statuses
         if status == "URL_RETRIEVAL_STATUS_SUCCESS"
     ]
+    annotations = []
     if supported:
-        for chunk_index, card in enumerate(cards):
+        for card, url in zip(cards, successful_urls):
             card_text = json.dumps(card, ensure_ascii=False)
             start = text.index(card_text)
-            supports.append(SimpleNamespace(
-                segment=SimpleNamespace(
-                    start_index=start,
-                    end_index=start + len(card_text),
-                ),
-                grounding_chunk_indices=[chunk_index],
+            annotations.append(SimpleNamespace(
+                type="url_citation",
+                url=url,
+                start_index=start,
+                end_index=start + len(card_text),
             ))
     return SimpleNamespace(
-        text=text,
-        candidates=[
+        status="completed",
+        steps=[
             SimpleNamespace(
-                grounding_metadata=SimpleNamespace(
-                    grounding_supports=supports,
-                    grounding_chunks=[
-                        SimpleNamespace(web=SimpleNamespace(uri=url))
-                        for url in successful_urls
-                    ],
-                ),
-                url_context_metadata=SimpleNamespace(
-                    url_metadata=[
-                        SimpleNamespace(
-                            retrieved_url=url,
-                            url_retrieval_status=status,
-                        )
-                        for url, status in url_statuses
-                    ]
-                ),
-            )
+                type="url_context_result",
+                result=[
+                    SimpleNamespace(
+                        url=url,
+                        status=status.removeprefix("URL_RETRIEVAL_STATUS_").lower(),
+                    )
+                    for url, status in url_statuses
+                ],
+            ),
+            SimpleNamespace(
+                type="model_output",
+                content=[SimpleNamespace(
+                    type="text",
+                    text=text,
+                    annotations=annotations,
+                )],
+            ),
         ],
     )
 
@@ -156,33 +161,28 @@ class UrlContextReviewTests(unittest.TestCase):
         text = json.dumps([card_data], ensure_ascii=False)
         card_text = json.dumps(card_data, ensure_ascii=False)
         start = text.index(card_text)
-        response = types.GenerateContentResponse(
-            candidates=[types.Candidate(
-                content=types.Content(parts=[types.Part(text=text)]),
-                url_context_metadata=types.UrlContextMetadata(
-                    url_metadata=[types.UrlMetadata(
-                        retrieved_url="https://example.com/1",
-                        url_retrieval_status=(
-                            types.UrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS
-                        ),
-                    )]
-                ),
-                grounding_metadata=types.GroundingMetadata(
-                    grounding_chunks=[types.GroundingChunk(
-                        web=types.GroundingChunkWeb(
-                            uri="https://example.com/1",
-                            title="記事1",
-                        )
+        response = interaction_types.Interaction(
+            id="test-interaction",
+            status="completed",
+            steps=[
+                interaction_types.URLContextResultStep(
+                    call_id="url-call-1",
+                    result=[interaction_types.URLContextResult(
+                        url="https://example.com/1",
+                        status="success",
                     )],
-                    grounding_supports=[types.GroundingSupport(
-                        segment=types.Segment(
+                ),
+                interaction_types.ModelOutputStep(
+                    content=[interaction_types.TextContent(
+                        text=text,
+                        annotations=[interaction_types.URLCitation(
+                            url="https://example.com/1",
                             start_index=start,
                             end_index=start + len(card_text),
-                        ),
-                        grounding_chunk_indices=[0],
+                        )],
                     )],
                 ),
-            )]
+            ],
         )
         reviewer = _reviewer(response)
 
@@ -196,6 +196,75 @@ class UrlContextReviewTests(unittest.TestCase):
 
         self.assertEqual(set(cards), {"https://example.com/1"})
         self.assertEqual(cards["https://example.com/1"].summary, "記事1の要約です。")
+
+    def test_google_genai_v2_serializes_and_parses_fact_card_interaction(self):
+        captured: dict[str, Any] = {}
+        card = _fact_card(1)
+        text = json.dumps([card], ensure_ascii=False)
+        card_text = json.dumps(card, ensure_ascii=False)
+        start = text.index(card_text)
+
+        def handle_request(request: httpx.Request) -> httpx.Response:
+            captured["url"] = str(request.url)
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "id": "test-interaction",
+                    "status": "completed",
+                    "steps": [
+                        {
+                            "type": "url_context_result",
+                            "call_id": "url-call-1",
+                            "result": [{
+                                "url": "https://example.com/1",
+                                "status": "success",
+                            }],
+                        },
+                        {
+                            "type": "model_output",
+                            "content": [{
+                                "type": "text",
+                                "text": text,
+                                "annotations": [{
+                                    "type": "url_citation",
+                                    "url": "https://example.com/1",
+                                    "start_index": start,
+                                    "end_index": start + len(card_text),
+                                }],
+                            }],
+                        },
+                    ],
+                },
+            )
+
+        reviewer = ScriptReviewer.__new__(ScriptReviewer)
+        reviewer.models = ("gemini-3.8-flash",)
+        reviewer.model = reviewer.models[0]
+        cast(Any, reviewer).interactions_client = genai.Client(
+            api_key="test-key",
+            http_options=types.HttpOptions(
+                httpx_client=httpx.Client(
+                    transport=httpx.MockTransport(handle_request)
+                ),
+                retry_options=types.HttpRetryOptions(attempts=-1),
+            ),
+        )
+
+        cards = reviewer.extract_fact_cards([{
+            "title": "記事1",
+            "source": "媒体1",
+            "link": "https://example.com/1",
+        }])
+
+        self.assertEqual(set(cards), {"https://example.com/1"})
+        self.assertTrue(captured["url"].endswith("/v1beta/interactions"))
+        self.assertEqual(captured["body"]["tools"], [{"type": "url_context"}])
+        self.assertEqual(
+            captured["body"]["response_format"]["mime_type"],
+            "application/json",
+        )
+        self.assertIn("## 取得対象記事", captured["body"]["input"])
 
     def test_fact_card_without_citation_is_rejected(self):
         articles = [
@@ -236,34 +305,28 @@ class UrlContextReviewTests(unittest.TestCase):
         text = json.dumps([_fact_card(1), _fact_card(2)], ensure_ascii=False)
         second_card_text = json.dumps(_fact_card(2), ensure_ascii=False)
         second_start = text.index(second_card_text)
-        response = SimpleNamespace(
-            text=text,
-            candidates=[SimpleNamespace(
-                url_context_metadata=SimpleNamespace(url_metadata=[
-                    SimpleNamespace(
-                        retrieved_url="https://example.com/1",
-                        url_retrieval_status="URL_RETRIEVAL_STATUS_SUCCESS",
-                    ),
-                    SimpleNamespace(
-                        retrieved_url="https://example.com/2",
-                        url_retrieval_status="URL_RETRIEVAL_STATUS_SUCCESS",
-                    ),
-                ]),
-                grounding_metadata=SimpleNamespace(
-                    grounding_chunks=[
-                        SimpleNamespace(web=SimpleNamespace(uri="https://example.com/1")),
-                        SimpleNamespace(web=SimpleNamespace(uri="https://example.com/2")),
-                    ],
-                    grounding_supports=[SimpleNamespace(
-                        segment=SimpleNamespace(
-                            start_index=second_start,
-                            end_index=second_start + len(second_card_text),
-                        ),
-                        grounding_chunk_indices=[1],
+        response = SimpleNamespace(status="completed", steps=[
+            SimpleNamespace(
+                type="url_context_result",
+                result=[
+                    SimpleNamespace(url="https://example.com/1", status="success"),
+                    SimpleNamespace(url="https://example.com/2", status="success"),
+                ],
+            ),
+            SimpleNamespace(
+                type="model_output",
+                content=[SimpleNamespace(
+                    type="text",
+                    text=text,
+                    annotations=[SimpleNamespace(
+                        type="url_citation",
+                        url="https://example.com/2",
+                        start_index=second_start,
+                        end_index=second_start + len(second_card_text),
                     )],
-                ),
-            )],
-        )
+                )],
+            ),
+        ])
         reviewer = _reviewer(response)
 
         cards = reviewer.extract_fact_cards(articles)
@@ -283,9 +346,6 @@ class UrlContextReviewTests(unittest.TestCase):
         response = _fact_card_response(
             [_fact_card(1)],
             [("https://cdn.example.net/final", "URL_RETRIEVAL_STATUS_SUCCESS")],
-        )
-        response.candidates[0].grounding_metadata.grounding_chunks[0].web.uri = (
-            "https://cdn.example.net/final"
         )
         reviewer = _reviewer(response)
 
@@ -349,7 +409,10 @@ class UrlContextReviewTests(unittest.TestCase):
 
         self.assertEqual(len(cards), 20)
         self.assertEqual(reviewer.fact_card_request_count, 4)
-        self.assertEqual(reviewer.client.models.generate_content.call_count, 4)
+        self.assertEqual(
+            reviewer.interactions_client.interactions.create.call_count,
+            4,
+        )
 
     def test_fact_card_prompt_does_not_include_rss_summary(self):
         prompt = ScriptReviewer._build_fact_card_prompt(
