@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, asdict
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from google import genai
@@ -170,6 +171,85 @@ class ScriptGenerator:
             raise ValueError(f"台本が短すぎます ({len(script)}行)。トークン上限で打ち切られた可能性があります")
 
         return script
+
+    def build_script_from_fact_cards(
+        self,
+        articles: List[Dict[str, Any]],
+        fact_cards: Dict[str, Dict[str, Any]],
+    ) -> Script:
+        """引用検証済み事実カードと見出しから速報台本を組み立てる。"""
+        if not articles:
+            raise ValueError("記事リストが空です")
+
+        verified_count = sum(
+            1 for article in articles if article.get("link", "") in fact_cards
+        )
+        script: Script = [
+            ScriptLine(
+                speaker="A",
+                text=(
+                    f"おはようございます、{self.host_name}です。"
+                    f"{datetime.now().strftime('%Y年%m月%d日')}のニュースをお届けします。"
+                    "この番組はAIによって自動生成されています。"
+                ),
+            ),
+            ScriptLine(
+                speaker="B",
+                text=(
+                    f"{self.guest_name}です。今日は{len(articles)}件です。"
+                    f"このうち{verified_count}件は元記事で詳しい内容を確認できました。"
+                ),
+            ),
+        ]
+
+        for index, article in enumerate(articles, 1):
+            title = article.get("title", "不明な記事")
+            source = article.get("source", "不明な媒体")
+            article_url = article.get("link", "")
+            script.append(ScriptLine(
+                speaker="A",
+                text=f"{index}件目は、{source}の「{title}」です。",
+            ))
+
+            card = fact_cards.get(article_url)
+            if card is None:
+                script.append(ScriptLine(
+                    speaker="B",
+                    text=(
+                        f"「{title}」というニュースです。"
+                        "元記事の詳しい内容を確認できなかったため、見出しのみお伝えします。"
+                    ),
+                ))
+                continue
+
+            facts = " ".join(
+                str(value).strip()
+                for value in card.get("key_facts", [])
+                if str(value).strip()
+            )
+            explanation = " ".join(
+                value
+                for value in (
+                    str(card.get("summary", "")).strip(),
+                    facts,
+                    str(card.get("background", "")).strip(),
+                    str(card.get("impact", "")).strip(),
+                )
+                if value
+            )
+            script.append(ScriptLine(speaker="B", text=explanation))
+
+        script.extend([
+            ScriptLine(
+                speaker="A",
+                text=f"以上、本日のニュースでした。{self.guest_name}さん、ありがとうございました。",
+            ),
+            ScriptLine(
+                speaker="B",
+                text="ありがとうございました。また明日お会いしましょう。",
+            ),
+        ])
+        return self._apply_pronunciation_fixes(script)
 
     # TTS 読み替え辞書: {パターン: 読み替え}
     # 正規表現パターンも使用可能（re.sub で適用）

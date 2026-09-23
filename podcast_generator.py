@@ -15,10 +15,8 @@ from content_manager import ContentManager
 from script_generator import (
     ScriptGenerator,
     Script,
-    fallback_script,
-    is_transient_generation_error,
 )
-from script_reviewer import FactVerificationError, ScriptReviewer
+from script_reviewer import ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
@@ -84,70 +82,37 @@ class PodcastGenerator:
 
         logger.info("  %d件の記事を取得しました", len(articles))
 
-        # 2. 台本生成（503エラー時はリトライ）
-        logger.info("2. 台本生成中...")
-        script = None
-        script_model = None
-        is_fallback = False
-        verification_status = "not_applicable"
-        verification_sources: List[str] = []
-        llm_models = config.LLM_MODELS
-        for attempt, model in enumerate(llm_models):
-            try:
-                script = self.script_generator.generate_script(
-                    articles,
-                    model=model,
-                )
-                script_model = model
-                break
-            except Exception as e:
-                is_transient = is_transient_generation_error(e)
-                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_transient or is_truncated) and attempt < len(llm_models) - 1:
-                    next_model = llm_models[attempt + 1]
-                    logger.warning(
-                        "台本生成失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
-                        model,
-                        attempt + 1,
-                        len(llm_models),
-                        next_model,
-                        e,
-                    )
-                else:
-                    logger.warning("台本生成失敗（モデル候補を使い切りました）: %s", e)
-                    break
+        # 2. URL Contextを小分けに取得し、成功記事だけ事実カード化
+        logger.info("2. URL Contextで速報事実カードを取得中...")
+        try:
+            fact_cards = self.script_reviewer.extract_fact_cards(articles)
+        except Exception as error:
+            logger.error("速報事実カード取得の初期化に失敗: %s", error)
+            fact_cards = {}
 
-        if script is None:
-            logger.warning("台本生成不可、見出し限定台本に切り替え")
-            script = fallback_script(articles, self.host_name, self.guest_name)
-            is_fallback = True
+        prompt_cards = {
+            article_url: card.as_prompt_data()
+            for article_url, card in fact_cards.items()
+        }
+        verification_sources = self.script_reviewer.last_verification_urls
+        if len(fact_cards) == len(articles):
+            verification_status = "grounded"
+        elif fact_cards:
+            verification_status = "partially_grounded"
+        else:
             verification_status = "title_only_fallback"
 
+        # 2.5. 検証済みカードと見出しから決定論的に台本を構築
+        logger.info(
+            "2.5. 速報台本を構築中（検証済み%d件 / 全%d件）...",
+            len(fact_cards),
+            len(articles),
+        )
+        script = self.script_generator.build_script_from_fact_cards(
+            articles,
+            prompt_cards,
+        )
         logger.info("  台本: %d行", len(script))
-
-        # 2.5. 台本レビュー（自動チェック＆修正）
-        # フォールバック台本は記事タイトルのみなのでレビュー不要
-        if is_fallback:
-            logger.info("2.5. フォールバック台本のためレビューをスキップ")
-        else:
-            logger.info("2.5. 台本レビュー中...")
-            try:
-                script = self.script_reviewer.review(
-                    script,
-                    articles,
-                    require_all_articles=True,
-                    preferred_model=script_model,
-                )
-                verification_status = "grounded"
-                verification_sources = self.script_reviewer.last_verification_urls
-                logger.info("  レビュー後: %d行", len(script))
-            except FactVerificationError as error:
-                logger.error("事実確認失敗、見出し限定台本へ切り替え: %s", error)
-                script = fallback_script(articles, self.host_name, self.guest_name)
-                is_fallback = True
-                verification_status = "title_only_fallback"
-
-        script = self.script_generator._apply_pronunciation_fixes(script)
 
         # 3. 音声生成
         logger.info("3. 音声生成中...")

@@ -8,7 +8,9 @@ import json
 import logging
 import re
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, cast
+from urllib.parse import urlparse
 
 from google import genai
 from google.genai import types
@@ -29,6 +31,53 @@ TRANSIENT_REVIEW_ERROR_MARKERS = (
     "timed out",
     "timeout",
 )
+
+
+@dataclass(frozen=True)
+class ArticleFactCard:
+        """URL Contextの引用で裏付けられた速報記事の要点。"""
+
+        title: str
+        source: str
+        url: str
+        summary: str
+        key_facts: List[str]
+        background: str
+        impact: str
+
+        def as_prompt_data(self) -> Dict[str, Any]:
+                return {
+                        "summary": self.summary,
+                        "key_facts": self.key_facts,
+                        "background": self.background,
+                        "impact": self.impact,
+                }
+
+
+FACT_CARD_SYSTEM_PROMPT = """\
+あなたはニュースの事実抽出担当です。
+指定された各URLをURL Contextで取得し、速報ポッドキャスト用の短い事実カードを作成してください。
+
+ルール:
+- 取得に成功した記事だけを出力する
+- 記事本文で確認できる情報だけを使う
+- 推測、一般知識、別記事の情報を補わない
+- 原文を長く引用せず、日本語で簡潔に言い換える
+- summary、key_facts、background、impactの各文字列に元記事の引用を付ける
+- 数値、年月、価格、割合、制度情報は元記事と完全一致させる
+- backgroundまたはimpactを確認できない場合は空文字にせず、その項目を裏付けられる短い事実に限定する
+
+出力は次のJSON配列だけにする:
+[
+    {
+        "article_number": 1,
+        "summary": "何が起きたかを1文で説明",
+        "key_facts": ["重要な事実1", "重要な事実2"],
+        "background": "確認できた背景を1文で説明",
+        "impact": "確認できた影響を1文で説明"
+    }
+]
+"""
 HIGH_RISK_FACT_PATTERN = re.compile(
     r"\d+(?:[.,]\d+)?(?:[%％年月日円ドル人件倍兆億万])?"
     r"|施行|導入|開始|解除|引き上げ|引き下げ|利上げ|利下げ"
@@ -110,6 +159,282 @@ class ScriptReviewer:
             ),
         )
         self.last_verification_urls: List[str] = []
+        self.last_retrieval_statuses: Dict[str, str] = {}
+        self.fact_card_request_count = 0
+        self.fact_card_elapsed_seconds = 0.0
+
+    def extract_fact_cards(
+        self,
+        articles: List[Dict[str, Any]],
+        *,
+        batch_size: int = config.URL_CONTEXT_BATCH_SIZE,
+        preferred_model: Optional[str] = None,
+    ) -> Dict[str, ArticleFactCard]:
+        """記事URLを小分けに取得し、引用付き事実カードをURL別に返す。"""
+        if batch_size < 1:
+            raise ValueError("URL Contextのバッチサイズは1以上が必要です")
+
+        article_urls = self._article_urls(articles)
+        if len(article_urls) != len(articles):
+            raise FactVerificationError(
+                "URLがない記事、または重複URLの記事が含まれています"
+            )
+        if len(article_urls) > MAX_URL_CONTEXT_URLS:
+            raise FactVerificationError(
+                f"URL Contextの上限を超えています "
+                f"({len(article_urls)}/{MAX_URL_CONTEXT_URLS})"
+            )
+
+        self.last_verification_urls = []
+        self.last_retrieval_statuses = {
+            article_url: "NOT_ATTEMPTED" for article_url in article_urls
+        }
+        self.fact_card_request_count = 0
+        started_at = time.monotonic()
+        cards: Dict[str, ArticleFactCard] = {}
+        indexed_articles = list(enumerate(articles, 1))
+        models = self._ordered_models(preferred_model)
+
+        for batch_start in range(0, len(indexed_articles), batch_size):
+            batch = indexed_articles[batch_start:batch_start + batch_size]
+            batch_number = batch_start // batch_size + 1
+            batch_cards: Dict[str, ArticleFactCard] = {}
+
+            for attempt, model in enumerate(models):
+                try:
+                    self.fact_card_request_count += 1
+                    logger.info(
+                        "速報事実カード取得 (バッチ%d, %d件, モデル:%s, 試行%d/%d)",
+                        batch_number,
+                        len(batch),
+                        model,
+                        attempt + 1,
+                        len(models),
+                    )
+                    response = self.client.models.generate_content(
+                        model=model,
+                        config=self._fact_card_config(),
+                        contents=self._build_fact_card_prompt(batch),
+                    )
+                    batch_cards = self._parse_fact_card_response(response, batch)
+                    break
+                except Exception as error:
+                    is_transient = any(
+                        marker in str(error).lower()
+                        for marker in TRANSIENT_REVIEW_ERROR_MARKERS
+                    )
+                    is_retryable = isinstance(error, FactVerificationError) or is_transient
+                    if not is_retryable or attempt >= len(models) - 1:
+                        logger.warning(
+                            "速報事実カードのバッチ%dを取得できませんでした: %s",
+                            batch_number,
+                            error,
+                        )
+                        for _, article in batch:
+                            article_url = article.get("link", "")
+                            if self.last_retrieval_statuses.get(article_url) == "NOT_ATTEMPTED":
+                                self.last_retrieval_statuses[article_url] = "BATCH_ERROR"
+                        break
+                    logger.warning(
+                        "速報事実カード取得失敗 (%s)、次のモデル%sへ切り替え: %s",
+                        model,
+                        models[attempt + 1],
+                        error,
+                    )
+
+            cards.update(batch_cards)
+
+        self.last_verification_urls = list(cards)
+        self.fact_card_elapsed_seconds = time.monotonic() - started_at
+        logger.info(
+            "速報事実カード取得完了: %d/%d件、API %d回、%.1f秒",
+            len(cards),
+            len(articles),
+            self.fact_card_request_count,
+            self.fact_card_elapsed_seconds,
+        )
+        return cards
+
+    def _ordered_models(self, preferred_model: Optional[str]) -> tuple[str, ...]:
+        configured_models = getattr(self, "models", (self.model,))
+        if preferred_model in configured_models:
+            preferred_index = configured_models.index(preferred_model)
+            return configured_models[preferred_index:]
+        if preferred_model:
+            return tuple(dict.fromkeys((preferred_model, *configured_models)))
+        return tuple(configured_models)
+
+    @staticmethod
+    def _fact_card_config() -> types.GenerateContentConfig:
+        return types.GenerateContentConfig(
+            system_instruction=FACT_CARD_SYSTEM_PROMPT,
+            temperature=0,
+            max_output_tokens=8192,
+            tools=[types.Tool(url_context=types.UrlContext())],
+        )
+
+    @staticmethod
+    def _build_fact_card_prompt(
+        indexed_articles: List[tuple[int, Dict[str, Any]]],
+    ) -> str:
+        lines = ["## 取得対象記事"]
+        for article_number, article in indexed_articles:
+            lines.append(
+                f"{article_number}. {article.get('title', '不明')}"
+                f"（{article.get('source', '不明')}） {article.get('link', '')}"
+            )
+        lines.append("\n各URLを取得し、取得成功記事だけの事実カードを返してください。")
+        return "\n".join(lines)
+
+    def _parse_fact_card_response(
+        self,
+        response: types.GenerateContentResponse,
+        indexed_articles: List[tuple[int, Dict[str, Any]]],
+    ) -> Dict[str, ArticleFactCard]:
+        response_text = getattr(response, "text", None)
+        if not response_text:
+            raise FactVerificationError("事実カード応答が空です")
+
+        attempts = self._extract_url_context_attempts(response)
+        support_ranges_by_url = self._extract_support_ranges_by_url(response)
+        articles_by_number = dict(indexed_articles)
+        successful_original_urls: set[str] = set()
+        retrieved_url_by_original: Dict[str, str] = {}
+        for position, (_, article) in enumerate(indexed_articles):
+            article_url = article.get("link", "")
+            if position >= len(attempts):
+                continue
+            retrieved_url, status = attempts[position]
+            self.last_retrieval_statuses[article_url] = status
+            if status == "URL_RETRIEVAL_STATUS_SUCCESS":
+                successful_original_urls.add(article_url)
+                retrieved_url_by_original[article_url] = retrieved_url
+
+        raw_cards = self._parse_fact_card_json(response_text)
+        cards: Dict[str, ArticleFactCard] = {}
+        for raw_card in raw_cards:
+            article_number = raw_card.get("article_number")
+            if not isinstance(article_number, int) or isinstance(article_number, bool):
+                continue
+            article = articles_by_number.get(article_number)
+            if article is None:
+                continue
+
+            article_url = article.get("link", "")
+            if article_url not in successful_original_urls:
+                continue
+            retrieved_url = retrieved_url_by_original.get(article_url, article_url)
+            article_support_ranges = support_ranges_by_url.get(
+                self._normalize_url_for_match(retrieved_url),
+                [],
+            )
+            if not article_support_ranges:
+                article_support_ranges = support_ranges_by_url.get(
+                    self._normalize_url_for_match(article_url),
+                    [],
+                )
+            try:
+                card = self._build_verified_fact_card(
+                    raw_card,
+                    article,
+                    response_text,
+                    article_support_ranges,
+                )
+            except FactVerificationError as error:
+                logger.warning("速報事実カードを不採用 (%s): %s", article_url, error)
+                self.last_retrieval_statuses[article_url] = "CARD_UNVERIFIED"
+                continue
+            cards[article_url] = card
+            self.last_retrieval_statuses[article_url] = "VERIFIED"
+
+        for _, article in indexed_articles:
+            article_url = article.get("link", "")
+            if (
+                article_url in successful_original_urls
+                and article_url not in cards
+                and self.last_retrieval_statuses.get(article_url)
+                != "CARD_UNVERIFIED"
+            ):
+                self.last_retrieval_statuses[article_url] = "CARD_MISSING"
+        return cards
+
+    @staticmethod
+    def _parse_fact_card_json(response_text: str) -> List[Dict[str, Any]]:
+        text = response_text.strip()
+        text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```\s*$', '', text, flags=re.MULTILINE)
+        match = re.search(r'(\[.*\])', text, flags=re.DOTALL)
+        if match:
+            text = match.group(1)
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise FactVerificationError("事実カードのJSON解析に失敗しました") from error
+        if not isinstance(data, list):
+            raise FactVerificationError("事実カード結果が配列ではありません")
+        return [item for item in data if isinstance(item, dict)]
+
+    def _build_verified_fact_card(
+        self,
+        raw_card: Dict[str, Any],
+        article: Dict[str, Any],
+        response_text: str,
+        support_ranges: List[tuple[int, int]],
+    ) -> ArticleFactCard:
+        summary = raw_card.get("summary")
+        key_facts = raw_card.get("key_facts")
+        background = raw_card.get("background")
+        impact = raw_card.get("impact")
+        if not all(isinstance(value, str) and value.strip() for value in (summary, background, impact)):
+            raise FactVerificationError("必須文字列が不足しています")
+        if (
+            not isinstance(key_facts, list)
+            or not 1 <= len(key_facts) <= 3
+            or not all(isinstance(value, str) and value.strip() for value in key_facts)
+        ):
+            raise FactVerificationError("key_factsが不正です")
+
+        claims = [summary, *key_facts, background, impact]
+        for claim in claims:
+            if not self._claim_has_citation(response_text, claim, support_ranges):
+                raise FactVerificationError(f"引用がない事実があります: {claim}")
+
+        return ArticleFactCard(
+            title=article.get("title", "不明"),
+            source=article.get("source", "不明"),
+            url=article.get("link", ""),
+            summary=summary.strip(),
+            key_facts=[value.strip() for value in key_facts],
+            background=background.strip(),
+            impact=impact.strip(),
+        )
+
+    @staticmethod
+    def _claim_has_citation(
+        response_text: str,
+        claim: str,
+        support_ranges: List[tuple[int, int]],
+    ) -> bool:
+        encoded_claim = json.dumps(claim, ensure_ascii=False)[1:-1]
+        search_offset = 0
+        while True:
+            start = response_text.find(encoded_claim, search_offset)
+            if start < 0:
+                start = response_text.find(claim, search_offset)
+            if start < 0:
+                return False
+            end = start + len(encoded_claim)
+            if any(
+                support_start < end and support_end > start
+                for support_start, support_end in support_ranges
+            ):
+                return True
+            search_offset = start + 1
+
+    @staticmethod
+    def _normalize_url_for_match(url: str) -> str:
+        parsed = urlparse(url)
+        return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{parsed.path.rstrip('/')}"
 
     def review(
         self,
@@ -235,11 +560,22 @@ class ScriptReviewer:
         response: types.GenerateContentResponse,
     ) -> tuple[List[str], List[tuple[int, int]]]:
         """応答から取得成功した元記事URLと引用文字範囲を抽出する。"""
+        urls, support_ranges, _ = ScriptReviewer._extract_url_context_details(
+            response
+        )
+        return urls, support_ranges
+
+    @staticmethod
+    def _extract_url_context_details(
+        response: types.GenerateContentResponse,
+    ) -> tuple[List[str], List[tuple[int, int]], Dict[str, str]]:
+        """URL Context応答から成功URL・引用範囲・URL別状態を抽出する。"""
         candidates = response.candidates or []
         if not candidates:
-            return [], []
+            return [], [], {}
 
         urls: List[str] = []
+        statuses: Dict[str, str] = {}
         url_context_metadata = candidates[0].url_context_metadata
         if url_context_metadata is not None:
             for url_metadata in url_context_metadata.url_metadata or []:
@@ -254,6 +590,10 @@ class ScriptReviewer:
                     status_value or "UNSPECIFIED",
                     url_metadata.retrieved_url or "(URLなし)",
                 )
+                if url_metadata.retrieved_url:
+                    statuses[url_metadata.retrieved_url] = (
+                        str(status_value) if status_value else "UNSPECIFIED"
+                    )
                 if (
                     status
                     == types.UrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS
@@ -272,7 +612,58 @@ class ScriptReviewer:
                 if isinstance(start, int) and isinstance(end, int) and end > start:
                     support_ranges.append((start, end))
 
-        return urls, support_ranges
+        return urls, support_ranges, statuses
+
+    @staticmethod
+    def _extract_url_context_attempts(
+        response: types.GenerateContentResponse,
+    ) -> List[tuple[str, str]]:
+        """リクエスト順を維持したURL取得結果を返す。"""
+        candidates = response.candidates or []
+        if not candidates or candidates[0].url_context_metadata is None:
+            return []
+
+        attempts: List[tuple[str, str]] = []
+        for metadata in candidates[0].url_context_metadata.url_metadata or []:
+            status = metadata.url_retrieval_status
+            status_value = (
+                status.value
+                if isinstance(status, types.UrlRetrievalStatus)
+                else status
+            )
+            attempts.append((
+                metadata.retrieved_url or "",
+                str(status_value) if status_value else "UNSPECIFIED",
+            ))
+        return attempts
+
+    @staticmethod
+    def _extract_support_ranges_by_url(
+        response: types.GenerateContentResponse,
+    ) -> Dict[str, List[tuple[int, int]]]:
+        """引用範囲を根拠URLごとに分ける。"""
+        candidates = response.candidates or []
+        if not candidates or candidates[0].grounding_metadata is None:
+            return {}
+
+        grounding_metadata = candidates[0].grounding_metadata
+        chunks = grounding_metadata.grounding_chunks or []
+        ranges_by_url: Dict[str, List[tuple[int, int]]] = {}
+        for support in grounding_metadata.grounding_supports or []:
+            segment = support.segment
+            start = segment.start_index if segment else None
+            end = segment.end_index if segment else None
+            if not isinstance(start, int) or not isinstance(end, int) or end <= start:
+                continue
+            for chunk_index in support.grounding_chunk_indices or []:
+                if chunk_index < 0 or chunk_index >= len(chunks):
+                    continue
+                web = chunks[chunk_index].web
+                if web is None or not web.uri:
+                    continue
+                normalized_url = ScriptReviewer._normalize_url_for_match(web.uri)
+                ranges_by_url.setdefault(normalized_url, []).append((start, end))
+        return ranges_by_url
 
     @staticmethod
     def _validate_claim_citations(

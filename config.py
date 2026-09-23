@@ -89,6 +89,7 @@ PODCAST_LANGUAGE = "ja"
 MAX_CONTENT_LENGTH = 10000  # 文字数制限
 MAX_ARTICLES = 2  # 1フィードから取得する記事数上限
 MAX_TOTAL_ARTICLES = 20  # URL Contextへ渡す記事数上限
+URL_CONTEXT_BATCH_SIZE = int(os.getenv("URL_CONTEXT_BATCH_SIZE", "5"))
 
 # GitHub Pages 配信設定
 PODCAST_BASE_URL = "https://necoha.github.io/auto-podcast"

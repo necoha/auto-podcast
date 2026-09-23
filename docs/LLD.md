@@ -57,7 +57,7 @@ article = {
 
 ### 1.2 ScriptGenerator (`script_generator.py`) — 新規作成
 
-**責務**: Gemini Flash APIを使い、記事情報からポッドキャスト対話台本を生成（速報版）
+**責務**: 速報版は引用検証済み事実カードと見出しから対話台本を決定論的に構築する。継承先の深掘り版ではGemini Flash APIによる台本生成も提供する
 
 #### クラス図
 ```mermaid
@@ -71,6 +71,7 @@ classDiagram
         +PRONUNCIATION_MAP: dict
         +__init__(api_key, host_name, guest_name)
         +generate_script(articles: List~dict~) Script
+        +build_script_from_fact_cards(articles, fact_cards) Script
         -_build_prompt(articles: List~dict~) str
         -_parse_response(response: str) Script
         -_apply_pronunciation_fixes(script: Script) Script
@@ -93,6 +94,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, guest_name | - | genai.Client初期化。ホスト/ゲスト名でプロンプトテンプレート展開 |
 | `generate_script` | articles: List[dict] | Script | 記事リストからプロンプト構築 → Gemini呼び出し → レスポンス解析 |
+| `build_script_from_fact_cards` | articles, fact_cards | Script | 最大20件すべてを維持し、カードあり記事は根拠付き解説、カードなし記事は見出しだけのA/B台本へ構築 |
 | `_build_prompt` | articles: List[dict] | str | 記事タイトル・ソース名・URLのみを含むプロンプトテキスト構築（著作権対策によりsummary除去） |
 | `_parse_response` | response: str | Script | Geminiレスポンスを構造化されたScript型に変換 |
 
@@ -197,7 +199,7 @@ response = client.models.generate_content(
 
 ### 1.2-R ScriptReviewer (`script_reviewer.py`) — 新規作成
 
-**責務**: 生成済み台本をURL Contextで元記事と照合し、引用証跡付きの修正版だけを返す。速報版・深掘り版の両方で使用。
+**責務**: 速報版ではURL Contextを小分けに実行して引用付き事実カードを抽出する。深掘り版では生成済み台本を選定済み元記事と照合する。
 
 #### クラス図
 ```mermaid
@@ -207,7 +209,10 @@ classDiagram
         -model: str
         -client: genai.Client
         +last_verification_urls: List[str]
+        +last_retrieval_statuses: Dict[str, str]
+        +fact_card_request_count: int
         +__init__(api_key: str, model: str)
+        +extract_fact_cards(articles, batch_size, preferred_model) Dict~str, ArticleFactCard~
         +review(script: Script, articles: List[Dict], require_all_articles: bool) Script
         -_review_config() GenerateContentConfig
         -_parse_grounded_response(response) Script
@@ -236,6 +241,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key, model | - | Gemini Client初期化 |
 | `review` | script: Script, articles: List[Dict], require_all_articles | Script | URL Context付きレビュー。証跡不足時は `FactVerificationError` |
+| `extract_fact_cards` | articles, batch_size, preferred_model | Dict[str, ArticleFactCard] | 最大5 URLずつ処理。部分成功を保持し、URL別状態・API回数・処理時間を記録 |
 | `_build_review_prompt` | script, articles | str | 記事タイトル・媒体・URL＋台本JSONをプロンプトに構成 |
 | `_extract_url_context_evidence` | response | tuple | 取得成功した元記事URLと引用文字範囲を抽出 |
 | `_validate_claim_citations` | script, response_text, support_ranges | None | 事実行に引用を要求し、数値・年月・制度語は語単位で引用範囲を検証 |
@@ -249,9 +255,10 @@ classDiagram
 - APIキー不正などの恒久エラー: 再試行しない
 - 最終失敗: `FactVerificationError`を送出し、オーケストレーターが記事タイトル限定台本へ切り替える
 
-#### API利用コスト
+#### API利用
 
-- URL Context付きGemini 3.8 Flash × 1回/エピソード（通常2回/日、再試行込み最大4回/日）
+- 速報版: 最大20件を5 URLずつ、通常最大4リクエスト。バッチ障害時のみ次のStableモデルへ切替
+- 深掘り版: 選定済み最大3 URLを1リクエスト（証跡不足時は最大1回モデル切替）
 - URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
 
 ---
@@ -461,7 +468,7 @@ class EpisodeMetadata:
     published_date: str     # 配信日
     source_articles: List[dict]  # 元記事情報
     duration_seconds: int   # 音声の長さ（秒）
-    verification_status: str  # grounded / title_only_fallback / not_applicable
+    verification_status: str  # grounded / partially_grounded / title_only_fallback / not_applicable
     verification_sources: List[str]  # URL Contextで取得成功した元記事URL
     script_lines: List[dict]  # TTSへ渡した最終台本（事後監査用）
 ```
@@ -518,14 +525,11 @@ def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（24h以内 + 重複排除）
     articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
 
-    # 2. 台本生成（+ PRONUNCIATION_MAP発音補正）
-    script = self.script_generator.generate_script(articles)
+    # 2. URL Contextを5件ずつ実行し、部分成功の事実カードを保持
+    fact_cards = self.script_reviewer.extract_fact_cards(articles, batch_size=5)
 
-    # 2.5. URL Contextで元記事と6項目レビュー
-    try:
-        script = self.script_reviewer.review(script, articles)
-    except FactVerificationError:
-        script = fallback_script(articles)  # 見出し限定
+    # 2.5. 全記事を維持し、失敗記事だけ見出し限定にして台本構築
+    script = self.script_generator.build_script_from_fact_cards(articles, fact_cards)
 
     # 3. TTS音声生成（Multi-Speaker、20行単位）
     self.tts_generator.generate_audio(script, audio_path)  # → WAV
@@ -581,10 +585,10 @@ classDiagram
 | 項目 | 速報版 (PodcastGenerator) | 深掘り版 (DeepDivePodcastGenerator) |
 |------|--------------------------|-------------------------------------|
 | 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
-| 台本レビュー | `ScriptReviewer`（6項目 + 元記事の引用証跡） | 同一（選択済みトピックのみ検証） |
+| URL Context | 最大20件を5 URLずつ事実カード化 | 選定済み最大3 URLで台本レビュー |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
 | 記事選定 | 全記事に触れつつ重複統合 | タイトル・媒体名だけで最大3件を先行選定 |
-| フォールバック | 生成失敗時は休止告知、事実検証失敗時は見出し限定 | 同左（見出しは最大3件） |
+| フォールバック | 取得・引用失敗記事だけ見出し限定 | 台本検証失敗時は選定済み最大3件の見出し限定 |
 | RSSフィード | `feed.xml` | `feed_deep.xml` |
 | MP3格納先 | `episodes/` | `episodes_deep/` |
 | ファイル名 | `episode_N_YYYYMMDD.mp3` | `deep_N_YYYYMMDD.mp3` |
@@ -642,6 +646,7 @@ def generate(self) -> EpisodeMetadata | None:
 | `RSS_FEEDS` | List[str] | 13フィード | テクノロジーJP 6 + テクノロジーEN 3 + 経済JP 4 |
 | `MAX_ARTICLES` | int | `2` | フィードあたりの最大取得数 |
 | `MAX_TOTAL_ARTICLES` | int | `20` | 重複排除後の全体最大記事数（URL Context上限） |
+| `URL_CONTEXT_BATCH_SIZE` | int | `5` | 速報版のURL Contextバッチ件数（最大20件なら4バッチ） |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
 | `PODCAST_TITLE` | str | `テック速報 AI ニュースラジオ` | 速報版ポッドキャスト名 |
 | `PODCAST_AUTHOR` | str | `Auto Podcast Generator` | 著者名 |

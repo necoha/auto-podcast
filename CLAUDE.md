@@ -41,8 +41,8 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 
 ```
 【速報版】
-RSS(13) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
-             (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
+RSS(13) → ContentManager → ScriptReviewer      → ScriptGenerator → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+             (feedparser)    (URL Contextバッチ)  (事実カード台本)   (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
                                                                                                                             ↓
 【深掘り版】                                                                                                               Spotify / Apple Podcasts
 RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
@@ -52,9 +52,9 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 ### Core Components
 
 1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形（速報版/深掘り版共有）
-2. **ScriptGenerator** (`script_generator.py`) — Gemini 3.8 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
+2. **ScriptGenerator** (`script_generator.py`) — 引用検証済み事実カードと見出しから速報台本を決定論的に構築（PRONUNCIATION_MAP 306エントリ）
 3. **DeepScriptGenerator** (`deep_script_generator.py`) — タイトル・媒体名から最大3件を先行選定し、選定済み記事だけで6次元分析の深掘り台本を生成
-4. **ScriptReviewer** (`script_reviewer.py`) — URL Contextで元記事と台本を6項目レビュー（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さ/事実整合性）
+4. **ScriptReviewer** (`script_reviewer.py`) — 速報版は最大5 URLずつ引用付き事実カードを抽出。深掘り版は選定済み台本をURL Contextでレビュー
 5. **TTSGenerator** (`tts_generator.py`) — Gemini 3.1 Flash TTS PreviewのInteractions APIで音声合成（Multi-Speaker、曜日ローテーション）
 6. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
 7. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
@@ -67,9 +67,9 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
 - **LLMフォールバック**: 台本生成の一時障害時は`gemini-3.8-flash`→`gemini-3.7-flash`→`gemini-3.6-flash`へ切り替える。全候補失敗時は記事タイトル限定台本を配信
-- **台本事実検証**: 生成後にURL Contextで元記事と照合して6項目を検査。数値・年月・制度変更などに引用範囲がない場合は不合格とし、検証失敗時は元台本ではなく記事タイトル限定台本を使用
+- **台本事実検証**: 速報版はURLごとの引用付き事実カードを生成前に作成し、取得・引用失敗記事だけを見出し限定にする。深掘り版は生成後に選定済み最大3 URLで検証する
 - **通信制御**: Gemini SDK内の暗黙リトライを無効化し、LLMは3分、TTSは5分でタイムアウト。アプリ側の回数・予算内だけで再試行
-- **フォールバック**: 事実検証失敗時は速報最大5件・深掘り最大3件の見出し限定台本へ縮退。TTS失敗時は生成中止
+- **フォールバック**: 速報版は失敗記事だけを見出し紹介に縮退し、成功カードを保持。深掘り版は検証失敗時に最大3件の見出し限定台本へ縮退。TTS失敗時は生成中止
 - **重複記事統合**: 速報版プロンプトで全記事に触れつつ同一トピックの重複は統合して紹介
 - **発音正規化**: LLMが付けた漢字語の未検証ルビを除去後、`PRONUNCIATION_MAP`の承認済み読みを再適用。単独の「国」は「くに」と読む
 - **TTS反復対策**: 台本を一度だけ読む指示に加え、PCMの先頭再出現を特徴量・波形相関で検出し、重複prefixを除去
@@ -94,6 +94,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 - `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 6 + 技術系EN 3 + 経済系JP 4 = 13ソース）
 - `MAX_ARTICLES` — 1フィードあたりの取得上限（default: `2`）
 - `MAX_TOTAL_ARTICLES` — 全フィード合計の取得上限（default: `20`、URL Contextの20 URL制限内）
+- `URL_CONTEXT_BATCH_SIZE` — 速報版のURL Contextバッチ件数（default: `5`、最大20件なら4バッチ）
 - `LLM_MODEL` — 台本生成・URL Contextモデル名（default: `gemini-3.8-flash`）
 - `LLM_FALLBACK_MODELS` — 一時障害時の代替モデル（default: `gemini-3.7-flash,gemini-3.6-flash`）
 - `TTS_MODEL` — TTSモデル名（default: `gemini-3.1-flash-tts-preview`）
@@ -107,7 +108,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 ## Free Tier Limits
 
 - **Gemini 3.8 / 3.7 / 3.6 Flash（LLM）**: 入出力無料（実際の上限はAI Studio参照）
-- **URL Context**: 無料（通常2回/日、取得内容はGemini入力トークンに算入）
+- **URL Context**: 無料（取得内容はGemini入力トークンに算入。速報は最大4バッチ、深掘りは選定済み最大3 URL）
 - **Gemini 3.1 Flash TTS Preview**: 入出力無料（実際の上限はAI Studio参照）
 - **GitHub Actions**: 2000分/月
 - **GitHub Pages**: 1GB推奨、帯域100GB/月

@@ -9,7 +9,7 @@ from deep_podcast_generator import DeepDivePodcastGenerator
 from podcast_generator import PodcastGenerator
 from podcast_uploader import EpisodeMetadata
 from script_generator import Script, ScriptLine
-from script_reviewer import FactVerificationError
+from script_reviewer import ArticleFactCard, FactVerificationError
 
 
 ARTICLES = [
@@ -46,9 +46,11 @@ def _configure_generator(generator: Any) -> None:
         max_topics=3,
         select_articles=Mock(return_value=ARTICLES),
         generate_script=Mock(return_value=UNVERIFIED_SCRIPT),
+        build_script_from_fact_cards=Mock(return_value=UNVERIFIED_SCRIPT),
         _apply_pronunciation_fixes=Mock(side_effect=_identity_script),
     )
     generator.script_reviewer = SimpleNamespace(
+        extract_fact_cards=Mock(return_value={}),
         review=Mock(side_effect=FactVerificationError("verification failed")),
         last_verification_urls=[],
     )
@@ -119,41 +121,62 @@ class FactGateIntegrationTests(unittest.TestCase):
         self.assertIn("見出しCというニュースです", fallback_text)
         self.assertNotIn("見出しBというニュースです", fallback_text)
 
-    def test_breaking_news_reviews_with_successful_fallback_model(self):
+    def test_breaking_news_uses_partial_fact_cards(self):
         generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
         _configure_generator(generator)
-        generator.script_generator.generate_script = Mock(
-            side_effect=[RuntimeError("503 UNAVAILABLE"), UNVERIFIED_SCRIPT]
-        )
+        generator.script_reviewer.extract_fact_cards = Mock(return_value={
+            ARTICLES[0]["link"]: ArticleFactCard(
+                title="見出しA",
+                source="媒体A",
+                url=ARTICLES[0]["link"],
+                summary="確認済み要約",
+                key_facts=["確認済み事実"],
+                background="確認済み背景",
+                impact="確認済み影響",
+            )
+        })
+        generator.script_reviewer.last_verification_urls = [ARTICLES[0]["link"]]
 
         generator.generate()
 
-        self.assertEqual(
-            [call.kwargs["model"] for call in generator.script_generator.generate_script.call_args_list],
-            ["gemini-3.8-flash", "gemini-3.7-flash"],
-        )
-        self.assertEqual(
-            generator.script_reviewer.review.call_args.kwargs["preferred_model"],
-            "gemini-3.7-flash",
-        )
-
-    def test_breaking_news_stops_retrying_and_uses_title_fallback(self):
-        generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
-        _configure_generator(generator)
-        generator.script_generator.generate_script = Mock(
-            side_effect=[RuntimeError("503 UNAVAILABLE")] * 3
-        )
-
-        generator.generate()
-
-        self.assertEqual(generator.script_generator.generate_script.call_count, 3)
-        self.assertEqual(
-            [call.kwargs["model"] for call in generator.script_generator.generate_script.call_args_list],
-            ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"],
-        )
+        generator.script_generator.generate_script.assert_not_called()
         generator.script_reviewer.review.assert_not_called()
-        script = generator.tts_generator.generate_audio.call_args.args[0]
-        self.assertIn("見出しAというニュースです", script[3].text)
+        self.assertEqual(
+            generator.script_generator.build_script_from_fact_cards.call_args.args[0],
+            ARTICLES,
+        )
+        self.assertEqual(
+            generator.script_generator.build_script_from_fact_cards.call_args.args[1],
+            {
+                ARTICLES[0]["link"]: {
+                    "summary": "確認済み要約",
+                    "key_facts": ["確認済み事実"],
+                    "background": "確認済み背景",
+                    "impact": "確認済み影響",
+                }
+            },
+        )
+        self.assertEqual(
+            generator._build_metadata.call_args.kwargs["verification_status"],
+            "partially_grounded",
+        )
+        self.assertEqual(
+            generator._build_metadata.call_args.kwargs["verification_sources"],
+            [ARTICLES[0]["link"]],
+        )
+
+    def test_breaking_news_uses_all_titles_when_no_cards_are_verified(self):
+        generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
+        _configure_generator(generator)
+
+        generator.generate()
+
+        generator.script_generator.generate_script.assert_not_called()
+        generator.script_reviewer.review.assert_not_called()
+        generator.script_generator.build_script_from_fact_cards.assert_called_once_with(
+            ARTICLES,
+            {},
+        )
         self.assertEqual(
             generator._build_metadata.call_args.kwargs["verification_status"],
             "title_only_fallback",
@@ -179,26 +202,6 @@ class FactGateIntegrationTests(unittest.TestCase):
         generator.script_reviewer.review.assert_not_called()
         script = generator.tts_generator.generate_audio.call_args.args[0]
         self.assertIn("見出しAというニュースです", script[3].text)
-        self.assertEqual(
-            generator._build_metadata.call_args.kwargs["verification_status"],
-            "title_only_fallback",
-        )
-
-    def test_breaking_news_discards_unverified_script(self):
-        generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
-        _configure_generator(generator)
-
-        generator.generate()
-
-        script = generator.tts_generator.generate_audio.call_args.args[0]
-        text = "\n".join(line.text for line in script)
-        self.assertNotIn("政策金利は0.5%", text)
-        self.assertIn("見出しAというニュースです", text)
-        self.assertTrue(
-            generator.script_reviewer.review.call_args.kwargs[
-                "require_all_articles"
-            ]
-        )
         self.assertEqual(
             generator._build_metadata.call_args.kwargs["verification_status"],
             "title_only_fallback",

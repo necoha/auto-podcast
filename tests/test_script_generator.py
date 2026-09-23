@@ -63,6 +63,56 @@ class PronunciationTests(unittest.TestCase):
 
 
 class GenerationRetryTests(unittest.TestCase):
+    def test_fact_card_script_mixes_grounded_explanation_and_title_only(self):
+        generator = ScriptGenerator.__new__(ScriptGenerator)
+        generator.host_name = "ホスト"
+        generator.guest_name = "ゲスト"
+        articles = [
+            {"title": "記事A", "source": "媒体A", "link": "https://example.com/a"},
+            {"title": "記事B", "source": "媒体B", "link": "https://example.com/b"},
+        ]
+        cards = {
+            "https://example.com/a": {
+                "summary": "確認済み要約です。",
+                "key_facts": ["数値は10件です。"],
+                "background": "確認済み背景です。",
+                "impact": "確認済み影響です。",
+            }
+        }
+
+        script = generator.build_script_from_fact_cards(articles, cards)
+        text = "\n".join(line.text for line in script)
+
+        self.assertIn("確認済み要約です", text)
+        self.assertIn("数値は10件です", text)
+        self.assertIn("確認済み背景です", text)
+        self.assertIn("確認済み影響です", text)
+        self.assertIn("記事B", text)
+        self.assertIn("見出しのみお伝えします", text)
+        self.assertEqual(sum("件目は" in line.text for line in script), 2)
+
+    def test_fact_card_script_keeps_all_twenty_articles(self):
+        generator = ScriptGenerator.__new__(ScriptGenerator)
+        generator.host_name = "ホスト"
+        generator.guest_name = "ゲスト"
+        articles = [
+            {
+                "title": f"記事{index}",
+                "source": f"媒体{index}",
+                "link": f"https://example.com/{index}",
+            }
+            for index in range(1, 21)
+        ]
+
+        script = generator.build_script_from_fact_cards(articles, {})
+
+        self.assertEqual(sum("件目は" in line.text for line in script), 20)
+        self.assertIn("記事20", "\n".join(line.text for line in script))
+        self.assertEqual(
+            [len(chunk) for chunk in TTSGenerator._split_script(script, 20)],
+            [20, 20, 4],
+        )
+
     def test_generate_script_uses_selected_fallback_model(self):
         generate_content = Mock(
             return_value=SimpleNamespace(

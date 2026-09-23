@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from google.genai import types
 
 from script_generator import ScriptLine
-from script_reviewer import FactVerificationError, ScriptReviewer
+from script_reviewer import ArticleFactCard, FactVerificationError, ScriptReviewer
 
 
 def _verified_response(text: str, *, supported: bool = True) -> SimpleNamespace:
@@ -62,7 +62,314 @@ def _reviewer(*responses: Any) -> ScriptReviewer:
     return reviewer
 
 
+def _fact_card_response(
+    cards: list[dict[str, Any]],
+    url_statuses: list[tuple[str, str]],
+    *,
+    supported: bool = True,
+) -> SimpleNamespace:
+    text = json.dumps(cards, ensure_ascii=False)
+    supports = []
+    successful_urls = [
+        url
+        for url, status in url_statuses
+        if status == "URL_RETRIEVAL_STATUS_SUCCESS"
+    ]
+    if supported:
+        for chunk_index, card in enumerate(cards):
+            card_text = json.dumps(card, ensure_ascii=False)
+            start = text.index(card_text)
+            supports.append(SimpleNamespace(
+                segment=SimpleNamespace(
+                    start_index=start,
+                    end_index=start + len(card_text),
+                ),
+                grounding_chunk_indices=[chunk_index],
+            ))
+    return SimpleNamespace(
+        text=text,
+        candidates=[
+            SimpleNamespace(
+                grounding_metadata=SimpleNamespace(
+                    grounding_supports=supports,
+                    grounding_chunks=[
+                        SimpleNamespace(web=SimpleNamespace(uri=url))
+                        for url in successful_urls
+                    ],
+                ),
+                url_context_metadata=SimpleNamespace(
+                    url_metadata=[
+                        SimpleNamespace(
+                            retrieved_url=url,
+                            url_retrieval_status=status,
+                        )
+                        for url, status in url_statuses
+                    ]
+                ),
+            )
+        ],
+    )
+
+
+def _fact_card(article_number: int) -> dict[str, Any]:
+    return {
+        "article_number": article_number,
+        "summary": f"記事{article_number}の要約です。",
+        "key_facts": [f"記事{article_number}の重要な事実です。"],
+        "background": f"記事{article_number}の背景です。",
+        "impact": f"記事{article_number}の影響です。",
+    }
+
+
 class UrlContextReviewTests(unittest.TestCase):
+    def test_fact_cards_keep_partial_url_success(self):
+        articles = [
+            {
+                "title": f"記事{index}",
+                "source": f"媒体{index}",
+                "link": f"https://example.com/{index}",
+            }
+            for index in range(1, 4)
+        ]
+        response = _fact_card_response(
+            [_fact_card(1), _fact_card(3)],
+            [
+                ("https://example.com/1", "URL_RETRIEVAL_STATUS_SUCCESS"),
+                ("https://example.com/2", "URL_RETRIEVAL_STATUS_ERROR"),
+                ("https://example.com/3", "URL_RETRIEVAL_STATUS_SUCCESS"),
+            ],
+        )
+        reviewer = _reviewer(response)
+
+        cards = reviewer.extract_fact_cards(articles, batch_size=5)
+
+        self.assertEqual(set(cards), {"https://example.com/1", "https://example.com/3"})
+        self.assertIsInstance(cards["https://example.com/1"], ArticleFactCard)
+        self.assertEqual(
+            reviewer.last_retrieval_statuses["https://example.com/2"],
+            "URL_RETRIEVAL_STATUS_ERROR",
+        )
+        self.assertEqual(reviewer.fact_card_request_count, 1)
+
+    def test_sdk_fact_card_metadata_is_supported(self):
+        card_data = _fact_card(1)
+        text = json.dumps([card_data], ensure_ascii=False)
+        card_text = json.dumps(card_data, ensure_ascii=False)
+        start = text.index(card_text)
+        response = types.GenerateContentResponse(
+            candidates=[types.Candidate(
+                content=types.Content(parts=[types.Part(text=text)]),
+                url_context_metadata=types.UrlContextMetadata(
+                    url_metadata=[types.UrlMetadata(
+                        retrieved_url="https://example.com/1",
+                        url_retrieval_status=(
+                            types.UrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS
+                        ),
+                    )]
+                ),
+                grounding_metadata=types.GroundingMetadata(
+                    grounding_chunks=[types.GroundingChunk(
+                        web=types.GroundingChunkWeb(
+                            uri="https://example.com/1",
+                            title="記事1",
+                        )
+                    )],
+                    grounding_supports=[types.GroundingSupport(
+                        segment=types.Segment(
+                            start_index=start,
+                            end_index=start + len(card_text),
+                        ),
+                        grounding_chunk_indices=[0],
+                    )],
+                ),
+            )]
+        )
+        reviewer = _reviewer(response)
+
+        cards = reviewer.extract_fact_cards([
+            {
+                "title": "記事1",
+                "source": "媒体1",
+                "link": "https://example.com/1",
+            }
+        ])
+
+        self.assertEqual(set(cards), {"https://example.com/1"})
+        self.assertEqual(cards["https://example.com/1"].summary, "記事1の要約です。")
+
+    def test_fact_card_without_citation_is_rejected(self):
+        articles = [
+            {
+                "title": "記事1",
+                "source": "媒体1",
+                "link": "https://example.com/1",
+            }
+        ]
+        response = _fact_card_response(
+            [_fact_card(1)],
+            [("https://example.com/1", "URL_RETRIEVAL_STATUS_SUCCESS")],
+            supported=False,
+        )
+        reviewer = _reviewer(response)
+
+        cards = reviewer.extract_fact_cards(articles)
+
+        self.assertEqual(cards, {})
+        self.assertEqual(
+            reviewer.last_retrieval_statuses["https://example.com/1"],
+            "CARD_UNVERIFIED",
+        )
+
+    def test_fact_card_cannot_use_another_articles_citation(self):
+        articles = [
+            {
+                "title": "記事1",
+                "source": "媒体1",
+                "link": "https://example.com/1",
+            },
+            {
+                "title": "記事2",
+                "source": "媒体2",
+                "link": "https://example.com/2",
+            },
+        ]
+        text = json.dumps([_fact_card(1), _fact_card(2)], ensure_ascii=False)
+        second_card_text = json.dumps(_fact_card(2), ensure_ascii=False)
+        second_start = text.index(second_card_text)
+        response = SimpleNamespace(
+            text=text,
+            candidates=[SimpleNamespace(
+                url_context_metadata=SimpleNamespace(url_metadata=[
+                    SimpleNamespace(
+                        retrieved_url="https://example.com/1",
+                        url_retrieval_status="URL_RETRIEVAL_STATUS_SUCCESS",
+                    ),
+                    SimpleNamespace(
+                        retrieved_url="https://example.com/2",
+                        url_retrieval_status="URL_RETRIEVAL_STATUS_SUCCESS",
+                    ),
+                ]),
+                grounding_metadata=SimpleNamespace(
+                    grounding_chunks=[
+                        SimpleNamespace(web=SimpleNamespace(uri="https://example.com/1")),
+                        SimpleNamespace(web=SimpleNamespace(uri="https://example.com/2")),
+                    ],
+                    grounding_supports=[SimpleNamespace(
+                        segment=SimpleNamespace(
+                            start_index=second_start,
+                            end_index=second_start + len(second_card_text),
+                        ),
+                        grounding_chunk_indices=[1],
+                    )],
+                ),
+            )],
+        )
+        reviewer = _reviewer(response)
+
+        cards = reviewer.extract_fact_cards(articles)
+
+        self.assertEqual(set(cards), {"https://example.com/2"})
+        self.assertEqual(
+            reviewer.last_retrieval_statuses["https://example.com/1"],
+            "CARD_UNVERIFIED",
+        )
+
+    def test_redirected_url_status_maps_by_request_order(self):
+        article = {
+            "title": "記事1",
+            "source": "媒体1",
+            "link": "https://example.com/original",
+        }
+        response = _fact_card_response(
+            [_fact_card(1)],
+            [("https://cdn.example.net/final", "URL_RETRIEVAL_STATUS_SUCCESS")],
+        )
+        response.candidates[0].grounding_metadata.grounding_chunks[0].web.uri = (
+            "https://cdn.example.net/final"
+        )
+        reviewer = _reviewer(response)
+
+        cards = reviewer.extract_fact_cards([article])
+
+        self.assertEqual(set(cards), {"https://example.com/original"})
+        self.assertEqual(
+            reviewer.last_retrieval_statuses["https://example.com/original"],
+            "VERIFIED",
+        )
+
+    def test_fact_card_batches_preserve_earlier_success(self):
+        articles = [
+            {
+                "title": f"記事{index}",
+                "source": f"媒体{index}",
+                "link": f"https://example.com/{index}",
+            }
+            for index in range(1, 7)
+        ]
+        first_batch = _fact_card_response(
+            [_fact_card(1), _fact_card(2), _fact_card(3)],
+            [
+                (f"https://example.com/{index}", "URL_RETRIEVAL_STATUS_SUCCESS")
+                for index in range(1, 4)
+            ],
+        )
+        reviewer = _reviewer(first_batch, RuntimeError("503 UNAVAILABLE"))
+
+        cards = reviewer.extract_fact_cards(articles, batch_size=3)
+
+        self.assertEqual(set(cards), {f"https://example.com/{index}" for index in range(1, 4)})
+        self.assertEqual(reviewer.fact_card_request_count, 2)
+        for index in range(4, 7):
+            self.assertEqual(
+                reviewer.last_retrieval_statuses[f"https://example.com/{index}"],
+                "BATCH_ERROR",
+            )
+
+    def test_twenty_articles_are_split_into_four_batches(self):
+        articles = [
+            {
+                "title": f"記事{index}",
+                "source": f"媒体{index}",
+                "link": f"https://example.com/{index}",
+            }
+            for index in range(1, 21)
+        ]
+        responses = []
+        for batch_start in range(1, 21, 5):
+            responses.append(_fact_card_response(
+                [_fact_card(index) for index in range(batch_start, batch_start + 5)],
+                [
+                    (f"https://example.com/{index}", "URL_RETRIEVAL_STATUS_SUCCESS")
+                    for index in range(batch_start, batch_start + 5)
+                ],
+            ))
+        reviewer = _reviewer(*responses)
+
+        cards = reviewer.extract_fact_cards(articles, batch_size=5)
+
+        self.assertEqual(len(cards), 20)
+        self.assertEqual(reviewer.fact_card_request_count, 4)
+        self.assertEqual(reviewer.client.models.generate_content.call_count, 4)
+
+    def test_fact_card_prompt_does_not_include_rss_summary(self):
+        prompt = ScriptReviewer._build_fact_card_prompt(
+            [
+                (
+                    1,
+                    {
+                        "title": "記事タイトル",
+                        "source": "媒体",
+                        "link": "https://example.com/article",
+                        "summary": "RSSから取得した本文断片",
+                    },
+                )
+            ]
+        )
+
+        self.assertIn("記事タイトル", prompt)
+        self.assertIn("https://example.com/article", prompt)
+        self.assertNotIn("RSSから取得した本文断片", prompt)
+
     def test_review_uses_url_context(self):
         config = ScriptReviewer._review_config()
         config_data = config.model_dump(exclude_none=True)

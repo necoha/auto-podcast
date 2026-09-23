@@ -71,8 +71,9 @@ flowchart TD
 | **PodcastGenerator** | `podcast_generator.py` | 速報版オーケストレーター。収集→台本→音声→RSS→配信の統合制御 |
 | **DeepDivePodcastGenerator** | `deep_podcast_generator.py` | 深掘り版オーケストレーター。速報版と同じパイプラインだが、台本生成に DeepScriptGenerator を使用 |
 | **ContentManager** | `content_manager.py` | RSSフィードからのコンテンツ収集・テキスト処理。速報版・深掘り版で共有 |
-| **ScriptGenerator** | `script_generator.py` | Gemini Flash APIでポッドキャスト対話台本を生成（速報版）。PRONUNCIATION_MAP（306エントリ）による発音補正 |
+| **ScriptGenerator** | `script_generator.py` | 速報版は事実カードと見出しから決定論的に台本構築。深掘り版へGemini台本生成とPRONUNCIATION_MAPを提供 |
 | **DeepScriptGenerator** | `deep_script_generator.py` | ScriptGenerator を継承。AI記事厳選＋6次元分析の深掘り台本を生成 |
+| **ScriptReviewer** | `script_reviewer.py` | 速報版は5 URLずつ引用付き事実カードを抽出。深掘り版は選定済み台本をURL Contextで照合 |
 | **TTSGenerator** | `tts_generator.py` | Gemini 3.1 Flash TTS Interactions APIで台本から音声ファイルを生成。速報版・深掘り版で共有 |
 | **RSSFeedGenerator** | `rss_feed_generator.py` | ポッドキャスト配信用 RSS XML を生成・更新。パラメータ化により速報版・深掘り版の両方に対応。`_sync_channel_metadata` でconfig値への自動同期を保証 |
 | **PodcastUploader** | `podcast_uploader.py` | メタデータ保存 + gh-pages へのデプロイ |
@@ -162,14 +163,15 @@ sequenceDiagram
         RSS-->>CM: 記事リスト
         CM->>CM: 日付フィルタ (24h) → 重複排除 (URL+タイトル類似度)
 
-        CM->>SG: articles
-        SG->>Gemini: generate_content(SYSTEM_PROMPT + 記事)
-        Gemini-->>SG: 対話台本 JSON (1500-2500文字)
+        CM->>SR: 最大20記事を5件ずつ渡す
+        loop 最大4バッチ
+            SR->>Gemini: URL Contextで事実カード抽出
+            Gemini-->>SR: URL別取得状態 + 引用付き事実カード
+        end
+        Note right of SR: 成功カードを保持<br/>失敗記事は見出し限定
+        SR->>SG: 全記事 + 検証済み事実カード
+        SG->>SG: 事実カードと見出しから対話台本を構築
         SG->>SG: PRONUNCIATION_MAP (306エントリ) で読み仮名付与
-        SG->>SR: 台本 + 元記事URL
-        SR->>Gemini: URL Contextで元記事と照合
-        Gemini-->>SR: 引用証跡付き修正版
-        Note right of SR: 検証失敗時は見出し限定台本
 
         SG->>TTS: Script
         TTS->>GTTS: Multi-Speaker TTS（20行単位）
