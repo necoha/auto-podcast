@@ -94,9 +94,10 @@ class DeepDivePodcastGenerator:
 
         logger.info("[Deep]   %d件の記事を取得（ここからAIが厳選）", len(articles))
 
-        # 2. 深掘り台本生成（AIが記事を厳選＋深い分析台本を生成）
-        #    一時障害時は無料枠を守る範囲でリトライ
-        logger.info("[Deep] 2. 深掘り台本生成中...")
+        # 1.5. タイトル・媒体名だけで深掘り対象を先に選定
+        logger.info("[Deep] 1.5. 深掘り対象を選定中...")
+        selected_articles = None
+        selection_model = None
         script = None
         script_model = None
         is_fallback = False
@@ -105,36 +106,92 @@ class DeepDivePodcastGenerator:
         llm_models = config.LLM_MODELS
         for attempt, model in enumerate(llm_models):
             try:
-                script = self.script_generator.generate_script(
+                selected_articles = self.script_generator.select_articles(
                     articles,
                     model=model,
                 )
-                script_model = model
+                selection_model = model
                 break
-            except Exception as e:
-                is_transient = is_transient_generation_error(e)
-                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_transient or is_truncated) and attempt < len(llm_models) - 1:
+            except Exception as error:
+                is_transient = is_transient_generation_error(error)
+                is_invalid_selection = isinstance(error, ValueError)
+                if (is_transient or is_invalid_selection) and attempt < len(llm_models) - 1:
                     next_model = llm_models[attempt + 1]
                     logger.warning(
-                        "[Deep] 台本生成失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
+                        "[Deep] 記事選定失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
                         model,
                         attempt + 1,
                         len(llm_models),
                         next_model,
-                        e,
+                        error,
                     )
                 else:
                     logger.warning(
-                        "[Deep] 台本生成失敗（モデル候補を使い切りました）: %s",
-                        e,
+                        "[Deep] 記事選定失敗（モデル候補を使い切りました）: %s",
+                        error,
                     )
                     break
+
+        if selected_articles is None:
+            selected_articles = articles[:self.script_generator.max_topics]
+            logger.warning("[Deep] 記事選定不可、先頭%d件の見出し限定台本に切り替え", len(selected_articles))
+            script = deep_fallback_script(
+                selected_articles,
+                self.host_name,
+                self.guest_name,
+            )
+            script_model = None
+            is_fallback = True
+            verification_status = "title_only_fallback"
+        else:
+            logger.info(
+                "[Deep]   選定完了: %d件 (%s)",
+                len(selected_articles),
+                ", ".join(article.get("title", "不明") for article in selected_articles),
+            )
+
+        # 2. 選定済み記事だけから深掘り台本を生成
+        #    一時障害時は無料枠を守る範囲でリトライ
+        if not is_fallback:
+            logger.info("[Deep] 2. 深掘り台本生成中...")
+            selection_index = (
+                llm_models.index(selection_model)
+                if selection_model in llm_models
+                else 0
+            )
+            script_models = llm_models[selection_index:]
+            for attempt, model in enumerate(script_models):
+                try:
+                    script = self.script_generator.generate_script(
+                        selected_articles,
+                        model=model,
+                    )
+                    script_model = model
+                    break
+                except Exception as e:
+                    is_transient = is_transient_generation_error(e)
+                    is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
+                    if (is_transient or is_truncated) and attempt < len(script_models) - 1:
+                        next_model = script_models[attempt + 1]
+                        logger.warning(
+                            "[Deep] 台本生成失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
+                            model,
+                            attempt + 1,
+                            len(script_models),
+                            next_model,
+                            e,
+                        )
+                    else:
+                        logger.warning(
+                            "[Deep] 台本生成失敗（モデル候補を使い切りました）: %s",
+                            e,
+                        )
+                        break
 
         if script is None:
             logger.warning("[Deep] 台本生成不可、見出し限定台本に切り替え")
             script = deep_fallback_script(
-                articles,
+                selected_articles,
                 self.host_name,
                 self.guest_name,
             )
@@ -152,7 +209,7 @@ class DeepDivePodcastGenerator:
             try:
                 script = self.script_reviewer.review(
                     script,
-                    articles,
+                    selected_articles,
                     require_all_articles=False,
                     preferred_model=script_model,
                 )
@@ -165,7 +222,7 @@ class DeepDivePodcastGenerator:
                     error,
                 )
                 script = deep_fallback_script(
-                    articles,
+                    selected_articles,
                     self.host_name,
                     self.guest_name,
                 )
@@ -198,7 +255,7 @@ class DeepDivePodcastGenerator:
         # 4. メタデータ構築 & RSS フィード更新
         logger.info("[Deep] 4. メタデータ構築・RSS フィード更新中...")
         metadata = self._build_metadata(
-            articles,
+            selected_articles,
             audio_path,
             episode_num,
             script=script,

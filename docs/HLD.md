@@ -187,13 +187,15 @@ sequenceDiagram
         CM->>RSS: 同一ソースから取得
         RSS-->>CM: 記事リスト
 
-        CM->>DSG: 全記事を渡す
-        DSG->>Gemini: generate_content(DEEP_PROMPT + 全記事)
-        Note right of Gemini: AIが重要2-3件を選定<br/>6次元分析台本を生成
+        CM->>DSG: 重複排除後の候補を渡す
+        DSG->>Gemini: タイトル・媒体名から最大3件を選定
+        Gemini-->>DSG: 選定済み記事
+        DSG->>Gemini: generate_content(DEEP_PROMPT + 選定済み最大3件)
+        Note right of Gemini: 選定済み記事だけで<br/>6次元分析台本を生成
         Gemini-->>DSG: 深掘り台本 JSON (3000-5000文字)
         DSG->>DSG: PRONUNCIATION_MAP 再利用（継承）
-        DSG->>SR: 台本 + 元記事URL
-        SR->>Gemini: URL Contextで元記事と照合
+        DSG->>SR: 台本 + 選定済み最大3 URL
+        SR->>Gemini: URL Contextで選定済み記事だけを照合
         Gemini-->>SR: 引用証跡付き修正版
         Note right of SR: 検証失敗時は見出し限定台本
 

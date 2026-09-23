@@ -53,7 +53,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 1. **ContentManager** (`content_manager.py`) — RSSフィード収集、記事抽出・整形（速報版/深掘り版共有）
 2. **ScriptGenerator** (`script_generator.py`) — Gemini 3.8 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
-3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
+3. **DeepScriptGenerator** (`deep_script_generator.py`) — タイトル・媒体名から最大3件を先行選定し、選定済み記事だけで6次元分析の深掘り台本を生成
 4. **ScriptReviewer** (`script_reviewer.py`) — URL Contextで元記事と台本を6項目レビュー（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さ/事実整合性）
 5. **TTSGenerator** (`tts_generator.py`) — Gemini 3.1 Flash TTS PreviewのInteractions APIで音声合成（Multi-Speaker、曜日ローテーション）
 6. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）

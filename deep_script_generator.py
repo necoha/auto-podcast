@@ -23,10 +23,25 @@ from script_generator import (
 logger = logging.getLogger(__name__)
 
 
+DEEP_SELECTION_SYSTEM_PROMPT = """\
+あなたはニュース編集者です。
+提供された記事タイトル・媒体名だけを比較し、深掘り解説に適した記事を選んでください。
+
+選定基準:
+- 社会的インパクトが大きい
+- 技術・経済の重要な変化を扱う
+- 一般リスナーに説明する価値がある
+- 同じ話題を重複して選ばない
+
+記事本文にない事実を補完せず、出力は選んだ記事番号のJSON配列だけにしてください。
+例: [1, 4, 7]
+"""
+
+
 DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 あなたはポッドキャストの台本ライターです。
-以下のニュース記事群の中から最も重要・注目すべき{max_topics}件を選び、
-それぞれについて深い洞察と分析を含む対話形式のポッドキャスト台本を作成してください。
+以下の選定済みニュース記事をすべて扱い、深い洞察と分析を含む
+対話形式のポッドキャスト台本を作成してください。
 
 話者設定:
 - 話者A: ホスト（進行役）。名前は「{host_name}」
@@ -34,10 +49,7 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 - 台本中の speaker は "A" "B" を使用する（名前はテキスト内で自然に使う）
 
 記事選定の基準:
-- 社会的インパクトが大きいもの
-- 技術的に革新的・興味深いもの
-- 複数ソース（国内外）で報じられている注目度の高いもの
-- リスナーにとって実用的な知見が得られるもの
+- 記事は前段で選定済み。追加選定や除外を行わないこと
 
 各トピックで、記事情報から確認できる範囲だけ含めること:
 1. 背景・経緯: なぜこのニュースが生まれたのか、これまでの流れ
@@ -50,7 +62,7 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 要件:
 - 10〜15分程度の会話になるボリューム（合計3000〜5000文字程度）
 - 1トピックあたり5〜8往復の深い議論
-- 選んだ{max_topics}件のトピックはそれぞれ異なるテーマであること。同じ話題を別のトピックとして繰り返さない
+- 提供されたトピックはそれぞれ異なるテーマとして扱い、同じ話題を繰り返さない
 - 複数の記事が同じニュースを扱っている場合は、それらを統合して1つのトピックとして扱う
 - 冒頭の挨拶は「おはようございます、{host_name}です」「{guest_name}です、よろしくお願いします」のように名乗りする（名乗りは冒頭の1回のみ。以降の発話で「〇〇です」と繰り返し名乗らないこと）
 - 冒頭で「この番組はAIによって自動生成されています」と必ず述べる
@@ -99,7 +111,7 @@ class DeepScriptGenerator(ScriptGenerator):
 
     ScriptGeneratorを継承し、以下を変更:
     - プロンプト: 深い分析・考察を要求
-    - 記事選定: 全記事から重要な2-3件をAIが選定
+    - 記事選定: 前段で選定された最大3件だけを使用
     - 台本長: 3000-5000文字（10-15分）
     """
 
@@ -116,17 +128,83 @@ class DeepScriptGenerator(ScriptGenerator):
             max_topics=self.max_topics,
         )
 
+    def select_articles(
+        self,
+        articles: List[Dict[str, Any]],
+        *,
+        model: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """タイトル・媒体名だけから深掘り対象を最大max_topics件選ぶ。"""
+        if not articles:
+            raise ValueError("記事リストが空です")
+
+        selected_model = model or self.model
+        lines = [
+            f"以下の{len(articles)}件から{min(self.max_topics, len(articles))}件を選んでください。",
+        ]
+        for index, article in enumerate(articles, 1):
+            lines.append(
+                f"{index}. {article.get('title', '不明')}（{article.get('source', '不明')}）"
+            )
+
+        response = self.client.models.generate_content(
+            model=selected_model,
+            config=types.GenerateContentConfig(
+                system_instruction=DEEP_SELECTION_SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                max_output_tokens=256,
+            ),
+            contents="\n".join(lines),
+        )
+        selected_indices = self._parse_selected_indices(
+            response.text,
+            article_count=len(articles),
+        )
+        logger.info(
+            "深掘り記事選定完了 (モデル: %s): %s",
+            selected_model,
+            selected_indices,
+        )
+        return [articles[index - 1] for index in selected_indices]
+
+    def _parse_selected_indices(
+        self,
+        response_text: str,
+        *,
+        article_count: int,
+    ) -> List[int]:
+        """選定レスポンスを重複のない1始まりの記事番号へ変換する。"""
+        try:
+            data = json.loads(response_text.strip())
+        except (AttributeError, json.JSONDecodeError) as error:
+            raise ValueError("記事選定のJSON解析に失敗しました") from error
+        if not isinstance(data, list):
+            raise ValueError("記事選定結果が配列ではありません")
+
+        selected: List[int] = []
+        for value in data:
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise ValueError("記事選定結果に整数以外が含まれています")
+            if value < 1 or value > article_count:
+                raise ValueError(f"記事選定番号が範囲外です: {value}")
+            if value not in selected:
+                selected.append(value)
+
+        expected_count = min(self.max_topics, article_count)
+        if len(selected) != expected_count:
+            raise ValueError(
+                f"記事選定数が不正です ({len(selected)}/{expected_count})"
+            )
+        return selected
+
     def _build_prompt(self, articles: List[Dict[str, Any]]) -> str:
         """記事情報からプロンプトテキストを構築する（深掘り版）
 
-        全記事を提示し、AIに重要な記事の選定と深掘り台本の生成を任せる。
+        前段で選定済みの記事だけを提示する。
         """
         lines = [
-            f"以下の{len(articles)}件のニュース記事から、"
-            f"最も重要な{self.max_topics}件を選んで深掘り台本を作成してください。\n",
-            "選ばなかった記事は無視してください。",
-            "同じニュースを複数のソースが報じている場合は、それらを統合して1つのトピックとして扱ってください。",
-            f"重要: 選んだ{self.max_topics}件のトピックはそれぞれ全く異なるテーマであること。同じ話題を繰り返さないでください。\n",
+            f"以下の選定済み{len(articles)}件をすべて扱い、深掘り台本を作成してください。\n",
+            "記事の追加・除外や、同じ話題の繰り返しを行わないでください。\n",
         ]
 
         for i, article in enumerate(articles, 1):

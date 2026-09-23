@@ -79,6 +79,8 @@ classDiagram
     class DeepScriptGenerator {
         -max_topics: int
         +__init__(api_key, host_name, guest_name, max_topics)
+        +select_articles(articles, model) List~dict~
+        -_parse_selected_indices(response, article_count) List~int~
         -_build_prompt(articles: List~dict~) str
     }
 
@@ -141,7 +143,7 @@ response = client.models.generate_content(
 
 ### 1.2-D DeepScriptGenerator (`deep_script_generator.py`) — 新規作成
 
-**責務**: ScriptGenerator を継承し、AI記事厳選＋6次元分析の深掘り台本を生成
+**責務**: ScriptGenerator を継承し、タイトル・媒体名による先行選定と6次元分析の深掘り台本生成を分離する
 
 #### 継承関係
 - `ScriptGenerator` を継承
@@ -153,13 +155,15 @@ response = client.models.generate_content(
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, guest_name, max_topics | - | 親クラス初期化後、`DEEP_SYSTEM_PROMPT_TEMPLATE` で system_prompt を上書き |
-| `_build_prompt` | articles: List[dict] | str | 全記事を提示し、AIに重要な max_topics 件の選定と深掘り台本の生成を指示（summaryは渡さない） |
+| `select_articles` | articles, model | List[dict] | 全候補のタイトル・媒体名だけを提示し、有効な記事番号を最大3件選定（URL・summaryは渡さない） |
+| `_parse_selected_indices` | response, article_count | List[int] | 選定JSONを検査し、重複・範囲外・件数不正を拒否 |
+| `_build_prompt` | articles: List[dict] | str | 選定済み最大3件だけで深掘り台本の生成を指示（summaryは渡さない） |
 
 #### DEEP_SYSTEM_PROMPT_TEMPLATE（概要）
 ```
 あなたはポッドキャストの台本ライターです。
-以下のニュース記事群の中から最も重要・注目すべき{max_topics}件を選び、
-それぞれについて深い洞察と分析を含む対話形式のポッドキャスト台本を作成してください。
+以下の選定済みニュース記事をすべて扱い、
+深い洞察と分析を含む対話形式のポッドキャスト台本を作成してください。
 
 記事選定の基準:
 - 社会的インパクトが大きいもの
@@ -184,6 +188,7 @@ response = client.models.generate_content(
 ```
 
 #### LLMモデル切替 + 見出し限定フォールバック
+深掘り記事の先行選定でも`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`を順に使用し、一時障害または不正な選定JSONでは次のモデルへ切り替える。
 台本生成で503・500・接続切断・タイムアウトが発生した場合、`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`を各1回ずつ試す。
 1リクエストは3分でタイムアウトし、SDK内部では再試行しない。429や認証エラーではモデルを切り替えない。
 全候補の失敗時は、速報版は最大5件、深掘り版は最大3件の記事タイトルだけを読む台本へ切り替える。
@@ -578,7 +583,7 @@ classDiagram
 | 台本生成 | `ScriptGenerator` | `DeepScriptGenerator`（継承） |
 | 台本レビュー | `ScriptReviewer`（6項目 + 元記事の引用証跡） | 同一（選択済みトピックのみ検証） |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
-| 記事選定 | 全記事に触れつつ重複統合 | AIが重要2-3件を厳選 |
+| 記事選定 | 全記事に触れつつ重複統合 | タイトル・媒体名だけで最大3件を先行選定 |
 | フォールバック | 生成失敗時は休止告知、事実検証失敗時は見出し限定 | 同左（見出しは最大3件） |
 | RSSフィード | `feed.xml` | `feed_deep.xml` |
 | MP3格納先 | `episodes/` | `episodes_deep/` |
@@ -593,9 +598,14 @@ def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
     articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
 
-    # 2. 深掘り台本生成（3.8→3.7→3.6の順にモデル切替）
-    script = self.script_generator.generate_script(articles)
-    # リトライ失敗時: _休止告知スクリプト(host_name, guest_name)
+    # 1.5. タイトル・媒体名だけで最大3件を先行選定
+    selected_articles = self.script_generator.select_articles(articles)
+
+    # 2. 選定済み記事だけで深掘り台本を生成
+    script = self.script_generator.generate_script(selected_articles)
+
+    # 2.5. 選定済み最大3 URLだけをURL Contextで検証
+    script = self.script_reviewer.review(script, selected_articles)
 
     # 3. TTS音声生成（速報版と同じMulti-Speaker TTS）
     audio_filename = f"deep_{episode_num}_{today}.wav"

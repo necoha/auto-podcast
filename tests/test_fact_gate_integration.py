@@ -43,6 +43,8 @@ def _configure_generator(generator: Any) -> None:
         fetch_rss_feeds=Mock(return_value=ARTICLES)
     )
     generator.script_generator = SimpleNamespace(
+        max_topics=3,
+        select_articles=Mock(return_value=ARTICLES),
         generate_script=Mock(return_value=UNVERIFIED_SCRIPT),
         _apply_pronunciation_fixes=Mock(side_effect=_identity_script),
     )
@@ -59,6 +61,64 @@ def _configure_generator(generator: Any) -> None:
 
 
 class FactGateIntegrationTests(unittest.TestCase):
+    def test_deep_dive_switches_model_for_invalid_selection(self):
+        generator = cast(
+            Any,
+            DeepDivePodcastGenerator.__new__(DeepDivePodcastGenerator),
+        )
+        _configure_generator(generator)
+        generator.script_generator.select_articles = Mock(
+            side_effect=[ValueError("invalid selection"), ARTICLES]
+        )
+
+        generator.generate()
+
+        self.assertEqual(
+            [call.kwargs["model"] for call in generator.script_generator.select_articles.call_args_list],
+            ["gemini-3.8-flash", "gemini-3.7-flash"],
+        )
+        self.assertEqual(
+            generator.script_generator.generate_script.call_args.kwargs["model"],
+            "gemini-3.7-flash",
+        )
+
+    def test_deep_dive_uses_only_preselected_articles(self):
+        generator = cast(
+            Any,
+            DeepDivePodcastGenerator.__new__(DeepDivePodcastGenerator),
+        )
+        _configure_generator(generator)
+        candidates = [
+            *ARTICLES,
+            {"title": "見出しC", "source": "媒体C", "link": "https://example.com/c"},
+            {"title": "見出しD", "source": "媒体D", "link": "https://example.com/d"},
+        ]
+        selected = [candidates[0], candidates[2], candidates[3]]
+        generator.content_manager.fetch_rss_feeds = Mock(return_value=candidates)
+        generator.script_generator.select_articles = Mock(return_value=selected)
+
+        generator.generate()
+
+        self.assertEqual(
+            generator.script_generator.generate_script.call_args.args[0],
+            selected,
+        )
+        self.assertEqual(
+            generator.script_reviewer.review.call_args.args[1],
+            selected,
+        )
+        self.assertEqual(
+            generator._build_metadata.call_args.args[0],
+            selected,
+        )
+        fallback_text = "\n".join(
+            line.text
+            for line in generator.tts_generator.generate_audio.call_args.args[0]
+        )
+        self.assertIn("見出しAというニュースです", fallback_text)
+        self.assertIn("見出しCというニュースです", fallback_text)
+        self.assertNotIn("見出しBというニュースです", fallback_text)
+
     def test_breaking_news_reviews_with_successful_fallback_model(self):
         generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
         _configure_generator(generator)
