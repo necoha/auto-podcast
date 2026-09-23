@@ -132,16 +132,26 @@ class ScriptGenerator:
             guest_name=self.guest_name,
         )
 
-    def generate_script(self, articles: List[Dict[str, Any]]) -> Script:
+    def generate_script(
+        self,
+        articles: List[Dict[str, Any]],
+        *,
+        model: Optional[str] = None,
+    ) -> Script:
         """記事リストから対話形式の台本を生成する"""
         if not articles:
             raise ValueError("記事リストが空です")
 
+        selected_model = model or self.model
         prompt = self._build_prompt(articles)
-        logger.info("台本生成を開始 (モデル: %s, 記事数: %d)", self.model, len(articles))
+        logger.info(
+            "台本生成を開始 (モデル: %s, 記事数: %d)",
+            selected_model,
+            len(articles),
+        )
 
         response = self.client.models.generate_content(
-            model=self.model,
+            model=selected_model,
             config=types.GenerateContentConfig(
                 system_instruction=self.system_prompt,
                 response_mime_type="application/json",

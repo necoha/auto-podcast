@@ -21,12 +21,10 @@ logger = logging.getLogger(__name__)
 MAX_REVIEW_ATTEMPTS = 2
 MAX_URL_CONTEXT_URLS = 20
 TRANSIENT_REVIEW_ERROR_MARKERS = (
-    "429",
     "500",
     "502",
     "503",
     "504",
-    "resource_exhausted",
     "unavailable",
     "timed out",
     "timeout",
@@ -93,10 +91,15 @@ class ScriptReviewer:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = config.LLM_MODEL,
+        model: Optional[str] = None,
     ):
         self.api_key = api_key or config.GEMINI_API_KEY
-        self.model = model
+        self.models = (
+            (model,)
+            if model
+            else config.LLM_MODELS
+        )
+        self.model = self.models[0]
         self.client = genai.Client(
             api_key=self.api_key,
             http_options=types.HttpOptions(
@@ -114,6 +117,7 @@ class ScriptReviewer:
         articles: List[Dict[str, Any]],
         *,
         require_all_articles: bool = True,
+        preferred_model: Optional[str] = None,
     ) -> Script:
         """台本を検索で検証し、証跡付きの修正版を返す。"""
         logger.info("台本レビュー開始 (%d行, %d記事)", len(script), len(articles))
@@ -129,10 +133,25 @@ class ScriptReviewer:
         )
 
         last_error: Optional[Exception] = None
+        configured_models = getattr(self, "models", (self.model,))
+        if preferred_model in configured_models:
+            preferred_index = configured_models.index(preferred_model)
+            models = configured_models[preferred_index:]
+        elif preferred_model:
+            models = (preferred_model, *configured_models)
+        else:
+            models = configured_models
         for attempt in range(MAX_REVIEW_ATTEMPTS):
+            model = models[min(attempt, len(models) - 1)]
             try:
+                logger.info(
+                    "台本レビューAPI呼び出し (モデル: %s, 試行%d/%d)",
+                    model,
+                    attempt + 1,
+                    MAX_REVIEW_ATTEMPTS,
+                )
                 response = self.client.models.generate_content(
-                    model=self.model,
+                    model=model,
                     config=self._review_config(),
                     contents=prompt,
                 )
@@ -156,13 +175,16 @@ class ScriptReviewer:
                 is_retryable = isinstance(error, FactVerificationError) or is_transient
                 if not is_retryable or attempt >= MAX_REVIEW_ATTEMPTS - 1:
                     break
+                next_model = models[min(attempt + 1, len(models) - 1)]
                 logger.warning(
-                    "台本の事実確認に失敗 (試行%d/%d): %s。再試行します",
+                    "台本の事実確認に失敗 (%s, 試行%d/%d): %s。次のモデル%sで再試行します",
+                    model,
                     attempt + 1,
                     MAX_REVIEW_ATTEMPTS,
                     error,
+                    next_model,
                 )
-                if is_transient:
+                if is_transient and next_model == model:
                     time.sleep(30)
 
         detail = f": {last_error}" if last_error else ""

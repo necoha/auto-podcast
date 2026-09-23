@@ -1,6 +1,9 @@
 # pyright: reportPrivateUsage=false
 
+import json
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from script_generator import (
     ScriptGenerator,
@@ -60,6 +63,41 @@ class PronunciationTests(unittest.TestCase):
 
 
 class GenerationRetryTests(unittest.TestCase):
+    def test_generate_script_uses_selected_fallback_model(self):
+        generate_content = Mock(
+            return_value=SimpleNamespace(
+                text=json.dumps(
+                    [
+                        {"speaker": "A", "text": f"発話{index}"}
+                        for index in range(5)
+                    ],
+                    ensure_ascii=False,
+                )
+            )
+        )
+        generator = ScriptGenerator.__new__(ScriptGenerator)
+        generator.client = SimpleNamespace(
+            models=SimpleNamespace(generate_content=generate_content)
+        )
+        generator.model = "gemini-3.8-flash"
+        generator.system_prompt = "test prompt"
+
+        generator.generate_script(
+            [
+                {
+                    "title": "記事",
+                    "source": "媒体",
+                    "link": "https://example.com/article",
+                }
+            ],
+            model="gemini-3.7-flash",
+        )
+
+        self.assertEqual(
+            generate_content.call_args.kwargs["model"],
+            "gemini-3.7-flash",
+        )
+
     def test_timeout_is_transient(self):
         self.assertTrue(
             is_transient_generation_error(RuntimeError("Request timed out"))

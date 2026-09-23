@@ -91,7 +91,7 @@ auto-podcast/
 | `MAX_ARTICLES` | 1フィードあたりの取得上限 | `2` |
 | `MAX_TOTAL_ARTICLES` | 全フィード合計の取得上限 | `20` |
 | `LLM_MODEL` | 台本生成・URL Contextモデル | `gemini-3.8-flash` |
-| `LLM_MAX_ATTEMPTS` | 台本生成の最大試行回数 | `3` |
+| `LLM_FALLBACK_MODELS` | LLM一時障害時の代替モデル | `gemini-3.7-flash,gemini-3.6-flash` |
 | `GEMINI_LLM_TIMEOUT_MS` | LLM・URL Contextの1リクエスト上限 | `180000` |
 | `GEMINI_TTS_TIMEOUT_MS` | TTSの1リクエスト上限 | `300000` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-3.1-flash-tts-preview` |
@@ -105,7 +105,7 @@ auto-podcast/
 
 | サービス | 無料枠 |
 |----------|--------|
-| Gemini 3.8 Flash（LLM） | 入出力無料（実際の上限はAI Studio参照） |
+| Gemini 3.8 / 3.7 / 3.6 Flash（LLM） | 入出力無料（実際の上限はAI Studio参照） |
 | URL Context | 無料（通常2回/日、取得内容はLLM入力トークンに算入） |
 | Gemini 3.1 Flash TTS Preview | 入出力無料（実際の上限はAI Studio参照） |
 | GitHub Actions | 2000分/月 |

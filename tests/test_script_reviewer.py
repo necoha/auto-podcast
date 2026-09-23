@@ -117,6 +117,69 @@ class UrlContextReviewTests(unittest.TestCase):
         self.assertEqual(reviewed[0].text, '"預金金利"は0.5%です。')
         self.assertEqual(reviewer.last_verification_urls, ["https://example.com/fact"])
 
+    def test_transient_failure_switches_review_model(self):
+        text = json.dumps(
+            [{"speaker": "A", "text": "確認済みのニュースです。"}],
+            ensure_ascii=False,
+        )
+        reviewer = _reviewer(
+            RuntimeError("503 UNAVAILABLE"),
+            _verified_response(text),
+        )
+        reviewer.models = (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+        )
+
+        with patch("script_reviewer.time.sleep") as sleep:
+            reviewed = reviewer.review(
+                [ScriptLine(speaker="A", text="元台本です。")],
+                [
+                    {
+                        "title": "記事",
+                        "source": "新聞",
+                        "link": "https://example.com/fact",
+                    }
+                ],
+                preferred_model="gemini-3.7-flash",
+            )
+
+        generate_content = reviewer.client.models.generate_content
+        self.assertEqual(reviewed[0].text, "確認済みのニュースです。")
+        self.assertEqual(
+            [call.kwargs["model"] for call in generate_content.call_args_list],
+            ["gemini-3.7-flash", "gemini-3.6-flash"],
+        )
+        sleep.assert_not_called()
+
+    def test_rate_limit_does_not_switch_review_model(self):
+        reviewer = _reviewer(RuntimeError("429 RESOURCE_EXHAUSTED"))
+        reviewer.models = (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.6-flash",
+        )
+
+        with self.assertRaises(FactVerificationError):
+            reviewer.review(
+                [ScriptLine(speaker="A", text="元台本です。")],
+                [
+                    {
+                        "title": "記事",
+                        "source": "新聞",
+                        "link": "https://example.com/fact",
+                    }
+                ],
+            )
+
+        generate_content = reviewer.client.models.generate_content
+        self.assertEqual(generate_content.call_count, 1)
+        self.assertEqual(
+            generate_content.call_args.kwargs["model"],
+            "gemini-3.8-flash",
+        )
+
     def test_ungrounded_numeric_claim_fails_closed(self):
         text = json.dumps(
             [{"speaker": "A", "text": "政策金利は0.5%です。"}],

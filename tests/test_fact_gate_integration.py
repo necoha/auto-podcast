@@ -3,7 +3,7 @@
 import unittest
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock
 
 from deep_podcast_generator import DeepDivePodcastGenerator
 from podcast_generator import PodcastGenerator
@@ -59,6 +59,24 @@ def _configure_generator(generator: Any) -> None:
 
 
 class FactGateIntegrationTests(unittest.TestCase):
+    def test_breaking_news_reviews_with_successful_fallback_model(self):
+        generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
+        _configure_generator(generator)
+        generator.script_generator.generate_script = Mock(
+            side_effect=[RuntimeError("503 UNAVAILABLE"), UNVERIFIED_SCRIPT]
+        )
+
+        generator.generate()
+
+        self.assertEqual(
+            [call.kwargs["model"] for call in generator.script_generator.generate_script.call_args_list],
+            ["gemini-3.8-flash", "gemini-3.7-flash"],
+        )
+        self.assertEqual(
+            generator.script_reviewer.review.call_args.kwargs["preferred_model"],
+            "gemini-3.7-flash",
+        )
+
     def test_breaking_news_stops_retrying_and_uses_title_fallback(self):
         generator = cast(Any, PodcastGenerator.__new__(PodcastGenerator))
         _configure_generator(generator)
@@ -66,11 +84,13 @@ class FactGateIntegrationTests(unittest.TestCase):
             side_effect=[RuntimeError("503 UNAVAILABLE")] * 3
         )
 
-        with patch("podcast_generator.time.sleep") as sleep:
-            generator.generate()
+        generator.generate()
 
         self.assertEqual(generator.script_generator.generate_script.call_count, 3)
-        self.assertEqual(sleep.call_args_list, [call(30), call(60)])
+        self.assertEqual(
+            [call.kwargs["model"] for call in generator.script_generator.generate_script.call_args_list],
+            ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"],
+        )
         generator.script_reviewer.review.assert_not_called()
         script = generator.tts_generator.generate_audio.call_args.args[0]
         self.assertIn("見出しAというニュースです", script[3].text)
@@ -89,11 +109,13 @@ class FactGateIntegrationTests(unittest.TestCase):
             side_effect=[RuntimeError("503 UNAVAILABLE")] * 3
         )
 
-        with patch("deep_podcast_generator.time.sleep") as sleep:
-            generator.generate()
+        generator.generate()
 
         self.assertEqual(generator.script_generator.generate_script.call_count, 3)
-        self.assertEqual(sleep.call_args_list, [call(30), call(60)])
+        self.assertEqual(
+            [call.kwargs["model"] for call in generator.script_generator.generate_script.call_args_list],
+            ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"],
+        )
         generator.script_reviewer.review.assert_not_called()
         script = generator.tts_generator.generate_audio.call_args.args[0]
         self.assertIn("見出しAというニュースです", script[3].text)

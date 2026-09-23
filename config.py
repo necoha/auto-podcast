@@ -31,8 +31,15 @@ TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
 LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
-LLM_MAX_ATTEMPTS = 3
-LLM_RETRY_BASE_DELAY_SECONDS = 30
+LLM_FALLBACK_MODELS = tuple(
+    model.strip()
+    for model in os.getenv(
+        "LLM_FALLBACK_MODELS",
+        "gemini-3.7-flash,gemini-3.6-flash",
+    ).split(",")
+    if model.strip()
+)
+LLM_MODELS = tuple(dict.fromkeys((LLM_MODEL, *LLM_FALLBACK_MODELS)))
 GEMINI_LLM_TIMEOUT_MS = 180_000
 GEMINI_TTS_TIMEOUT_MS = 300_000
 GEMINI_SDK_MAX_ATTEMPTS = 1

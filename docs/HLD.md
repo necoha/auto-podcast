@@ -36,7 +36,7 @@ flowchart TD
 
     subgraph External["外部サービス"]
         RSS[("RSS Feeds<br/>テクノロジー6(JP) + 3(EN)<br/>+ 経済4(JP) = 13")]
-        GeminiLLM["Gemini 3.8 Flash<br/>台本生成 API"]
+        GeminiLLM["Gemini 3.8 / 3.7 / 3.6 Flash<br/>台本生成・URL Context"]
         GeminiTTS["Gemini 3.1 Flash TTS<br/>Multi-Speaker 音声生成"]
         GHP["GitHub Pages<br/>MP3 + RSS ホスティング"]
         Spotify["Spotify / Apple Podcasts<br/>RSS 自動取得"]
@@ -145,7 +145,7 @@ sequenceDiagram
     participant SG as ScriptGenerator
     participant DSG as DeepScriptGenerator
     participant SR as ScriptReviewer
-    participant Gemini as Gemini 3.8 Flash
+    participant Gemini as Gemini Flash（3.8→3.7→3.6）
     participant TTS as TTSGenerator
     participant GTTS as Gemini 3.1 Flash TTS
     participant RGEN as RSSFeedGenerator
@@ -300,7 +300,7 @@ gh-pages/
 |---------|------|------|
 | **言語** | Python 3.11 | `.python-version` で固定 |
 | **パッケージ管理** | uv | pyproject.toml + uv.lock |
-| **LLM** | Gemini 3.8 Flash | 台本生成 + URL Contextによる元記事との事実照合（Stable・無料枠） |
+| **LLM** | Gemini 3.8 / 3.7 / 3.6 Flash | 一時障害時にStableモデルを切替。台本生成 + URL Context（無料枠） |
 | **TTS** | Gemini 3.1 Flash TTS Preview | Interactions APIによるMulti-Speaker音声生成（無料枠、1番組最大5リクエスト） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |

@@ -66,7 +66,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
-- **LLMリトライ**: 台本生成で503エラー時に最大2回リトライ（30秒/60秒間隔）。失敗時は記事タイトル限定台本を配信
+- **LLMフォールバック**: 台本生成の一時障害時は`gemini-3.8-flash`→`gemini-3.7-flash`→`gemini-3.6-flash`へ切り替える。全候補失敗時は記事タイトル限定台本を配信
 - **台本事実検証**: 生成後にURL Contextで元記事と照合して6項目を検査。数値・年月・制度変更などに引用範囲がない場合は不合格とし、検証失敗時は元台本ではなく記事タイトル限定台本を使用
 - **通信制御**: Gemini SDK内の暗黙リトライを無効化し、LLMは3分、TTSは5分でタイムアウト。アプリ側の回数・予算内だけで再試行
 - **フォールバック**: 事実検証失敗時は速報最大5件・深掘り最大3件の見出し限定台本へ縮退。TTS失敗時は生成中止
@@ -86,6 +86,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 | `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
 | `PODCAST_OWNER_EMAIL` | Yes | RSS/Spotify登録用メールアドレス |
 | `LLM_MODEL` | No | 台本生成モデル。既定値`gemini-3.8-flash`。障害時は旧モデルへロールバック可能 |
+| `LLM_FALLBACK_MODELS` | No | 一時障害時の代替モデル。カンマ区切り。空文字で自動切替を無効化 |
 | `TTS_MODEL` | No | 音声生成モデル。既定値`gemini-3.1-flash-tts-preview`。障害時は旧モデルへロールバック可能 |
 
 ### Key Settings in `config.py`
@@ -94,6 +95,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 - `MAX_ARTICLES` — 1フィードあたりの取得上限（default: `2`）
 - `MAX_TOTAL_ARTICLES` — 全フィード合計の取得上限（default: `20`、URL Contextの20 URL制限内）
 - `LLM_MODEL` — 台本生成・URL Contextモデル名（default: `gemini-3.8-flash`）
+- `LLM_FALLBACK_MODELS` — 一時障害時の代替モデル（default: `gemini-3.7-flash,gemini-3.6-flash`）
 - `TTS_MODEL` — TTSモデル名（default: `gemini-3.1-flash-tts-preview`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）
 - `DAILY_SPEAKERS` — 曜日ローテーションテーブル（7ペア×14人）
@@ -104,7 +106,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 ## Free Tier Limits
 
-- **Gemini 3.8 Flash（LLM）**: 入出力無料（実際の上限はAI Studio参照）
+- **Gemini 3.8 / 3.7 / 3.6 Flash（LLM）**: 入出力無料（実際の上限はAI Studio参照）
 - **URL Context**: 無料（通常2回/日、取得内容はGemini入力トークンに算入）
 - **Gemini 3.1 Flash TTS Preview**: 入出力無料（実際の上限はAI Studio参照）
 - **GitHub Actions**: 2000分/月

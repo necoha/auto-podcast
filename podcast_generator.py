@@ -5,7 +5,6 @@
 
 import logging
 import os
-import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 
@@ -88,26 +87,34 @@ class PodcastGenerator:
         # 2. 台本生成（503エラー時はリトライ）
         logger.info("2. 台本生成中...")
         script = None
+        script_model = None
         is_fallback = False
         verification_status = "not_applicable"
         verification_sources: List[str] = []
-        max_attempts = config.LLM_MAX_ATTEMPTS
-        for attempt in range(max_attempts):
+        llm_models = config.LLM_MODELS
+        for attempt, model in enumerate(llm_models):
             try:
-                script = self.script_generator.generate_script(articles)
+                script = self.script_generator.generate_script(
+                    articles,
+                    model=model,
+                )
+                script_model = model
                 break
             except Exception as e:
                 is_transient = is_transient_generation_error(e)
                 is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_transient or is_truncated) and attempt < max_attempts - 1:
-                    wait = config.LLM_RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                if (is_transient or is_truncated) and attempt < len(llm_models) - 1:
+                    next_model = llm_models[attempt + 1]
                     logger.warning(
-                        "台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
-                        attempt + 1, max_attempts, wait, e,
+                        "台本生成失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
+                        model,
+                        attempt + 1,
+                        len(llm_models),
+                        next_model,
+                        e,
                     )
-                    time.sleep(wait)
                 else:
-                    logger.warning("台本生成失敗（リトライ上限）: %s", e)
+                    logger.warning("台本生成失敗（モデル候補を使い切りました）: %s", e)
                     break
 
         if script is None:
@@ -129,6 +136,7 @@ class PodcastGenerator:
                     script,
                     articles,
                     require_all_articles=True,
+                    preferred_model=script_model,
                 )
                 verification_status = "grounded"
                 verification_sources = self.script_reviewer.last_verification_urls

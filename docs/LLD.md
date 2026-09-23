@@ -183,10 +183,10 @@ response = client.models.generate_content(
 - 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
 ```
 
-#### LLMリトライ + 見出し限定フォールバック
-台本生成で503エラー発生時、最大2回リトライ（30秒/60秒間隔）。
-1リクエストは3分でタイムアウトし、SDK内部では再試行しない。
-全3試行の失敗時は、速報版は最大5件、深掘り版は最大3件の記事タイトルだけを読む台本へ切り替える。
+#### LLMモデル切替 + 見出し限定フォールバック
+台本生成で503・500・接続切断・タイムアウトが発生した場合、`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`を各1回ずつ試す。
+1リクエストは3分でタイムアウトし、SDK内部では再試行しない。429や認証エラーではモデルを切り替えない。
+全候補の失敗時は、速報版は最大5件、深掘り版は最大3件の記事タイトルだけを読む台本へ切り替える。
 
 ---
 
@@ -591,7 +591,7 @@ def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
     articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
 
-    # 2. 深掘り台本生成（503時は最大2回リトライ）
+    # 2. 深掘り台本生成（3.8→3.7→3.6の順にモデル切替）
     script = self.script_generator.generate_script(articles)
     # リトライ失敗時: _休止告知スクリプト(host_name, guest_name)
 
@@ -620,7 +620,8 @@ def generate(self) -> EpisodeMetadata | None:
 | 設定名 | 型 | 値 | 説明 |
 |--------|---|-----|------|
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
-| `LLM_MODEL` | str | `gemini-3.8-flash` | 台本生成・URL Context用モデル。環境変数で上書き可能 |
+| `LLM_MODEL` | str | `gemini-3.8-flash` | 台本生成・URL Contextの優先モデル。環境変数で上書き可能 |
+| `LLM_FALLBACK_MODELS` | tuple[str] | `3.7-flash`, `3.6-flash` | 一時障害時の代替モデル。環境変数はカンマ区切り |
 | `TTS_MODEL` | str | `gemini-3.1-flash-tts-preview` | TTS用モデル。環境変数で上書き可能 |
 | `TTS_VOICE` | str | `Kore` | デフォルト音声（フォールバック用） |
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
@@ -762,7 +763,7 @@ URL: {link}
 |---------|--------------|
 | RSS取得失敗（一部） | 取得できたフィードで続行 |
 | RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
-| 台本生成失敗(503) | 1回3分、最大3試行（30秒/60秒間隔）→ 失敗時は見出し限定台本を配信 |
+| 台本生成一時障害 | 3.8→3.7→3.6を各1回（各3分上限）→ 全候補失敗時は見出し限定台本を配信 |
 | Gemini TTS失敗 | 1回5分、最大4試行（30秒/60秒/120秒間隔）→ 失敗時は生成中止 |
 | アップロード失敗 | ローカル保存。次回実行で自然リトライ |
 | レート制限到達 | ログ出力してスキップ。次回実行で再試行 |
@@ -786,7 +787,7 @@ URL: {link}
 ライブラリ: google-genai
 エンドポイント: generativelanguage.googleapis.com
 認証: APIキー
-モデル: gemini-3.8-flash
+モデル: gemini-3.8-flash（優先）→ gemini-3.7-flash → gemini-3.6-flash
 入力: テキスト（記事情報 + システムプロンプト）
 出力: JSON（対話台本）
 レート制限（無料枠）: プロジェクトごとのAI Studio表示値を参照
