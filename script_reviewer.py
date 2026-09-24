@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 MAX_REVIEW_ATTEMPTS = 2
 MAX_URL_CONTEXT_URLS = 20
+URL_CONTEXT_MODEL_INTERVAL_SECONDS = 12.0
 TRANSIENT_REVIEW_ERROR_MARKERS = (
     "500",
     "502",
@@ -202,6 +203,7 @@ class ScriptReviewer:
         self.last_retrieval_statuses: Dict[str, str] = {}
         self.fact_card_request_count = 0
         self.fact_card_elapsed_seconds = 0.0
+        self.fact_card_model_interval_seconds = URL_CONTEXT_MODEL_INTERVAL_SECONDS
 
     def extract_fact_cards(
         self,
@@ -234,6 +236,7 @@ class ScriptReviewer:
         cards: Dict[str, ArticleFactCard] = {}
         indexed_articles = list(enumerate(articles, 1))
         models = self._ordered_models(preferred_model)
+        last_request_at_by_model: Dict[str, float] = {}
 
         for batch_start in range(0, len(indexed_articles), batch_size):
             batch = indexed_articles[batch_start:batch_start + batch_size]
@@ -242,6 +245,15 @@ class ScriptReviewer:
 
             for attempt, model in enumerate(models):
                 try:
+                    self._wait_for_model_interval(
+                        model,
+                        last_request_at_by_model,
+                        getattr(
+                            self,
+                            "fact_card_model_interval_seconds",
+                            URL_CONTEXT_MODEL_INTERVAL_SECONDS,
+                        ),
+                    )
                     self.fact_card_request_count += 1
                     logger.info(
                         "速報事実カード取得 (バッチ%d, %d件, モデル:%s, 試行%d/%d)",
@@ -304,6 +316,29 @@ class ScriptReviewer:
         if preferred_model:
             return tuple(dict.fromkeys((preferred_model, *configured_models)))
         return tuple(configured_models)
+
+    @staticmethod
+    def _wait_for_model_interval(
+        model: str,
+        last_request_at_by_model: Dict[str, float],
+        interval_seconds: float = URL_CONTEXT_MODEL_INTERVAL_SECONDS,
+    ) -> None:
+        now = time.monotonic()
+        previous_request_at = last_request_at_by_model.get(model)
+        if previous_request_at is None:
+            last_request_at_by_model[model] = now
+            return
+
+        next_request_at = previous_request_at + interval_seconds
+        wait_seconds = max(0.0, next_request_at - now)
+        if wait_seconds > 0:
+            logger.info(
+                "URL Contextレート制御 (%s): %.1f秒待機",
+                model,
+                wait_seconds,
+            )
+            time.sleep(wait_seconds)
+        last_request_at_by_model[model] = max(now, next_request_at)
 
     @staticmethod
     def _build_fact_card_prompt(

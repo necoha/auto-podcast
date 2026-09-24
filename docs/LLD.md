@@ -258,7 +258,7 @@ classDiagram
 
 #### API利用
 
-- 速報版: Interactions APIで最大20件を5 URLずつ、通常最大4リクエスト。`url_context_result`で取得状態、`url_citation`でURL別引用範囲を検証し、バッチ障害時のみ次のStableモデルへ切替
+- 速報版: Interactions APIで最大20件を5 URLずつ、通常最大4リクエスト。同一モデルへの要求は12秒以上空けてFree Tierの5 RPMを守る。`url_context_result`で取得状態、`url_citation`でURL別引用範囲を検証し、バッチ障害時のみ次のStableモデルへ切替
 - 深掘り版: `generateContent` APIで選定済み最大3 URLを1リクエスト（証跡不足時は最大1回モデル切替）
 - URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
 
@@ -299,7 +299,7 @@ classDiagram
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, host_voice, guest_name, guest_voice | - | genai.Client初期化。曜日ローテーションの音声名設定 |
-| `generate_audio` | script, output_path | str | 台本を20行単位でMulti-Speaker TTS音声化し、結合してWAV保存 |
+| `generate_audio` | script, output_path | str | 台本を最大20行単位でMulti-Speaker TTS音声化し、結合してWAV保存。末尾が8行未満なら直前チャンクからA/Bペアを再配分 |
 | `_build_multi_speaker_prompt` | script | str | Director's Notes + 話者名付きトランスクリプト構築 |
 | `_call_tts_api` | prompt | bytes | Gemini TTS API呼び出し。SpeakerVoiceConfigで話者別音声指定 |
 | `_prepare_for_tts` | text | str | 承認済みの読みアノテーションを読みへ変換し、単独の「国」など文脈依存語を補正 |

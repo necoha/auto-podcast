@@ -58,6 +58,7 @@ def _verified_response(text: str, *, supported: bool = True) -> SimpleNamespace:
 def _reviewer(*responses: Any) -> ScriptReviewer:
     reviewer = ScriptReviewer.__new__(ScriptReviewer)
     reviewer.model = "test-model"
+    reviewer.fact_card_model_interval_seconds = 0.0
     reviewer.last_verification_urls = []
     cast(Any, reviewer).client = SimpleNamespace(
         models=SimpleNamespace(generate_content=Mock(side_effect=responses))
@@ -413,6 +414,19 @@ class UrlContextReviewTests(unittest.TestCase):
             reviewer.interactions_client.interactions.create.call_count,
             4,
         )
+
+    def test_fact_card_requests_are_spaced_per_model(self):
+        last_request_at: dict[str, float] = {}
+
+        with (
+            patch("script_reviewer.time.monotonic", side_effect=[100.0, 103.0]),
+            patch("script_reviewer.time.sleep") as sleep,
+        ):
+            ScriptReviewer._wait_for_model_interval("gemini-3.8-flash", last_request_at)
+            ScriptReviewer._wait_for_model_interval("gemini-3.8-flash", last_request_at)
+
+        sleep.assert_called_once_with(9.0)
+        self.assertEqual(last_request_at["gemini-3.8-flash"], 112.0)
 
     def test_fact_card_prompt_does_not_include_rss_summary(self):
         prompt = ScriptReviewer._build_fact_card_prompt(

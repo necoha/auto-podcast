@@ -35,6 +35,7 @@ RETRY_DELAY = 30.0  # 一時的なTTSエラー時のリトライ待機秒数
 SILENCE_PADDING_SEC = 2.0  # 末尾に追加する無音（秒）
 CHUNK_SILENCE_SEC = 0.5  # チャンク間の無音（秒）
 MAX_LINES_PER_CHUNK = 20  # 長時間のTTS応答待ちを避けるため数分単位に分割
+MIN_LINES_PER_CHUNK = 8  # 短すぎる末尾チャンクによるTTSの400応答を避ける
 REPEATED_PREFIX_ANALYSIS_RATE = 8000
 REPEATED_PREFIX_FRAME_SEC = 0.02
 REPEATED_PREFIX_WINDOW_SEC = 12.0
@@ -190,6 +191,15 @@ class TTSGenerator:
 
         if current:
             chunks.append(current)
+
+        if len(chunks) >= 2 and len(chunks[-1]) < min(MIN_LINES_PER_CHUNK, max_lines):
+            previous = chunks[-2]
+            tail = chunks[-1]
+            while len(tail) < min(MIN_LINES_PER_CHUNK, max_lines) and len(previous) > 2:
+                if previous[-2].speaker != "A" or previous[-1].speaker != "B":
+                    break
+                tail[:0] = previous[-2:]
+                del previous[-2:]
 
         return chunks
 

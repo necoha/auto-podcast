@@ -110,7 +110,7 @@ class GenerationRetryTests(unittest.TestCase):
         self.assertIn("記事20", "\n".join(line.text for line in script))
         self.assertEqual(
             [len(chunk) for chunk in TTSGenerator._split_script(script, 20)],
-            [20, 20, 4],
+            [20, 16, 8],
         )
 
     def test_generate_script_uses_selected_fallback_model(self):

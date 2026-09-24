@@ -92,9 +92,24 @@ class TTSResponseTests(unittest.TestCase):
 
         chunks = TTSGenerator._split_script(script, 20)
 
-        self.assertEqual([len(chunk) for chunk in chunks], [20, 20, 5])
+        self.assertEqual([len(chunk) for chunk in chunks], [20, 16, 9])
         self.assertTrue(all(chunk[-1].speaker == "B" for chunk in chunks[:-1]))
         self.assertTrue(all(chunk[0].speaker == "A" for chunk in chunks))
+
+    def test_split_script_rebalances_a_four_line_tail(self):
+        script = [
+            ScriptLine(
+                speaker="A" if index % 2 == 0 else "B",
+                text=f"line {index}",
+            )
+            for index in range(44)
+        ]
+
+        chunks = TTSGenerator._split_script(script, 20)
+
+        self.assertEqual([len(chunk) for chunk in chunks], [20, 16, 8])
+        self.assertTrue(all(chunk[0].speaker == "A" for chunk in chunks))
+        self.assertTrue(all(chunk[-1].speaker == "B" for chunk in chunks))
 
     def test_empty_audio_is_retried(self):
         generator, create_interaction = _generator(
