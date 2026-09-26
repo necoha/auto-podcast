@@ -320,15 +320,15 @@ gh-pages/
 ```yaml
 # .github/workflows/generate-podcast.yml
 on:
-  schedule:
-    - cron: "0 21 * * *"    # 毎日 06:00 JST
-  workflow_dispatch:         # 手動実行対応
+ schedule:
+  - cron: "0 14 * * *"    # 毎日 23:00 JST
+ workflow_dispatch:         # 手動実行対応
 
 jobs:
-  generate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
+ generate:
+  runs-on: ubuntu-latest
+  timeout-minutes: 45
+  steps:
       - Checkout → uv setup → uv sync → ffmpeg install
       - 既存 feed.xml を gh-pages から curl で復元
       - 既存 feed_deep.xml を gh-pages から curl で復元

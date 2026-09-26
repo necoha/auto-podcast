@@ -793,20 +793,20 @@ APIコール数: 通常1〜2回/エピソード（25行単位で分割）、再�
 # .github/workflows/generate-podcast.yml
 name: Generate Podcast
 on:
-  schedule:
-    - cron: "0 21 * * *"    # 毎日 06:00 JST = 21:00 UTC
-  workflow_dispatch:
-    inputs:
-      hours:
-        description: "記事取得の時間範囲（hours, 0=無制限）"
-        required: false
-        default: "24"
+ schedule:
+  - cron: "0 14 * * *"    # 毎日 23:00 JST = 14:00 UTC
+ workflow_dispatch:
+  inputs:
+   hours:
+    description: "記事取得の時間範囲（hours, 0=無制限）"
+    required: false
+    default: "24"
 
 jobs:
-  generate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
+ generate:
+  runs-on: ubuntu-latest
+  timeout-minutes: 45
+  steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv python install && uv sync
