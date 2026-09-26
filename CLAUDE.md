@@ -15,7 +15,7 @@ AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生
 - **feedparser** — RSSフィード解析
 - **pydub + ffmpeg** — WAV→MP3変換
 - **Pillow** — カバーアート生成
-- **GitHub Actions** — 定期実行（毎日 23:00 JST）
+- **GitHub Actions** — 定期実行（毎日 04:00 JST）
 - **GitHub Pages** — MP3 + RSSホスティング（gh-pagesブランチ）
 - **Spotify / Apple Podcasts** — RSS経由で自動配信
 
@@ -115,7 +115,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 ## Deployment
 
-- **スケジュール**: GitHub Actions cron `0 14 * * *` (23:00 JST)
+- **スケジュール**: GitHub Actions cron `0 19 * * *` (翌日04:00 JST)
 - **ホスティング**: GitHub Pages (gh-pagesブランチ)
 - **速報版 RSS URL**: `https://necoha.github.io/auto-podcast/feed.xml`
 - **深掘り版 RSS URL**: `https://necoha.github.io/auto-podcast/feed_deep.xml`

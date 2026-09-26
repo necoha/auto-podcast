@@ -6,7 +6,7 @@
 
 - **無料枠・有料枠に対応**: Gemini APIの利用料金・制限はプロジェクトのプランによる
 - **公式APIベース**: UIスクレイピング不要、安定動作
-- **自動化**: GitHub Actionsで毎日23:00 JSTに自動生成・配信
+- **自動化**: GitHub Actionsで毎日04:00 JSTに自動生成・配信
 - **高品質TTS**: Gemini 3.1 Flash TTS Previewによる自然な音声
 - **14人日替わりローテーション**: 曜日ごとに異なるホスト＋ゲストペア（7ペア）
 - **ポッドキャスト配信**: GitHub Pages + RSS → Spotify / Apple Podcastsで自動配信
@@ -55,7 +55,7 @@ uv run podcast_generator.py
 
 ### 5. 自動実行（GitHub Actions）
 
-GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定すると、毎日 23:00 JST に自動実行されます。
+GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定すると、毎日 04:00 JST に自動実行されます。
 手動実行はActionsタブから `workflow_dispatch` で実行可能です。
 
 ## プロジェクト構成

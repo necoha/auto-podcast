@@ -10,7 +10,7 @@
 ```mermaid
 flowchart TD
     subgraph CI["GitHub Actions"]
-        Cron["⏰ cron: 毎日 23:00 JST<br/>(14:00 UTC)"]
+        Cron["⏰ cron: 毎日 04:00 JST<br/>(前日19:00 UTC)"]
         Runner["🖥️ ubuntu-latest"]
     end
 
@@ -151,7 +151,7 @@ sequenceDiagram
     participant GHP as GitHub Pages (gh-pages)
     participant Spotify as Spotify / Apple Podcasts
 
-    Cron->>Runner: 毎日 14:00 UTC (23:00 JST)
+    Cron->>Runner: 毎日 19:00 UTC (翌日04:00 JST)
 
     rect rgb(230, 245, 255)
         Note over Runner,RGEN: === 速報版 (podcast_generator.py) ===
@@ -299,7 +299,7 @@ gh-pages/
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
 | **API SDK** | google-genai 2.25.0 | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
-| **スケジューリング** | GitHub Actions cron | 毎日 23:00 JST (14:00 UTC) |
+| **スケジューリング** | GitHub Actions cron | 毎日 04:00 JST (前日19:00 UTC) |
 | **実行基盤** | GitHub Actions (ubuntu-latest) | Free tier 2000分/月 |
 | **ホスティング** | GitHub Pages (gh-pages) | MP3 + RSS 配信。無料 100GB/月帯域 |
 | **配信** | Spotify / Apple Podcasts | RSS経由で自動配信 |
@@ -321,7 +321,7 @@ gh-pages/
 # .github/workflows/generate-podcast.yml
 on:
  schedule:
-  - cron: "0 14 * * *"    # 毎日 23:00 JST
+    - cron: "0 19 * * *"    # 毎日 04:00 JST
  workflow_dispatch:         # 手動実行対応
 
 jobs:
