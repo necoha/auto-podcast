@@ -19,6 +19,9 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+      TTS_MODEL: ${{ vars.TTS_MODEL }}
 
     steps:
       - name: Checkout

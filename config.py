@@ -7,7 +7,7 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # TTS設定
-TTS_MODEL = os.getenv("TTS_MODEL", "gemini-3.1-flash-tts-preview")
+TTS_MODEL = os.getenv("TTS_MODEL") or "gemini-3.1-flash-tts-preview"
 TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
 TTS_MAX_REQUESTS_PER_PODCAST = int(
     os.getenv("TTS_MAX_REQUESTS_PER_PODCAST", "5")
@@ -30,21 +30,7 @@ TTS_VOICE_A = "Kore"
 TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
-LLM_FALLBACK_MODELS = tuple(
-    model.strip()
-    for model in os.getenv(
-        "LLM_FALLBACK_MODELS",
-        "gemini-3.7-flash,gemini-3.6-flash",
-    ).split(",")
-    if model.strip()
-)
-LLM_MODELS = tuple(dict.fromkeys((LLM_MODEL, *LLM_FALLBACK_MODELS)))
-GEMINI_LLM_TIMEOUT_MS = 180_000
-GEMINI_TTS_TIMEOUT_MS = 300_000
-GEMINI_SDK_MAX_ATTEMPTS = 1
-# google-genai 2.25.0のInteractions層では-1がHTTP再試行なしに対応する。
-GEMINI_INTERACTIONS_MAX_RETRIES = -1
+LLM_MODEL = os.getenv("LLM_MODEL") or "gemini-3.8-flash"
 
 # コンテンツソース設定
 # 追加・変更前に docs/CRD.md「4.1.1 RSSニュースソース採用・除外基準」を確認する。
@@ -52,7 +38,7 @@ GEMINI_INTERACTIONS_MAX_RETRIES = -1
 RSS_FEEDS = [
     # テクノロジー（日本語）
     "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia NEWS
-    "https://www.publickey1.jp/atom.xml",  # Publickey
+    "https://www.publickey1.jp/atom.xml",  # Publickey（クラウド・開発）
     "https://gigazine.net/news/rss_2.0/",  # GIGAZINE
     "https://japan.cnet.com/rss/index.rdf",  # CNET Japan
     "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf",  # Impress Watch
@@ -60,12 +46,12 @@ RSS_FEEDS = [
 
     # テクノロジー（海外・英語）
     "https://techcrunch.com/feed/",  # TechCrunch（スタートアップ・AI・VC）
-    "https://feeds.arstechnica.com/arstechnica/index",  # Ars Technica
-    "https://hnrss.org/frontpage?count=10",  # Hacker News
+    "https://feeds.arstechnica.com/arstechnica/index",  # Ars Technica（技術深掘り）
+    "https://hnrss.org/frontpage?count=10",  # Hacker News Top Stories（開発者コミュニティ）
 
     # 経済・ビジネス（日本語）
     "https://business.nikkei.com/rss/sns/nb.rdf",  # 日経ビジネス
-    "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター（日本語）
+    "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター日本語
     "https://news.yahoo.co.jp/rss/topics/business.xml",  # Yahoo経済
     "https://www.asahi.com/rss/asahi/business.rdf",  # 朝日新聞経済
 ]
@@ -87,9 +73,7 @@ PODCAST_LANGUAGE = "ja"
 
 # コンテンツ制限
 MAX_CONTENT_LENGTH = 10000  # 文字数制限
-MAX_ARTICLES = 2  # 1フィードから取得する記事数上限
-MAX_TOTAL_ARTICLES = 20  # URL Contextへ渡す記事数上限
-URL_CONTEXT_BATCH_SIZE = int(os.getenv("URL_CONTEXT_BATCH_SIZE", "5"))
+MAX_ARTICLES = 5  # 1エピソードに含む記事数上限
 
 # GitHub Pages 配信設定
 PODCAST_BASE_URL = "https://necoha.github.io/auto-podcast"

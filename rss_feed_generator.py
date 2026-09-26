@@ -6,8 +6,8 @@ Apple Podcasts / Spotify 互換の RSS 2.0 + iTunes 拡張 XML を生成・更�
 import logging
 import os
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timezone, timedelta
-from email.utils import format_datetime, parsedate_to_datetime
+from datetime import datetime, timezone, timedelta
+from email.utils import format_datetime
 from typing import Optional
 
 import config
@@ -93,18 +93,6 @@ class RSSFeedGenerator:
         if channel is None:
             raise RuntimeError("RSS channel 要素が見つかりません")
 
-        effective_pub_date = pub_date or datetime.now(JST)
-        replaced_count = self._remove_items_for_date(
-            channel,
-            effective_pub_date.astimezone(JST).date(),
-        )
-        if replaced_count:
-            logger.info(
-                "同日エピソードを置換: %d件 (%s)",
-                replaced_count,
-                effective_pub_date.astimezone(JST).date(),
-            )
-
         # <item> を構築
         item = self._create_item_element(
             mp3_filename=mp3_filename,
@@ -112,7 +100,7 @@ class RSSFeedGenerator:
             description=description,
             episode_number=episode_number,
             duration_seconds=duration_seconds,
-            pub_date=effective_pub_date,
+            pub_date=pub_date,
             mp3_size=mp3_size,
         )
 
@@ -143,33 +131,6 @@ class RSSFeedGenerator:
 
         logger.info("RSS フィード更新: %s (エピソード #%d)", self.feed_path, episode_number)
         return self.feed_path
-
-    def get_episode_number(self, target_date: Optional[date] = None) -> int:
-        """対象日に既存回があれば再利用し、なければ次の回番号を返す。"""
-        tree = self._load_existing_feed()
-        channel = tree.find("channel") if tree is not None else None
-        if channel is None:
-            return 1
-
-        episode_numbers: list[int] = []
-        target_numbers: list[int] = []
-        for item in channel.findall("item"):
-            episode = item.find(f"{{{ITUNES_NS}}}episode")
-            if episode is None or not episode.text or not episode.text.isdigit():
-                continue
-
-            episode_number = int(episode.text)
-            episode_numbers.append(episode_number)
-            if target_date is not None and self._item_date(item) == target_date:
-                target_numbers.append(episode_number)
-
-        if target_numbers:
-            return max(target_numbers)
-        if episode_numbers:
-            return max(episode_numbers) + 1
-
-        existing_items = len(channel.findall("item"))
-        return existing_items + 1
 
     def generate_feed(self) -> str:
         """空のフィード（チャンネル情報のみ）を新規作成して保存する
@@ -278,30 +239,6 @@ class RSSFeedGenerator:
         except ET.ParseError as e:
             logger.warning("既存 feed.xml のパースに失敗: %s — 新規作成します", e)
             return None
-
-    @staticmethod
-    def _item_date(item: ET.Element) -> Optional[date]:
-        pub_date = item.find("pubDate")
-        if pub_date is None or not pub_date.text:
-            return None
-        try:
-            return parsedate_to_datetime(pub_date.text).astimezone(JST).date()
-        except (TypeError, ValueError):
-            return None
-
-    def _remove_items_for_date(
-        self,
-        channel: ET.Element,
-        target_date: date,
-    ) -> int:
-        matching_items = [
-            item
-            for item in channel.findall("item")
-            if self._item_date(item) == target_date
-        ]
-        for item in matching_items:
-            channel.remove(item)
-        return len(matching_items)
 
     def _sync_channel_metadata(self, tree: ET.ElementTree) -> None:
         """チャンネルメタデータを現在の config 値に同期する

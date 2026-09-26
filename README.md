@@ -4,31 +4,32 @@
 
 ## 特徴
 
-- **完全無料（$0/月）**: Gemini 3.8 Flash / 3.1 Flash TTS無料枠で運用
+- **無料枠・有料枠に対応**: Gemini APIの利用料金・制限はプロジェクトのプランによる
 - **公式APIベース**: UIスクレイピング不要、安定動作
-- **自動化**: GitHub Actionsで毎日06:00 JSTに自動生成・配信
+- **自動化**: GitHub Actionsで毎日23:00 JSTに自動生成・配信
 - **高品質TTS**: Gemini 3.1 Flash TTS Previewによる自然な音声
-- **事実検証**: 速報版は最大20件を5 URLずつ取得し、引用付き事実カードがある記事だけ詳しく解説。深掘り版は選定済み最大3 URLを検証
 - **14人日替わりローテーション**: 曜日ごとに異なるホスト＋ゲストペア（7ペア）
 - **ポッドキャスト配信**: GitHub Pages + RSS → Spotify / Apple Podcastsで自動配信
 
 ## アーキテクチャ
 
 ```
-速報: RSS → 重複排除(最大20件) → URL Context(5件×最大4バッチ) → 事実カード台本 → TTS → feed.xml
-深掘り: RSS → タイトル先行選定(最大3件) → 深掘り台本 → URL Context検証 → TTS → feed_deep.xml
-                                  ↓
-                               GitHub Pages → Podcast
+RSSフィード → ContentManager → ScriptGenerator → TTSGenerator → RSSFeedGenerator → GitHub Pages
+                                  (Gemini LLM)     (Gemini TTS)   (feed.xml)         (gh-pages)
+                                                                                         ↓
+                                                                              Spotify / Apple Podcasts
 ```
 
 詳細は [docs/HLD.md](docs/HLD.md) を参照。
+
+現在の台本生成はRSS記事のタイトル・媒体名・URLを入力とし、元記事本文との事実照合は行いません。配信前に原稿の内容を確認してください。
 
 ## セットアップ
 
 ### 1. 前提条件
 
 - Python 3.11+
-- Google AI Studio APIキー（無料）
+- Google AI Studio APIキー（無料枠・有料枠）
 - Spotify for Creatorsアカウント（無料）
 
 ### 2. APIキーの取得
@@ -54,7 +55,7 @@ uv run podcast_generator.py
 
 ### 5. 自動実行（GitHub Actions）
 
-GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定するだけで、毎日 06:00 JST に自動実行されます。
+GitHub Secrets に `GEMINI_API_KEY` と `PODCAST_OWNER_EMAIL` を設定すると、毎日 23:00 JST に自動実行されます。
 手動実行はActionsタブから `workflow_dispatch` で実行可能です。
 
 ## プロジェクト構成
@@ -87,14 +88,8 @@ auto-podcast/
 | 設定 | 説明 | デフォルト |
 |------|------|-----------|
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
-| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー9 + 経済4 |
-| `MAX_ARTICLES` | 1フィードあたりの取得上限 | `2` |
-| `MAX_TOTAL_ARTICLES` | 全フィード合計の取得上限 | `20` |
-| `URL_CONTEXT_BATCH_SIZE` | 速報版URL Contextのバッチ件数 | `5` |
-| `LLM_MODEL` | 台本生成・URL Contextモデル | `gemini-3.8-flash` |
-| `LLM_FALLBACK_MODELS` | LLM一時障害時の代替モデル | `gemini-3.7-flash,gemini-3.6-flash` |
-| `GEMINI_LLM_TIMEOUT_MS` | LLM・URL Contextの1リクエスト上限 | `180000` |
-| `GEMINI_TTS_TIMEOUT_MS` | TTSの1リクエスト上限 | `300000` |
+| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
+| `LLM_MODEL` | 台本生成・セルフレビュー用モデル | `gemini-3.8-flash` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-3.1-flash-tts-preview` |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
@@ -102,17 +97,21 @@ auto-podcast/
 | `PODCAST_BASE_URL` | GitHub Pages URL | `necoha.github.io/auto-podcast` |
 | `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 環境変数 |
 
-## 無料枠の制限
+ローカルでは `.env` に `LLM_MODEL` と `TTS_MODEL` を設定してモデルを切り替えられます。
+GitHub Actionsでは同名のRepository Variablesを設定します。未設定または空欄なら上記の既定値を使用します。
+`gemini-3.1-flash-tts-preview` はInteractions API経由で音声を生成します。ほかのTTSモデルはAPIの互換性を確認してから指定してください。
+モデル切替は自動フォールバックではなく手動設定です。利用可能モデル・料金・制限はAI Studioで確認してください。
 
-| サービス | 無料枠 |
+## 利用枠と料金
+
+| サービス | 条件 |
 |----------|--------|
-| Gemini 3.8 / 3.7 / 3.6 Flash（LLM） | 入出力無料（実際の上限はAI Studio参照） |
-| URL Context | 無料（取得内容はLLM入力トークンに算入、速報は最大4バッチ/回） |
-| Gemini 3.1 Flash TTS Preview | 入出力無料（実際の上限はAI Studio参照） |
+| Gemini 3.8 Flash（LLM） | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
+| Gemini 3.1 Flash TTS Preview | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |
 
-TTSは台本を20行単位で分割します。
+TTSは通常、速報版2チャンク＋深掘り版2チャンクの合計4リクエストです。
 一時障害時も各番組5リクエスト、定期実行1回あたり合計10リクエストを上限とします。
 手動再実行も同じプロジェクトの日次枠を消費するため、実行前に
 [Google AI Studio](https://aistudio.google.com/rate-limit?timeRange=last-28-days) で残量を確認してください。

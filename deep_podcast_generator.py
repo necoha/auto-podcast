@@ -8,16 +8,18 @@
 
 import logging
 import os
+import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional
+from typing import Optional
 
 from pydub import AudioSegment
 
 import config
 from content_manager import ContentManager
-from deep_script_generator import DeepScriptGenerator, deep_fallback_script
-from script_generator import Script, is_transient_generation_error
-from script_reviewer import FactVerificationError, ScriptReviewer
+from deep_script_generator import DeepScriptGenerator
+from script_generator import Script
+from script_reviewer import ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
 from podcast_uploader import PodcastUploader, EpisodeMetadata
@@ -85,7 +87,7 @@ class DeepDivePodcastGenerator:
 
         # 1. コンテンツ収集（速報版と同じソースから全記事取得）
         logger.info("[Deep] 1. コンテンツ収集中...")
-        max_articles = getattr(config, 'MAX_ARTICLES', 2)
+        max_articles = getattr(config, 'MAX_ARTICLES', 5)
         articles = self.content_manager.fetch_rss_feeds(max_articles=max_articles)
 
         if not articles:
@@ -94,140 +96,46 @@ class DeepDivePodcastGenerator:
 
         logger.info("[Deep]   %d件の記事を取得（ここからAIが厳選）", len(articles))
 
-        # 1.5. タイトル・媒体名だけで深掘り対象を先に選定
-        logger.info("[Deep] 1.5. 深掘り対象を選定中...")
-        selected_articles = None
-        selection_model = None
+        # 2. 深掘り台本生成（AIが記事を厳選＋深い分析台本を生成）
+        #    503エラー時はリトライ（LLMは500 req/日なので余裕あり）
+        logger.info("[Deep] 2. 深掘り台本生成中...")
         script = None
-        script_model = None
         is_fallback = False
-        verification_status = "not_applicable"
-        verification_sources: List[str] = []
-        llm_models = config.LLM_MODELS
-        for attempt, model in enumerate(llm_models):
+        max_retries = 4
+        for attempt in range(max_retries + 1):
             try:
-                selected_articles = self.script_generator.select_articles(
-                    articles,
-                    model=model,
-                )
-                selection_model = model
+                script = self.script_generator.generate_script(articles)
                 break
-            except Exception as error:
-                is_transient = is_transient_generation_error(error)
-                is_invalid_selection = isinstance(error, ValueError)
-                if (is_transient or is_invalid_selection) and attempt < len(llm_models) - 1:
-                    next_model = llm_models[attempt + 1]
+            except Exception as e:
+                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
+                if (is_503 or is_truncated) and attempt < max_retries:
+                    wait = 60 * (attempt + 1)
                     logger.warning(
-                        "[Deep] 記事選定失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
-                        model,
-                        attempt + 1,
-                        len(llm_models),
-                        next_model,
-                        error,
+                        "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
+                        attempt + 1, max_retries + 1, wait, e,
                     )
+                    time.sleep(wait)
                 else:
-                    logger.warning(
-                        "[Deep] 記事選定失敗（モデル候補を使い切りました）: %s",
-                        error,
-                    )
+                    logger.warning("[Deep] 台本生成失敗（リトライ上限）: %s", e)
                     break
-
-        if selected_articles is None:
-            selected_articles = articles[:self.script_generator.max_topics]
-            logger.warning("[Deep] 記事選定不可、先頭%d件の見出し限定台本に切り替え", len(selected_articles))
-            script = deep_fallback_script(
-                selected_articles,
-                self.host_name,
-                self.guest_name,
-            )
-            script_model = None
-            is_fallback = True
-            verification_status = "title_only_fallback"
-        else:
-            logger.info(
-                "[Deep]   選定完了: %d件 (%s)",
-                len(selected_articles),
-                ", ".join(article.get("title", "不明") for article in selected_articles),
-            )
-
-        # 2. 選定済み記事だけから深掘り台本を生成
-        #    一時障害時は無料枠を守る範囲でリトライ
-        if not is_fallback:
-            logger.info("[Deep] 2. 深掘り台本生成中...")
-            selection_index = (
-                llm_models.index(selection_model)
-                if selection_model in llm_models
-                else 0
-            )
-            script_models = llm_models[selection_index:]
-            for attempt, model in enumerate(script_models):
-                try:
-                    script = self.script_generator.generate_script(
-                        selected_articles,
-                        model=model,
-                    )
-                    script_model = model
-                    break
-                except Exception as e:
-                    is_transient = is_transient_generation_error(e)
-                    is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                    if (is_transient or is_truncated) and attempt < len(script_models) - 1:
-                        next_model = script_models[attempt + 1]
-                        logger.warning(
-                            "[Deep] 台本生成失敗 (%s, attempt %d/%d)、次のモデル%sへ切り替え: %s",
-                            model,
-                            attempt + 1,
-                            len(script_models),
-                            next_model,
-                            e,
-                        )
-                    else:
-                        logger.warning(
-                            "[Deep] 台本生成失敗（モデル候補を使い切りました）: %s",
-                            e,
-                        )
-                        break
 
         if script is None:
-            logger.warning("[Deep] 台本生成不可、見出し限定台本に切り替え")
-            script = deep_fallback_script(
-                selected_articles,
-                self.host_name,
-                self.guest_name,
-            )
+            # リトライしても失敗 → お休み告知を生成して配信
+            logger.warning("[Deep] 台本生成不可、お休み告知に切り替え")
+            script = _休止告知スクリプト(self.host_name, self.guest_name)
             is_fallback = True
-            verification_status = "title_only_fallback"
 
         logger.info("[Deep]   台本: %d行", len(script))
 
         # 2.5. 台本レビュー（自動チェック＆修正）
-        # フォールバック台本は記事タイトルのみなのでレビュー不要
+        # お休み告知は固定テンプレなのでレビュー不要
         if is_fallback:
-            logger.info("[Deep] 2.5. フォールバック台本のためレビューをスキップ")
+            logger.info("[Deep] 2.5. お休み告知のため台本レビューをスキップ")
         else:
             logger.info("[Deep] 2.5. 台本レビュー中...")
-            try:
-                script = self.script_reviewer.review(
-                    script,
-                    selected_articles,
-                    require_all_articles=False,
-                    preferred_model=script_model,
-                )
-                verification_status = "grounded"
-                verification_sources = self.script_reviewer.last_verification_urls
-                logger.info("[Deep]   レビュー後: %d行", len(script))
-            except FactVerificationError as error:
-                logger.error(
-                    "[Deep] 事実確認失敗、見出し限定台本へ切り替え: %s",
-                    error,
-                )
-                script = deep_fallback_script(
-                    selected_articles,
-                    self.host_name,
-                    self.guest_name,
-                )
-                is_fallback = True
-                verification_status = "title_only_fallback"
+            script = self.script_reviewer.review(script, articles)
+            logger.info("[Deep]   レビュー後: %d行", len(script))
 
         script = self.script_generator._apply_pronunciation_fixes(script)
 
@@ -254,14 +162,7 @@ class DeepDivePodcastGenerator:
 
         # 4. メタデータ構築 & RSS フィード更新
         logger.info("[Deep] 4. メタデータ構築・RSS フィード更新中...")
-        metadata = self._build_metadata(
-            selected_articles,
-            audio_path,
-            episode_num,
-            script=script,
-            verification_status=verification_status,
-            verification_sources=verification_sources,
-        )
+        metadata = self._build_metadata(articles, audio_path, episode_num)
 
         mp3_filename = os.path.basename(audio_path)
         mp3_size = os.path.getsize(audio_path) if os.path.exists(audio_path) else None
@@ -290,17 +191,38 @@ class DeepDivePodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """同日の再実行では既存回を再利用し、それ以外は次の回を返す。"""
-        return self.rss_generator.get_episode_number(datetime.now(JST).date())
+        """次のエピソード番号を算出する（feed_deep.xml から）
+
+        cleanup で古いエピソードが削除された場合でも item 数ではなく
+        既存エピソード番号の最大値+1で採番するため、重複を防げる。
+        """
+        feed_filename = getattr(config, 'DEEP_RSS_FEED_FILENAME', 'feed_deep.xml')
+        feed_path = os.path.join(config.AUDIO_OUTPUT_DIR, feed_filename)
+        if os.path.exists(feed_path):
+            try:
+                tree = ET.parse(feed_path)
+                channel = tree.find("channel")
+                if channel is not None:
+                    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
+                    nums = []
+                    for item in channel.findall("item"):
+                        ep = item.find("itunes:episode", ns)
+                        if ep is not None and ep.text and ep.text.isdigit():
+                            nums.append(int(ep.text))
+                    if nums:
+                        return max(nums) + 1
+                    existing = len(channel.findall("item"))
+                    if existing > 0:
+                        return existing + 1
+            except Exception:
+                pass
+        return 1
 
     def _build_metadata(
         self,
         articles: list,
         audio_path: str,
         episode_num: int,
-        script: Script,
-        verification_status: str = "not_checked",
-        verification_sources: Optional[List[str]] = None,
     ) -> EpisodeMetadata:
         """エピソードメタデータを構築する"""
         today_str = datetime.now(JST).date().strftime("%Y-%m-%d")
@@ -338,12 +260,6 @@ class DeepDivePodcastGenerator:
             published_date=today_str,
             source_articles=source_articles,
             duration_seconds=duration,
-            verification_status=verification_status,
-            verification_sources=verification_sources or [],
-            script_lines=[
-                {"speaker": line.speaker, "text": line.text}
-                for line in script
-            ],
         )
 
     def _get_audio_duration(self, audio_path: str) -> int:
@@ -375,6 +291,36 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep] 元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
+
+
+def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
+    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
+    from script_generator import ScriptLine
+
+    today = datetime.now(JST).strftime("%Y年%m月%d日")
+    return [
+        ScriptLine(
+            speaker=host_name,
+            text=f"おはようございます、{host_name}です。{today}のテック深掘り解説ラジオです。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text=f"{guest_name}です。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="本日はシステムの都合により、深掘り解説はお休みとさせていただきます。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text="通常のテック速報は配信しておりますので、そちらをお楽しみください。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="明日はまた深掘り解説をお届けできると思います。それではまた明日お会いしましょう。",
+        ),
+    ]
+
 
 # メイン実行部分
 if __name__ == "__main__":

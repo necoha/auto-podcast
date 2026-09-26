@@ -27,7 +27,7 @@ class ContentManager:
         self.content_dir = config.CONTENT_DIR
         os.makedirs(self.content_dir, exist_ok=True)
     
-    def fetch_rss_feeds(self, max_articles: int = 2, hours: int = 24) -> List[Dict[str, Any]]:
+    def fetch_rss_feeds(self, max_articles: int = 5, hours: int = 24) -> List[Dict[str, Any]]:
         """RSSフィードから最新記事を取得（日付フィルタ＋重複排除付き）
 
         Args:
@@ -75,40 +75,7 @@ class ContentManager:
         if removed:
             logger.info("重複排除: %d件を除外（%d → %d件）", removed, before, len(all_articles))
 
-        return self._limit_articles(
-            all_articles,
-            getattr(config, 'MAX_TOTAL_ARTICLES', 20),
-        )
-
-    @staticmethod
-    def _limit_articles(
-        articles: List[Dict[str, Any]],
-        max_articles: int,
-    ) -> List[Dict[str, Any]]:
-        """公開日時が新しい記事を優先して全体件数を制限する。"""
-        if len(articles) <= max_articles:
-            return articles
-
-        def published_timestamp(article: Dict[str, Any]) -> float:
-            published_at = article.get('published_dt')
-            if not isinstance(published_at, datetime):
-                return float('-inf')
-            if published_at.tzinfo is None:
-                published_at = published_at.replace(tzinfo=timezone.utc)
-            return published_at.timestamp()
-
-        limited_articles = sorted(
-            articles,
-            key=published_timestamp,
-            reverse=True,
-        )[:max_articles]
-        logger.info(
-            "記事数上限: 新しい順に%d件へ制限（%d → %d件）",
-            max_articles,
-            len(articles),
-            len(limited_articles),
-        )
-        return limited_articles
+        return all_articles
 
     # ── 日付パース ──────────────────────────────────────────
 

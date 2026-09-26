@@ -5,6 +5,7 @@
 
 import logging
 import os
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 
@@ -12,10 +13,7 @@ from pydub import AudioSegment  # type: ignore[import-untyped]
 
 import config
 from content_manager import ContentManager
-from script_generator import (
-    ScriptGenerator,
-    Script,
-)
+from script_generator import ScriptGenerator, Script, ScriptLine
 from script_reviewer import ScriptReviewer
 from tts_generator import TTSGenerator, get_daily_speakers
 from rss_feed_generator import RSSFeedGenerator
@@ -73,7 +71,7 @@ class PodcastGenerator:
 
         # 1. コンテンツ収集
         logger.info("1. コンテンツ収集中...")
-        max_articles = getattr(config, 'MAX_ARTICLES', 2)
+        max_articles = getattr(config, 'MAX_ARTICLES', 5)
         articles = self.content_manager.fetch_rss_feeds(max_articles=max_articles)
 
         if not articles:
@@ -82,37 +80,46 @@ class PodcastGenerator:
 
         logger.info("  %d件の記事を取得しました", len(articles))
 
-        # 2. URL Contextを小分けに取得し、成功記事だけ事実カード化
-        logger.info("2. URL Contextで速報事実カードを取得中...")
-        try:
-            fact_cards = self.script_reviewer.extract_fact_cards(articles)
-        except Exception as error:
-            logger.error("速報事実カード取得の初期化に失敗: %s", error)
-            fact_cards = {}
+        # 2. 台本生成（503エラー時はリトライ）
+        logger.info("2. 台本生成中...")
+        script = None
+        is_fallback = False
+        max_retries = 4
+        for attempt in range(max_retries + 1):
+            try:
+                script = self.script_generator.generate_script(articles)
+                break
+            except Exception as e:
+                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
+                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
+                if (is_503 or is_truncated) and attempt < max_retries:
+                    wait = 60 * (attempt + 1)
+                    logger.warning(
+                        "台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
+                        attempt + 1, max_retries + 1, wait, e,
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.warning("台本生成失敗（リトライ上限）: %s", e)
+                    break
 
-        prompt_cards = {
-            article_url: card.as_prompt_data()
-            for article_url, card in fact_cards.items()
-        }
-        verification_sources = self.script_reviewer.last_verification_urls
-        if len(fact_cards) == len(articles):
-            verification_status = "grounded"
-        elif fact_cards:
-            verification_status = "partially_grounded"
-        else:
-            verification_status = "title_only_fallback"
+        if script is None:
+            logger.warning("台本生成不可、お休み告知に切り替え")
+            script = _休止告知スクリプト(self.host_name, self.guest_name)
+            is_fallback = True
 
-        # 2.5. 検証済みカードと見出しから決定論的に台本を構築
-        logger.info(
-            "2.5. 速報台本を構築中（検証済み%d件 / 全%d件）...",
-            len(fact_cards),
-            len(articles),
-        )
-        script = self.script_generator.build_script_from_fact_cards(
-            articles,
-            prompt_cards,
-        )
         logger.info("  台本: %d行", len(script))
+
+        # 2.5. 台本レビュー（自動チェック＆修正）
+        # お休み告知は固定テンプレなのでレビュー不要
+        if is_fallback:
+            logger.info("2.5. お休み告知のため台本レビューをスキップ")
+        else:
+            logger.info("2.5. 台本レビュー中...")
+            script = self.script_reviewer.review(script, articles)
+            logger.info("  レビュー後: %d行", len(script))
+
+        script = self.script_generator._apply_pronunciation_fixes(script)
 
         # 3. 音声生成
         logger.info("3. 音声生成中...")
@@ -138,14 +145,7 @@ class PodcastGenerator:
 
         # 4. メタデータ構築 & RSS フィード更新
         logger.info("4. メタデータ構築・RSS フィード更新中...")
-        metadata = self._build_metadata(
-            articles,
-            audio_path,
-            episode_num,
-            script=script,
-            verification_status=verification_status,
-            verification_sources=verification_sources,
-        )
+        metadata = self._build_metadata(articles, audio_path, episode_num)
 
         # RSS フィード更新（feed.xml にエピソード追加）
         mp3_filename = os.path.basename(audio_path)
@@ -175,17 +175,44 @@ class PodcastGenerator:
         return metadata
 
     def _get_episode_number(self) -> int:
-        """同日の再実行では既存回を再利用し、それ以外は次の回を返す。"""
-        return self.rss_generator.get_episode_number(datetime.now(JST).date())
+        """次のエピソード番号を算出する
+
+        feed.xml の既存エピソードのうち最大の <itunes:episode> +1 を返す。
+        cleanup で古いエピソードが削除された場合でも item 数ではなく実番号で採番するため、
+        重複を防げる。
+        フォールバックとして content/ の JSON カウントも使う。
+        """
+        # feed.xml から既存エピソード番号の最大値を取得
+        feed_path = os.path.join(config.AUDIO_OUTPUT_DIR,
+                                 getattr(config, "RSS_FEED_FILENAME", "feed.xml"))
+        if os.path.exists(feed_path):
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(feed_path)
+                channel = tree.find("channel")
+                if channel is not None:
+                    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
+                    nums: List[int] = []
+                    for item in channel.findall("item"):
+                        ep = item.find("itunes:episode", ns)
+                        if ep is not None and ep.text and ep.text.isdigit():
+                            nums.append(int(ep.text))
+                    if nums:
+                        return max(nums) + 1
+                    # itunes:episode が無い場合は item 数で代用
+                    existing = len(channel.findall("item"))
+                    if existing > 0:
+                        return existing + 1
+            except Exception:
+                pass
+        # フォールバック: content/ ディレクトリ
+        return self.uploader.get_episode_count() + 1
 
     def _build_metadata(
         self,
         articles: List[Dict[str, str]],
         audio_path: str,
         episode_num: int,
-        script: Script,
-        verification_status: str = "not_checked",
-        verification_sources: Optional[List[str]] = None,
     ) -> EpisodeMetadata:
         """エピソードメタデータを構築する"""
         today_str = datetime.now(JST).date().strftime("%Y-%m-%d")
@@ -228,12 +255,6 @@ class PodcastGenerator:
             published_date=today_str,
             source_articles=source_articles,
             duration_seconds=duration,
-            verification_status=verification_status,
-            verification_sources=verification_sources or [],
-            script_lines=[
-                {"speaker": line.speaker, "text": line.text}
-                for line in script
-            ],
         )
 
     def _get_audio_duration(self, audio_path: str) -> int:
@@ -275,6 +296,34 @@ class PodcastGenerator:
         logger.info("元WAVファイルを削除: %s", wav_path)
 
         return mp3_path
+
+
+def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
+    """台本生成失敗時の短いお休み告知（TTS 1チャンクで収まるよう短く）"""
+    today = datetime.now(JST).strftime("%Y年%m月%d日")
+    return [
+        ScriptLine(
+            speaker=host_name,
+            text=f"おはようございます、{host_name}です。{today}のテック速報です。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text=f"{guest_name}です。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="本日はシステムの都合により、テック速報はお休みとさせていただきます。",
+        ),
+        ScriptLine(
+            speaker=guest_name,
+            text="申し訳ございません。明日はまたニュースをお届けできると思います。",
+        ),
+        ScriptLine(
+            speaker=host_name,
+            text="それではまた明日お会いしましょう。",
+        ),
+    ]
+
 
 # メイン実行部分
 if __name__ == "__main__":

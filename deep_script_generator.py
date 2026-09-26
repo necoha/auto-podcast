@@ -23,25 +23,10 @@ from script_generator import (
 logger = logging.getLogger(__name__)
 
 
-DEEP_SELECTION_SYSTEM_PROMPT = """\
-あなたはニュース編集者です。
-提供された記事タイトル・媒体名だけを比較し、深掘り解説に適した記事を選んでください。
-
-選定基準:
-- 社会的インパクトが大きい
-- 技術・経済の重要な変化を扱う
-- 一般リスナーに説明する価値がある
-- 同じ話題を重複して選ばない
-
-記事本文にない事実を補完せず、出力は選んだ記事番号のJSON配列だけにしてください。
-例: [1, 4, 7]
-"""
-
-
 DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 あなたはポッドキャストの台本ライターです。
-以下の選定済みニュース記事をすべて扱い、深い洞察と分析を含む
-対話形式のポッドキャスト台本を作成してください。
+以下のニュース記事群の中から最も重要・注目すべき{max_topics}件を選び、
+それぞれについて深い洞察と分析を含む対話形式のポッドキャスト台本を作成してください。
 
 話者設定:
 - 話者A: ホスト（進行役）。名前は「{host_name}」
@@ -49,9 +34,12 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 - 台本中の speaker は "A" "B" を使用する（名前はテキスト内で自然に使う）
 
 記事選定の基準:
-- 記事は前段で選定済み。追加選定や除外を行わないこと
+- 社会的インパクトが大きいもの
+- 技術的に革新的・興味深いもの
+- 複数ソース（国内外）で報じられている注目度の高いもの
+- リスナーにとって実用的な知見が得られるもの
 
-各トピックで、記事情報から確認できる範囲だけ含めること:
+各トピックで必ず含めること:
 1. 背景・経緯: なぜこのニュースが生まれたのか、これまでの流れ
 2. 技術的な解説: 関連する技術の仕組みや原理をわかりやすく説明
 3. 業界・社会への影響: この出来事が及ぼす具体的なインパクト
@@ -62,7 +50,7 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 要件:
 - 10〜15分程度の会話になるボリューム（合計3000〜5000文字程度）
 - 1トピックあたり5〜8往復の深い議論
-- 提供されたトピックはそれぞれ異なるテーマとして扱い、同じ話題を繰り返さない
+- 選んだ{max_topics}件のトピックはそれぞれ異なるテーマであること。同じ話題を別のトピックとして繰り返さない
 - 複数の記事が同じニュースを扱っている場合は、それらを統合して1つのトピックとして扱う
 - 冒頭の挨拶は「おはようございます、{host_name}です」「{guest_name}です、よろしくお願いします」のように名乗りする（名乗りは冒頭の1回のみ。以降の発話で「〇〇です」と繰り返し名乗らないこと）
 - 冒頭で「この番組はAIによって自動生成されています」と必ず述べる
@@ -81,12 +69,9 @@ DEEP_SYSTEM_PROMPT_TEMPLATE = """\
 - 英語の記事タイトルはそのまま読まず、内容を日本語で簡潔に言い換えて紹介すること
 
 事実確認に関する注意:
-- 提供されたタイトル・ソース名・URLだけを事実の根拠とすること
-- 記事情報にない固有名詞・数値・年月・価格・割合・因果関係を補完しないこと
-- 同じ単位でも主体と指標を混同しないこと。中央銀行の政策金利と民間銀行の預金金利は別の指標である
-- 法律・規制・制度の開始時期を記事情報から確認できない場合は、その時期を述べないこと
-- 確認できない情報を曖昧表現へ変えて残すことも禁止する
-- 6つの分析次元を埋めるために事実を推測してはならない。根拠がない次元は省略すること
+- 提供された記事情報に書かれていない固有名詞・日付・事実を勝手に補完しないこと
+- 製品の発売日・価格・スペックなど、記事に明記されていない具体的な情報は推測で述べない
+- 確信がない情報は「と見られています」「という見方もあります」のように曖昧に表現すること
 
 発音・表記ルール（TTS読み上げ用）:
 - 英語の固有名詞や技術用語にはカタカナ読みを括弧で併記する
@@ -111,7 +96,7 @@ class DeepScriptGenerator(ScriptGenerator):
 
     ScriptGeneratorを継承し、以下を変更:
     - プロンプト: 深い分析・考察を要求
-    - 記事選定: 前段で選定された最大3件だけを使用
+    - 記事選定: 全記事から重要な2-3件をAIが選定
     - 台本長: 3000-5000文字（10-15分）
     """
 
@@ -128,83 +113,17 @@ class DeepScriptGenerator(ScriptGenerator):
             max_topics=self.max_topics,
         )
 
-    def select_articles(
-        self,
-        articles: List[Dict[str, Any]],
-        *,
-        model: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """タイトル・媒体名だけから深掘り対象を最大max_topics件選ぶ。"""
-        if not articles:
-            raise ValueError("記事リストが空です")
-
-        selected_model = model or self.model
-        lines = [
-            f"以下の{len(articles)}件から{min(self.max_topics, len(articles))}件を選んでください。",
-        ]
-        for index, article in enumerate(articles, 1):
-            lines.append(
-                f"{index}. {article.get('title', '不明')}（{article.get('source', '不明')}）"
-            )
-
-        response = self.client.models.generate_content(
-            model=selected_model,
-            config=types.GenerateContentConfig(
-                system_instruction=DEEP_SELECTION_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                max_output_tokens=256,
-            ),
-            contents="\n".join(lines),
-        )
-        selected_indices = self._parse_selected_indices(
-            response.text,
-            article_count=len(articles),
-        )
-        logger.info(
-            "深掘り記事選定完了 (モデル: %s): %s",
-            selected_model,
-            selected_indices,
-        )
-        return [articles[index - 1] for index in selected_indices]
-
-    def _parse_selected_indices(
-        self,
-        response_text: str,
-        *,
-        article_count: int,
-    ) -> List[int]:
-        """選定レスポンスを重複のない1始まりの記事番号へ変換する。"""
-        try:
-            data = json.loads(response_text.strip())
-        except (AttributeError, json.JSONDecodeError) as error:
-            raise ValueError("記事選定のJSON解析に失敗しました") from error
-        if not isinstance(data, list):
-            raise ValueError("記事選定結果が配列ではありません")
-
-        selected: List[int] = []
-        for value in data:
-            if not isinstance(value, int) or isinstance(value, bool):
-                raise ValueError("記事選定結果に整数以外が含まれています")
-            if value < 1 or value > article_count:
-                raise ValueError(f"記事選定番号が範囲外です: {value}")
-            if value not in selected:
-                selected.append(value)
-
-        expected_count = min(self.max_topics, article_count)
-        if len(selected) != expected_count:
-            raise ValueError(
-                f"記事選定数が不正です ({len(selected)}/{expected_count})"
-            )
-        return selected
-
     def _build_prompt(self, articles: List[Dict[str, Any]]) -> str:
         """記事情報からプロンプトテキストを構築する（深掘り版）
 
-        前段で選定済みの記事だけを提示する。
+        全記事を提示し、AIに重要な記事の選定と深掘り台本の生成を任せる。
         """
         lines = [
-            f"以下の選定済み{len(articles)}件をすべて扱い、深掘り台本を作成してください。\n",
-            "記事の追加・除外や、同じ話題の繰り返しを行わないでください。\n",
+            f"以下の{len(articles)}件のニュース記事から、"
+            f"最も重要な{self.max_topics}件を選んで深掘り台本を作成してください。\n",
+            "選ばなかった記事は無視してください。",
+            "同じニュースを複数のソースが報じている場合は、それらを統合して1つのトピックとして扱ってください。",
+            f"重要: 選んだ{self.max_topics}件のトピックはそれぞれ全く異なるテーマであること。同じ話題を繰り返さないでください。\n",
         ]
 
         for i, article in enumerate(articles, 1):
@@ -217,44 +136,53 @@ class DeepScriptGenerator(ScriptGenerator):
         return "\n".join(lines)
 
 
-def deep_fallback_script(articles: List[Dict[str, Any]],
+def deep_fallback_script(articles: List[dict],
                          host_name: str = "アオイ",
                          guest_name: str = "タクミ") -> Script:
-    """事実確認失敗時のフォールバック: 最大3件のタイトルだけを読む"""
+    """深掘り版台本生成失敗時のフォールバック"""
     from datetime import datetime
 
     script: Script = []
     script.append(ScriptLine(
-        speaker="A",
+        speaker=host_name,
         text=f"おはようございます、{host_name}です。"
              f"{datetime.now().strftime('%Y年%m月%d日')}、今日の深掘りニュース解説をお届けします。"
              f"この番組はAIによって自動生成されています。"
     ))
     script.append(ScriptLine(
-        speaker="B",
-        text=f"{guest_name}です。本日は確認できた記事の見出しだけをお伝えします。"
+        speaker=guest_name,
+        text=f"{guest_name}です。よろしくお願いします。"
+             f"このコーナーでは最新ニュースを深掘りして解説していきます。"
     ))
 
-    # フォールバックでは推測を加えず最大3件の見出しだけを紹介
+    # フォールバックでは最大3件を少し詳しく紹介
     for i, article in enumerate(articles[:3], 1):
         title = article.get('title', '不明な記事')
         source = article.get('source', '')
 
         script.append(ScriptLine(
-            speaker="A",
-            text=f"それでは{i}つ目のトピックです。{source}からお伝えします。"
+            speaker=host_name,
+            text=f"それでは{i}つ目のトピックです。{source}が報じたニュースについてです。"
         ))
         script.append(ScriptLine(
-            speaker="B",
-            text=f"{title}というニュースです。{source}が報じています。"
+            speaker=guest_name,
+            text=f"はい。{title}ということですね。{source}が報じています。"
+        ))
+        script.append(ScriptLine(
+            speaker=host_name,
+            text=f"これはどのような影響があるのでしょうか？"
+        ))
+        script.append(ScriptLine(
+            speaker=guest_name,
+            text=f"この件については今後の動向に注目していく必要がありますね。"
         ))
 
     script.append(ScriptLine(
-        speaker="A",
-        text=f"以上、本日のニュース見出しでした。{guest_name}さん、ありがとうございました。"
+        speaker=host_name,
+        text=f"以上、本日の深掘り解説でした。{guest_name}さん、ありがとうございました。"
     ))
     script.append(ScriptLine(
-        speaker="B",
+        speaker=guest_name,
         text="ありがとうございました。また明日お会いしましょう。"
     ))
 
