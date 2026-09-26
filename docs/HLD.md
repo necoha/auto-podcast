@@ -3,6 +3,8 @@
 
 **採用プラン: α（完全無料 × 高品質）**
 
+> **設計状態**: 本書の配信品質ゲートは [CRD](CRD.md) の目標仕様。現行コードの見出し限定配信と、毎日23:00 JSTのcronには未反映。実装済みと混同しないこと。
+
 ---
 
 ## 1. システムアーキテクチャ概要
@@ -17,21 +19,31 @@ flowchart TD
     subgraph Speed["速報版 PodcastGenerator"]
         ROT["0. 曜日ローテーション<br/>14人日替わり（7ペア）"]
         CM["1. ContentManager<br/>収集 + 日付フィルタ + 重複排除"]
-        SG["2. ScriptGenerator<br/>台本生成 + 発音補正"]
+        SR["2. 元記事ごとの事実確認<br/>候補は最大20件・5件ずつ"]
+        GATE["日本語・台本分量<br/>配信前判定"]
+        SG["2.5 ScriptGenerator<br/>採用記事のみで台本生成"]
         TTS["3. TTSGenerator<br/>Multi-Speaker TTS"]
         MP3["3.5 MP3変換<br/>pydub + ffmpeg"]
+        AUDIO["音声品質判定<br/>台本一致・無音・反復"]
         RGEN["4. RSSFeedGenerator<br/>feed.xml 更新"]
         UP["5. PodcastUploader<br/>メタデータ保存"]
+        SKIP["見送り<br/>feed.xml は更新しない"]
+        FAIL["実行障害<br/>feed.xml は更新しない"]
     end
 
     subgraph Deep["深掘り版 DeepDivePodcastGenerator"]
         ROT2["0. 曜日ローテーション<br/>（速報版と同じペア）"]
         CM2["1. ContentManager<br/>（同一ソースから全記事取得）"]
         DSG["2. DeepScriptGenerator<br/>AI記事厳選 + 深掘り台本"]
+        SR2["2.5 選定記事との事実確認<br/>主張ごとに根拠照合"]
+        GATE2["10〜15分の分析・日本語<br/>配信前判定"]
         TTS2["3. TTSGenerator<br/>Multi-Speaker TTS"]
         MP3_2["3.5 MP3変換"]
+        AUDIO2["音声品質判定"]
         RGEN2["4. RSSFeedGenerator<br/>feed_deep.xml 更新"]
         UP2["5. PodcastUploader<br/>メタデータ保存"]
+        SKIP2["見送り<br/>feed_deep.xml は更新しない"]
+        FAIL2["実行障害<br/>feed_deep.xml は更新しない"]
     end
 
     subgraph External["外部サービス"]
@@ -44,15 +56,30 @@ flowchart TD
 
     Cron --> Runner
     Runner --> ROT --> CM
-    CM --> SG --> TTS --> MP3 --> RGEN --> UP
+    CM --> SR
+    SR -->|採用記事あり| SG --> GATE
+    SR -->|裏付け不足| SKIP
+    SR -->|取得API障害| FAIL
+    GATE -->|合格| TTS --> MP3 --> AUDIO
+    GATE -->|不合格| SKIP
+    TTS -->|API障害| FAIL
+    AUDIO -->|合格| RGEN --> UP
+    AUDIO -->|不合格| SKIP
 
     Runner --> ROT2 --> CM2
-    CM2 --> DSG --> TTS2 --> MP3_2 --> RGEN2 --> UP2
+    CM2 --> DSG --> SR2 --> GATE2
+    GATE2 -->|合格| TTS2 --> MP3_2 --> AUDIO2
+    GATE2 -->|不合格| SKIP2
+    SR2 -->|取得API障害| FAIL2
+    TTS2 -->|API障害| FAIL2
+    AUDIO2 -->|合格| RGEN2 --> UP2
+    AUDIO2 -->|不合格| SKIP2
 
     CM -.-> RSS
     CM2 -.-> RSS
-    SG -.-> GeminiLLM
+    SR -.-> GeminiLLM
     DSG -.-> GeminiLLM
+    SR2 -.-> GeminiLLM
     TTS -.-> GeminiTTS
     TTS2 -.-> GeminiTTS
     UP -.-> GHP
@@ -142,10 +169,11 @@ sequenceDiagram
     participant Cron as GitHub Actions cron
     participant Runner as ubuntu-latest
     participant CM as ContentManager
-    participant RSS as RSS Feeds (8)
+    participant RSS as RSS Feeds (13)
     participant SG as ScriptGenerator
     participant DSG as DeepScriptGenerator
-    participant SR as ScriptReviewer
+    participant SR as 元記事との事実確認
+    participant Gate as 台本・音声の配信前判定
     participant Gemini as Gemini Flash（3.8→3.7→3.6）
     participant TTS as TTSGenerator
     participant GTTS as Gemini 3.1 Flash TTS
@@ -168,18 +196,29 @@ sequenceDiagram
             SR->>Gemini: URL Contextで事実カード抽出
             Gemini-->>SR: URL別取得状態 + 引用付き事実カード
         end
-        Note right of SR: 成功カードを保持<br/>失敗記事は見出し限定
-        SR->>SG: 全記事 + 検証済み事実カード
-        SG->>SG: 事実カードと見出しから対話台本を構築
-        SG->>SG: PRONUNCIATION_MAP (306エントリ) で読み仮名付与
-
-        SG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS（20行単位）
-        GTTS-->>TTS: 音声バイナリ (PCM)
-        TTS->>TTS: WAV → MP3変換 (128kbps)
-
-        TTS->>RGEN: MP3 + metadata
-        RGEN->>RGEN: feed.xml に新エピソード追加
+        Note right of SR: 引用注釈は候補<br/>元記事内容と主張を照合
+        SR->>Gate: 裏付け済み記事と除外理由
+        alt 採用記事が0件
+            Gate-->>Runner: 速報見送り、feed.xml は維持
+        else 採用記事あり
+            Gate->>SG: 採用記事の事実カードのみ
+            SG->>Gate: 対話台本と読み上げ用の日本語
+            alt 日本語・台本分量が5〜8分の要件に合格
+                Gate->>TTS: Script
+                TTS->>GTTS: Multi-Speaker TTS（20行単位）
+                GTTS-->>TTS: 音声バイナリ (PCM)
+                TTS->>TTS: WAV → MP3変換 (128kbps)
+                TTS->>Gate: 音声 + 台本
+                alt 音声品質に合格
+                    Gate->>RGEN: MP3 + metadata
+                    RGEN->>RGEN: feed.xml に新エピソード追加
+                else 音声品質に不合格
+                    Gate-->>Runner: 速報見送り、feed.xml は維持
+                end
+            else 台本の分量・日本語が不合格
+                Gate-->>Runner: 速報見送り、feed.xml は維持
+            end
+        end
     end
 
     rect rgb(255, 245, 230)
@@ -199,15 +238,22 @@ sequenceDiagram
         DSG->>SR: 台本 + 選定済み最大3 URL
         SR->>Gemini: URL Contextで選定済み記事だけを照合
         Gemini-->>SR: 引用証跡付き修正版
-        Note right of SR: 検証失敗時は見出し限定台本
-
-        DSG->>TTS: Script
-        TTS->>GTTS: Multi-Speaker TTS（20行単位）
-        GTTS-->>TTS: 音声バイナリ (PCM)
-        TTS->>TTS: WAV → MP3変換 (128kbps)
-
-        TTS->>RGEN: MP3 + metadata
-        RGEN->>RGEN: feed_deep.xml に新エピソード追加
+        SR->>Gate: 主張ごとの根拠URL + レビュー済み台本
+        alt 選定記事を照合でき10〜15分の分析を構成できる
+            Gate->>TTS: Script
+            TTS->>GTTS: Multi-Speaker TTS（20行単位）
+            GTTS-->>TTS: 音声バイナリ (PCM)
+            TTS->>TTS: WAV → MP3変換 (128kbps)
+            TTS->>Gate: 音声 + 台本
+            alt 音声品質に合格
+                Gate->>RGEN: MP3 + metadata
+                RGEN->>RGEN: feed_deep.xml に新エピソード追加
+            else 音声品質に不合格
+                Gate-->>Runner: 深掘り見送り、feed_deep.xml は維持
+            end
+        else 事実確認・分析の分量が不足
+            Gate-->>Runner: 深掘り見送り、feed_deep.xml は維持
+        end
     end
 
     rect rgb(245, 230, 255)
@@ -219,23 +265,25 @@ sequenceDiagram
     end
 ```
 
-### 3.2 エラー時フォールバック
+### 3.2 エラー時の判定
 
 ```mermaid
 flowchart TD
-    A["ScriptGenerator<br/>台本生成"] -->|成功| B["対話台本"]
-    A -->|失敗| A2["記事テキストを<br/>そのまま読み上げ用に整形"]
-    A2 --> B
-
-    B --> C["TTSGenerator<br/>音声生成"]
-    C -->|成功| D["音声ファイル"]
-    C -->|失敗| C2["リトライ<br/>（最大4試行、30/60/120秒）"]
-    C2 -->|成功| D
-    C2 -->|失敗| C3["❌ 生成中止<br/>次回実行に委ねる"]
-
-    D --> E["PodcastUploader<br/>アップロード"]
-    E -->|成功| F["✅ gh-pages に push<br/>Spotify/Apple が自動取得"]
-    E -->|失敗| E2["ローカル保存<br/>次回実行で自然リトライ"]
+    A["速報・深掘りをそれぞれ判定"] --> B["元記事内容と主張を照合"]
+    B -->|根拠不足| SKIP["品質不合格で見送り<br/>既存RSSを維持"]
+    B -->|取得API障害| FAIL["実行障害で見送り<br/>既存RSSを維持"]
+    B -->|合格| C["日本語台本・番組の分量を確認"]
+    C -->|不合格| SKIP
+    C -->|合格| D["TTS音声生成"]
+    D -->|失敗| RETRY["予算内で再試行"]
+    RETRY -->|API障害・予算切れ| FAIL
+    D -->|成功| E["完成音声を検査"]
+    RETRY -->|成功| E
+    E -->|不合格| SKIP
+    E -->|合格| F["当該番組のMP3・RSS項目を更新"]
+    F --> G["gh-pages に配信"]
+    SKIP --> H["他方の番組は独立して処理"]
+    FAIL --> H
 ```
 
 ---
@@ -388,10 +436,11 @@ jobs:
 | レベル | 戦略 |
 |--------|------|
 | **コンテンツ収集** | フィード単位でエラーキャッチ、取得できたフィードで続行 |
-| **台本生成** | Gemini API失敗 → 記事テキストをそのまま読み上げテキストとして使用 |
-| **音声生成** | 1回5分でタイムアウト → 最大4試行（30/60/120秒）→ 失敗時は生成中止、次回実行に委ねる |
+| **記事の事実確認** | URL取得または元記事内容との照合に失敗した記事は除外。裏付け不足なら品質不合格、API障害なら実行障害として当該番組を見送り |
+| **台本生成** | Gemini APIの予算内でモデル切替。分析・日本語・分量の要件を満たせなければ当該番組を見送り |
+| **音声生成** | 1回5分でタイムアウト → 予算内で最大4試行。API障害は実行障害、完成音声の品質不合格は品質不合格として当該番組を見送り |
 | **アップロード** | 失敗 → ローカル保存。次回実行で自然リトライ |
-| **レート制限** | Gemini無料枠の制限に到達 → ログ出力して次回実行にスキップ |
+| **レート制限** | Gemini無料枠の制限に到達 → 実行障害として当該番組を見送り、既存RSSを維持。他方の番組は独立して処理 |
 
 ---
 

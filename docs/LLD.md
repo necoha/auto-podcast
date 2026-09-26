@@ -3,6 +3,8 @@
 
 **採用プラン: α（Gemini 3.8 Flash + Gemini 3.1 Flash TTS / 完全無料）**
 
+> **設計状態（2026-09-26）**: [CRD](CRD.md) に従う配信品質ゲートの目標仕様。現行コードの見出し限定配信、引用範囲のみの判定、逐次実行とは異なる。
+
 ---
 
 ## 1. クラス・モジュール詳細設計
@@ -57,7 +59,7 @@ article = {
 
 ### 1.2 ScriptGenerator (`script_generator.py`) — 新規作成
 
-**責務**: 速報版は引用検証済み事実カードと見出しから対話台本を決定論的に構築する。継承先の深掘り版ではGemini Flash APIによる台本生成も提供する
+**責務**: 速報版は元記事内容で裏付けられた事実カードだけから対話台本を構築する。継承先の深掘り版ではGemini Flash APIによる台本生成も提供する
 
 #### クラス図
 ```mermaid
@@ -94,7 +96,7 @@ classDiagram
 |---------|------|------|---------|
 | `__init__` | api_key, host_name, guest_name | - | genai.Client初期化。ホスト/ゲスト名でプロンプトテンプレート展開 |
 | `generate_script` | articles: List[dict] | Script | 記事リストからプロンプト構築 → Gemini呼び出し → レスポンス解析 |
-| `build_script_from_fact_cards` | articles, fact_cards | Script | 最大20件すべてを維持し、カードあり記事は根拠付き解説、カードなし記事は見出しだけのA/B台本へ構築 |
+| `build_script_from_fact_cards` | adopted_articles, fact_cards | Script | 採用記事だけを使い、裏付けのない見出しを繰り返さない日本語台本を構築。採用0件は呼び出さない |
 | `_build_prompt` | articles: List[dict] | str | 記事タイトル・ソース名・URLのみを含むプロンプトテキスト構築（著作権対策によりsummary除去） |
 | `_parse_response` | response: str | Script | Geminiレスポンスを構造化されたScript型に変換 |
 
@@ -189,17 +191,17 @@ response = client.models.generate_content(
 - 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
 ```
 
-#### LLMモデル切替 + 見出し限定フォールバック
+#### LLMモデル切替 + 配信見送り
 深掘り記事の先行選定でも`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`を順に使用し、一時障害または不正な選定JSONでは次のモデルへ切り替える。
 台本生成で503・500・接続切断・タイムアウトが発生した場合、`gemini-3.8-flash`、`gemini-3.7-flash`、`gemini-3.6-flash`を各1回ずつ試す。
 1リクエストは3分でタイムアウトし、SDK内部では再試行しない。429や認証エラーではモデルを切り替えない。
-全候補の失敗時は、速報版は最大5件、深掘り版は最大3件の記事タイトルだけを読む台本へ切り替える。
+全候補の失敗時は当該番組を見送り、記事タイトルだけを読む台本には切り替えない。他方の番組は独立して処理する。
 
 ---
 
 ### 1.2-R ScriptReviewer (`script_reviewer.py`) — 新規作成
 
-**責務**: 速報版ではURL Contextを小分けに実行して引用付き事実カードを抽出する。深掘り版では生成済み台本を選定済み元記事と照合する。
+**責務**: 速報版ではURL Contextの取得・引用情報と元記事の内容を照合し、裏付け済みの記事だけを採用する。深掘り版では生成済み台本の主張を選定済み元記事と照合する。
 
 #### クラス図
 ```mermaid
@@ -213,7 +215,7 @@ classDiagram
         +last_retrieval_statuses: Dict[str, str]
         +fact_card_request_count: int
         +__init__(api_key: str, model: str)
-        +extract_fact_cards(articles, batch_size, preferred_model) Dict~str, ArticleFactCard~
+        +extract_fact_cards(articles, batch_size, preferred_model) FactCardBatchResult
         +review(script: Script, articles: List[Dict], require_all_articles: bool) Script
         -_review_config() GenerateContentConfig
         -_parse_grounded_response(response) Script
@@ -241,8 +243,8 @@ classDiagram
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key, model | - | Gemini Client初期化 |
-| `review` | script: Script, articles: List[Dict], require_all_articles | Script | URL Context付きレビュー。証跡不足時は `FactVerificationError` |
-| `extract_fact_cards` | articles, batch_size, preferred_model | Dict[str, ArticleFactCard] | Interactions APIで最大5 URLずつ処理。部分成功を保持し、URL別状態・API回数・処理時間を記録 |
+| `review` | script: Script, articles: List[Dict], require_all_articles | Script | 選定記事すべての本文と台本の主張をURLごとに照合。裏付け不足時は不合格 |
+| `extract_fact_cards` | articles, batch_size, preferred_model | FactCardBatchResult | Interactions APIで最大5 URLずつ処理。裏付け済みカード、URLごとの不採用理由、API取得障害を分けて返す |
 | `_build_review_prompt` | script, articles | str | 記事タイトル・媒体・URL＋台本JSONをプロンプトに構成 |
 | `_extract_url_context_evidence` | response | tuple | 取得成功した元記事URLと引用文字範囲を抽出 |
 | `_validate_claim_citations` | script, response_text, support_ranges | None | 事実行に引用を要求し、数値・年月・制度語は語単位で引用範囲を検証 |
@@ -251,16 +253,30 @@ classDiagram
 
 #### エラーハンドリング
 
-- 429/5xxなどの一時障害: 30秒後に1回リトライ
+- 429/5xxなどの一時障害: モデル別の回数・時間予算内で再試行。無料枠の上限到達は他モデルへ切り替えない
 - 元記事取得・引用不足: 即時に1回再試行
 - APIキー不正などの恒久エラー: 再試行しない
-- 最終失敗: `FactVerificationError`を送出し、オーケストレーターが記事タイトル限定台本へ切り替える
+- 最終失敗: 速報は採用済み記事のみ保持し、0件なら見送り。深掘りは選定記事の裏付け不足なら見送り。いずれも記事タイトル限定台本へ切り替えない
 
 #### API利用
 
 - 速報版: Interactions APIで最大20件を5 URLずつ、通常最大4リクエスト。同一モデルへの要求は12秒以上空けてFree Tierの5 RPMを守る。`url_context_result`で取得状態、`url_citation`でURL別引用範囲を検証し、バッチ障害時のみ次のStableモデルへ切替
 - 深掘り版: `generateContent` APIで選定済み最大3 URLを1リクエスト（証跡不足時は最大1回モデル切替）
 - URL Context自体は無料。取得内容はGeminiの入力トークンに算入される
+
+#### 根拠の状態と採否（目標仕様）
+
+| 状態 | 判定 | 台本への利用 |
+|------|------|-------------|
+| 取得不可 | URL Contextまたは元記事本文へのアクセスが失敗 | 不可。記事別の失敗理由を記録 |
+| 引用候補あり | URL取得成功、AI応答に同じURLの引用注釈あり | まだ不可。引用の文字範囲の重なりだけでは事実を確認できない |
+| 裏付け済み | 各主張の根拠箇所を元記事本文で確認し、主体・数値・日付・因果関係が矛盾しない | 可。記事・主張ごとの根拠URLと採否を記録 |
+
+- 事実カードの要約・重要事実は各主張を元記事本文に照らして採否を決める。背景・影響が確認できなければ項目を省略し、推測で埋めない
+- 引用注釈のURLと元記事URLを対応付け、根拠となる短い原文箇所が取得した記事本文中にあるかを確かめる。該当箇所が主張を支持するかも確認し、数値・日付・主体を別途照合する
+- 深掘り版は記事単位だけでなく台本の主張単位で根拠URLを対応付ける。選定記事を取得できない、または裏付けのない主張を解消できない場合は不合格
+- `FactCardBatchResult` は裏付け済みカードと記事別の不採用理由に加え、外部APIの可用性を保持する。`unavailable` は確認処理が全く成立しなかった場合だけ真とし、一部のカードを採用できた場合は成功分を保持する。カード0件だけを理由に「品質不合格」と決めず、503・429・認証障害などで取得できなかった場合は実行障害として区別する
+- 記事本文や長い原文引用は音声、RSS、公開メタデータへ含めない。内部の検証記録には採否理由と根拠URLを残す
 
 ---
 
@@ -350,6 +366,7 @@ TTS方式: Multi-Speaker（20行単位でチャンク分割）
 リトライ: チャンクごとに最大4試行、30秒/60秒/120秒の指数バックオフ
 HTTP制御: 1リクエスト5分でタイムアウト、SDK内部の暗黙リトライは無効
 リクエスト予算: 1番組あたり最大5回
+失敗診断: 最終失敗したチャンクの送信内容・HTTPエラーを audio_files/diagnostics/*.json に保存（APIキーは伏字）。保存失敗時も元のエラーを優先
 反復対策: 台本を一度だけ読む指示 + PCM先頭再出現の検出・除去（API再呼び出しなし）
 話者: 速報版・深掘り版で同じ曜日ペアを使用
 ```
@@ -497,7 +514,7 @@ classDiagram
         -rss_generator: RSSFeedGenerator
         -uploader: PodcastUploader
         +__init__(api_key: str)
-        +generate() EpisodeMetadata
+        +generate() EpisodeResult
         -_get_episode_number() int
         -_convert_to_mp3(wav_path, mp3_path, bitrate) str
         -_build_metadata(articles, audio_path, episode_num, script, verification_status, verification_sources) EpisodeMetadata
@@ -516,21 +533,47 @@ classDiagram
 | メソッド | 入力 | 出力 | 処理概要 |
 |---------|------|------|---------|
 | `__init__` | api_key: str | - | get_daily_speakers()で曜日別出演者を決定。5つのサブコンポーネントを初期化 |
-| `generate` | - | EpisodeMetadata or None | メインフロー: 収集→台本→音声→アップロード |
+| `generate` | - | EpisodeResult | 当該番組の `published` / `skipped_quality` / `failed_runtime` と理由を返す。見送り時にRSSを変更しない |
 | `_get_episode_number` | - | int | 同日の再実行では既存回番号を再利用し、それ以外は既存最大番号+1 |
 | `_build_metadata` | articles, audio_path, episode_num, script, verification_status, verification_sources | EpisodeMetadata | 元記事・検証状態・参照URL・最終台本を含むメタデータ構築 |
 
+#### 番組別の配信判定（目標仕様）
+
+| 結果 | 条件 | 音声・RSS | 実行ログ |
+|------|------|-----------|---------|
+| `published` | 事実・台本・完成音声がすべて合格 | 新規MP3と当該番組のRSS項目だけを追加 | 採用URLと品質検査結果を記録 |
+| `skipped_quality` | 取得できた元記事の裏付け記事0件、分析・日本語・分量不足、音声品質不合格 | 追加しない。既存フィードを変更しない | 除外記事と見送り理由を記録。配信成功とは報告しない |
+| `failed_runtime` | 外部APIの503・429・認証障害、TTS・変換などの実行障害 | 追加しない。既存フィードを変更しない | 失敗工程とAPIステータスを記録。予算外の再試行をしない |
+
+`EpisodeResult` は `status`、機械可読な `reason_code`、採用URLと除外URLごとの理由、成功時のみ `EpisodeMetadata` を持つ。CLIは番組別の結果を非公開の実行結果JSONとして渡し、workflowは `published` の番組だけをデプロイ対象にする。APIキー・元記事本文・長い引用は結果JSONに含めない。
+
+- 速報版と深掘り版は互いの結果に依存せず実行する。片方が見送り・障害でも、もう片方の合格回は配信できる
+- `verification_status` は候補記事の事実確認結果を表し、`EpisodeResult` は番組の配信結果を表す。引用候補だけで `grounded` としない
+- 配信日の台本表記・音声ファイル名・RSS公開日はすべて日本時間の日付を使用する
+- 速報は採用記事の事実だけで1500〜2500文字・目標5〜8分、深掘りは3000〜5000文字・目標10〜15分を満たすかTTS前に確認する。TTS後は音声の実時間を確認し、短縮版を配信しない
+- 英語の見出しを原文のまま読み上げず、意味を変えない日本語にする。台本の同じ見出しの言い直しも拒否する
+- 完成音声は先頭読み直し、長い無音、発話の欠落・順序、放送日の不一致を検査する。機械判定が不確かな読みは品質確認に回し、未確認のまま合格としない
+
 #### generate() フロー（疑似コード）
 ```python
-def generate(self) -> EpisodeMetadata | None:
+def generate(self) -> EpisodeResult:
     # 1. コンテンツ収集（24h以内 + 重複排除）
     articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
+    today_jst = datetime.now(JST).date()
 
-    # 2. URL Contextを5件ずつ実行し、部分成功の事実カードを保持
-    fact_cards = self.script_reviewer.extract_fact_cards(articles, batch_size=5)
+    # 2. URL Contextと元記事内容を照合し、記事別の採否と理由を保持
+    extraction = self.script_reviewer.extract_fact_cards(articles, batch_size=5)
+    if extraction.unavailable:
+        return EpisodeResult.failed_runtime("元記事取得・検証APIの障害")
+    fact_cards = extraction.verified_cards
+    adopted_articles = [article for article in articles if article["link"] in fact_cards]
+    if not adopted_articles:
+        return EpisodeResult.skipped_quality("採用記事なし")
 
-    # 2.5. 全記事を維持し、失敗記事だけ見出し限定にして台本構築
-    script = self.script_generator.build_script_from_fact_cards(articles, fact_cards)
+    # 2.5. 採用記事のみを日本語で構成し、分量不足なら配信しない
+    script = self.script_generator.build_script_from_fact_cards(adopted_articles, fact_cards)
+    if not script_gate_passes(script, target_minutes=(5, 8), jst_date=today_jst):
+        return EpisodeResult.skipped_quality("台本品質不合格")
 
     # 3. TTS音声生成（Multi-Speaker、20行単位）
     self.tts_generator.generate_audio(script, audio_path)  # → WAV
@@ -538,11 +581,16 @@ def generate(self) -> EpisodeMetadata | None:
     # 3.5 WAV → MP3 変換 (pydub + ffmpeg, 128kbps)
     mp3_path = self._convert_to_mp3(audio_path, mp3_path)
 
-    # 4. RSS 更新
+    # 3.6. 完成した音声を確認。合格するまでRSSに触れない
+    if not audio_gate_passes(mp3_path, script, target_minutes=(5, 8)):
+        return EpisodeResult.skipped_quality("音声品質不合格")
+
+    # 4. 合格した番組だけRSSを更新
     self.rss_generator.add_episode(mp3_filename, metadata)
 
     # 5. メタデータ保存
     self.uploader.upload(mp3_path, metadata)
+    return EpisodeResult.published(metadata)
     #   GitHub Actions が gh-pages に MP3 + feed.xml を push
 ```
 
@@ -566,7 +614,7 @@ classDiagram
         -rss_generator: RSSFeedGenerator
         -uploader: PodcastUploader
         +__init__(api_key: str)
-        +generate() EpisodeMetadata
+        +generate() EpisodeResult
         -_get_episode_number() int
         -_convert_to_mp3(wav_path, mp3_path, bitrate) str
         -_build_metadata(articles, audio_path, episode_num, script, verification_status, verification_sources) EpisodeMetadata
@@ -589,7 +637,7 @@ classDiagram
 | URL Context | 最大20件を5 URLずつ事実カード化 | 選定済み最大3 URLで台本レビュー |
 | 台本長 | 1500-2500文字 (5-8分) | 3000-5000文字 (10-15分) |
 | 記事選定 | 全記事に触れつつ重複統合 | タイトル・媒体名だけで最大3件を先行選定 |
-| フォールバック | 取得・引用失敗記事だけ見出し限定 | 台本検証失敗時は選定済み最大3件の見出し限定 |
+| 品質不合格 | 採用記事0件・台本/音声の品質不足は当該番組を見送り | 選定記事・主張の裏付け不足、台本/音声の品質不足は当該番組を見送り |
 | RSSフィード | `feed.xml` | `feed_deep.xml` |
 | MP3格納先 | `episodes/` | `episodes_deep/` |
 | ファイル名 | `episode_N_YYYYMMDD.mp3` | `deep_N_YYYYMMDD.mp3` |
@@ -599,18 +647,28 @@ classDiagram
 
 #### generate() フロー（疑似コード）
 ```python
-def generate(self) -> EpisodeMetadata | None:
+def generate(self) -> EpisodeResult:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
     articles = self.content_manager.fetch_rss_feeds(max_articles=2, hours=24)
+    today_jst = datetime.now(JST).date()
 
     # 1.5. タイトル・媒体名だけで最大3件を先行選定
     selected_articles = self.script_generator.select_articles(articles)
+    if not selected_articles:
+        return EpisodeResult.skipped_quality("選定記事なし")
 
     # 2. 選定済み記事だけで深掘り台本を生成
     script = self.script_generator.generate_script(selected_articles)
 
-    # 2.5. 選定済み最大3 URLだけをURL Contextで検証
-    script = self.script_reviewer.review(script, selected_articles)
+    # 2.5. 選定済み記事本文と台本の全主張を照合。失敗時は見出し版を作らない
+    try:
+        script = self.script_reviewer.review(script, selected_articles)
+    except VerificationServiceUnavailable:
+        return EpisodeResult.failed_runtime("元記事取得・検証APIの障害")
+    except FactVerificationError:
+        return EpisodeResult.skipped_quality("選定記事・主張の裏付け不足")
+    if not script_gate_passes(script, target_minutes=(10, 15), jst_date=today_jst):
+        return EpisodeResult.skipped_quality("台本品質不合格")
 
     # 3. TTS音声生成（速報版と同じMulti-Speaker TTS）
     audio_filename = f"deep_{episode_num}_{today}.wav"
@@ -619,8 +677,16 @@ def generate(self) -> EpisodeMetadata | None:
     # 3.5 WAV → MP3 変換
     mp3_path = self._convert_to_mp3(audio_path, mp3_path)
 
-    # 4. RSS更新（feed_deep.xml）
+    # 3.6. 完成音声の確認。合格するまでRSSに触れない
+    if not audio_gate_passes(mp3_path, script, target_minutes=(10, 15)):
+        return EpisodeResult.skipped_quality("音声品質不合格")
+
+    # 4. 合格した場合のみRSS更新（feed_deep.xml）
     self.rss_generator.add_episode(mp3_filename, metadata)
+
+    # 5. メタデータ保存
+    self.uploader.upload(mp3_path, metadata)
+    return EpisodeResult.published(metadata)
 
     # 5. メタデータ保存
     self.uploader.upload(mp3_path, metadata)
@@ -692,7 +758,7 @@ def generate(self) -> EpisodeMetadata | None:
 
 ### 1.8 ValidateFeeds (`validate_feeds.py`) — CI検証スクリプト
 
-**責務**: デプロイ前にfeed.xml / feed_deep.xml の生成物が config.py の期待値と一致するか自動検証する。不一致があればワークフローを失敗させ、壊れた状態のデプロイを防止する。
+**責務**: デプロイ前にfeed.xml / feed_deep.xml のXML・チャンネル設定が config.py の期待値と一致するか自動検証する。不一致があればワークフローを失敗させ、壊れたフィードのデプロイを防止する。事実・台本・音声の品質判定は担当しない。
 
 #### 検証項目
 
@@ -718,7 +784,7 @@ uv run python validate_feeds.py audio_files
 ```
 podcast_generator.py → deep_podcast_generator.py → validate_feeds.py → Deploy to gh-pages
 ```
-検証失敗時はデプロイステップに到達しないため、Spotify/Apple Podcastsに壊れたフィードが配信されることを防ぐ。
+RSSの構造検証に合格しても番組の配信許可にはならない。事実・台本・音声の品質判定はRSS項目の追加前に番組ごとに実施し、見送り回については既存フィードを維持する。
 
 ### 1.9 著作権対策
 
@@ -730,7 +796,7 @@ Apple Podcasts Content Guidelines 準拠のため、以下の対策を実装。
 |---|------|----------|------|
 | ① | システムプロンプトに著作権注意事項を追加 | `SYSTEM_PROMPT_TEMPLATE`, `DEEP_SYSTEM_PROMPT_TEMPLATE` | LLMが元記事を転載せず独自の言葉で解説 |
 | ② | `_build_prompt()` から記事summaryを除去 | `script_generator.py`, `deep_script_generator.py` | 元記事本文がLLMに渡らないため転載リスクを根本排除 |
-| ③ | フォールバック台本からもsummary除去 | `fallback_script()`, `deep_fallback_script()` | フォールバック時も著作権安全 |
+| ③ | 未検証記事を台本から除外し、内部照合に使った記事本文を公開メタデータへ含めない | 元記事照合・配信品質ゲート | 見出し・本文の長い転載を避ける |
 | ④ | エピソード説明文にソース記事URLを追加 | `podcast_generator.py`, `deep_podcast_generator.py` | 出典明示によりフェアユース主張を強化 |
 | ⑥ | チャンネル説明文にdisclaimer追加 | `config.py` | 「元記事の著作権は各メディアに帰属します」を明示 |
 
@@ -773,18 +839,32 @@ URL: {link}
 - 各モジュールは自身のエラーをキャッチしログ出力
 - `logging` モジュールを使用（`print()` から移行）
 - メソッドは成功時に結果、失敗時に例外を送出
-- オーケストレーター（PodcastGenerator）がフォールバックを判断
+- オーケストレーターは番組ごとに `published` / `skipped_quality` / `failed_runtime` を返す。失敗を見出し台本の配信成功として扱わない
 
-### 3.2 フォールバック一覧
+### 3.2 エラーと配信見送り
 
-| シナリオ | フォールバック |
-|---------|--------------|
-| RSS取得失敗（一部） | 取得できたフィードで続行 |
-| RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
-| 台本生成一時障害 | 3.8→3.7→3.6を各1回（各3分上限）→ 全候補失敗時は見出し限定台本を配信 |
-| Gemini TTS失敗 | 1回5分、最大4試行（30秒/60秒/120秒間隔）→ 失敗時は生成中止 |
-| アップロード失敗 | ローカル保存。次回実行で自然リトライ |
-| レート制限到達 | ログ出力してスキップ。次回実行で再試行 |
+| シナリオ | 当該番組の結果 |
+|---------|----------------|
+| RSS取得失敗（一部） | 得られた記事の照合を続け、番組分量に不足するなら `skipped_quality` |
+| RSS取得失敗（全部） | `failed_runtime`。記事が取得できなかった原因を記録し、既存RSSを維持 |
+| 取得済み記事の裏付け0件、新着記事なし | `skipped_quality`。見出し版には切り替えない |
+| 深掘り記事選定・主張照合の不合格 | 元記事は取得できたが主張を裏付けられなければ `skipped_quality`。API障害なら `failed_runtime` |
+| 台本の日本語・分量、完成音声の品質不足 | `skipped_quality`。新規RSS項目を追加しない |
+| 台本生成APIの一時障害 | 3.8→3.7→3.6を予算内で試し、全候補失敗なら `failed_runtime` |
+| Gemini TTSの恒久障害・リトライ予算切れ | `failed_runtime`。音声・RSS項目を公開しない |
+| レート制限・認証障害・アップロード失敗 | `failed_runtime`。他方の番組は独立して処理し、原因を記録 |
+
+### 3.3 配信判定の受け入れ例（目標仕様）
+
+| 状況 | 期待結果 |
+|------|----------|
+| 速報候補20件のうち裏付け0件 | 速報は見送り。取得できた記事が裏付け不足なら `skipped_quality`、API障害なら `failed_runtime`。TTS・feed.xml 更新はしない |
+| 裏付けがあっても事実だけでは5〜8分の日本語台本を構成できない | 見出しで穴埋めせず速報を見送り |
+| URL取得成功・AIの引用注釈あり、元記事本文と主張を照合できない | その記事は不採用。`grounded` にしない |
+| 深掘り台本の選定記事が取得不可、または根拠不明の主張が残る | 深掘りを見送り。1分程度の見出し版を配信しない |
+| 台本は合格したが音声の長さ・内容・日付が不合格 | その番組のみ見送り、RSSは変更しない |
+| 速報が見送り、深掘りだけ合格 | 深掘りのMP3とfeed_deep.xml のみ更新。速報feed.xml は維持 |
+| TTSがHTTP 400を返す | `failed_runtime` と診断記録。完成していない音声とRSS項目は公開しない |
 
 ---
 
@@ -832,52 +912,27 @@ APIコール数: 通常1〜3回/エピソード（20行単位で分割）、再�
 
 ## 5. GitHub Actions デプロイ仕様
 
-### 5.1 ワークフローファイル
-```yaml
-# .github/workflows/generate-podcast.yml
-name: Generate Podcast
-on:
-  schedule:
-    - cron: "0 21 * * *"    # 毎日 06:00 JST = 21:00 UTC
-  workflow_dispatch:
-    inputs:
-      hours:
-        description: "記事取得の時間範囲（hours, 0=無制限）"
-        required: false
-        default: "24"
+### 5.1 目標ワークフロー（未実装）
 
-jobs:
-  generate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv python install && uv sync
-      - run: sudo apt-get install -yqq ffmpeg
+CRDの定期実行要件は毎日06:00 JST（21:00 UTC）。現行workflowは23:00 JST（14:00 UTC）であり、時間帯の変更は別途無料枠への影響を確認してから実装する。実行タイムアウトの現行値は45分。
 
-      # 既存フィード復元（クリーン環境でもエピソード蓄積するため）
-      - run: |
-          mkdir -p audio_files
-          curl -sSf "$PODCAST_BASE_URL/feed.xml" -o audio_files/feed.xml || true
-      - run: |
-          curl -sSf "$PODCAST_BASE_URL/feed_deep.xml" -o audio_files/feed_deep.xml || true
+1. gh-pagesから速報版・深掘り版の既存フィードを復元する。
+2. 速報版・深掘り版を番組単位で独立して実行し、`EpisodeResult` と採否理由を非公開の実行結果として残す。一方が失敗しても他方を実行する。
+3. `published` の番組だけ品質ゲートで合格済みのMP3とRSS項目を追加する。`skipped_quality` / `failed_runtime` の番組は既存RSSを維持し、途中生成した音声をデプロイ対象にしない。
+4. 少なくとも一方が `published` の場合だけ、`validate_feeds.py` で両フィードのXML構造を検査し、合格した番組の音声・RSS更新だけを gh-pages に反映する。両方見送りならpushしない。
+5. 番組ごとの `published` / `skipped_quality` / `failed_runtime` を実行結果として報告する。見送りを配信成功として数えず、API障害は監視対象として残す。
+6. 通常の音声・feed・メタデータは90日間のartifactへ保存する。TTS失敗診断は別artifactに7日間保存し、gh-pagesへはコピーしない。
 
-      # 速報版生成 → 深掘り版生成（逐次実行）
-      - run: uv run python podcast_generator.py
-      - run: uv run python deep_podcast_generator.py
+#### CRDとの実装差分（2026-09-26時点）
 
-      # デプロイ前検証: feed.xml / feed_deep.xml のメタデータをconfig値と自動照合
-      - run: uv run python validate_feeds.py audio_files
-
-      # デプロイ: gh-pages ブランチに push
-      # - episodes/ に速報版 MP3（deep_* を除外）
-      # - episodes_deep/ に深掘り版 MP3（deep_* のみ）
-      # - feed.xml, feed_deep.xml, cover.jpg, cover_deep.jpg をコピー
-      # - cleanup_episodes.py で速報版・深掘り版両方の60日超エピソードを削除
-
-      # Artifacts に90日間バックアップ（feed.xml, feed_deep.xml, MP3, JSON）
-```
+| 項目 | 現行実装 | 目標仕様 |
+|------|----------|----------|
+| 配信時刻 | 23:00 JST | CRDの06:00 JST。変更前に無料枠と日付境界を再確認 |
+| 事実確認 | URL取得・AI引用範囲の重なりを主に確認 | 元記事本文と主張を照合し、根拠を主張ごとに保持 |
+| 速報の検証失敗 | 未検証記事も見出しで紹介し、0件採用でも配信 | 未検証記事を除外し、採用0件・分量不足なら見送り |
+| 深掘りの検証失敗 | 1分程度の見出し限定版へ切り替え | 記事・主張・10〜15分の分析が不合格なら見送り |
+| 音声・日付 | TTS API成功時に配信可能。台本日は実行環境の時計に依存 | 完成音声の品質を検査し、台本・音声・RSS日付をJSTで統一 |
+| CIとフィード | 速報失敗で深掘りをスキップし、XML構造のみ検査 | 番組単位で独立判定し、合格した番組の更新だけ配信 |
 
 #### デプロイ時の注意: MP3ファイル振り分け
 
