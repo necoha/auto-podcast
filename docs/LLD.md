@@ -604,7 +604,7 @@ def generate(self) -> EpisodeMetadata | None:
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
 | `DAILY_SPEAKERS` | dict | 7曜日分 | 曜日ローテーションテーブル（7ペア×14人） |
-| `RSS_FEEDS` | List[str] | 13フィード | テクノロジーJP 6 + テクノロジーEN 3 + 経済JP 4 |
+| `RSS_FEEDS` | List[str] | 11フィード | テクノロジーJP 5 + テクノロジーEN 3 + 経済JP 3 |
 | `MAX_ARTICLES` | int | `5` | フィードあたりの最大取得数 |
 | `PODCAST_BASE_URL` | str | `https://necoha.github.io/auto-podcast` | GitHub Pages URL |
 | `PODCAST_TITLE` | str | `テック速報 AI ニュースラジオ` | 速報版ポッドキャスト名 |
@@ -631,20 +631,18 @@ def generate(self) -> EpisodeMetadata | None:
 | `DEEP_PODCAST_IMAGE_URL` | str | `.../cover_deep.jpg` | 深掘り版カバー画像URL |
 | `DEEP_MAX_TOPICS` | int | `3` | AIが厳選するトピック数 |
 
-#### RSSフィード一覧（13フィード）
+#### RSSフィード一覧（11フィード）
 | カテゴリ | ソース | URL |
 |---------|--------|-----|
 | テクノロジー(JP) | ITmedia NEWS | `rss.itmedia.co.jp/rss/2.0/news_bursts.xml` |
 | テクノロジー(JP) | Publickey | `www.publickey1.jp/atom.xml` |
 | テクノロジー(JP) | GIGAZINE | `gigazine.net/news/rss_2.0/` |
-| テクノロジー(JP) | CNET Japan | `japan.cnet.com/rss/index.rdf` |
 | テクノロジー(JP) | Impress Watch | `www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf` |
 | テクノロジー(JP) | ASCII.jp | `ascii.jp/rss.xml` |
 | テクノロジー(EN) | TechCrunch | `techcrunch.com/feed/` |
 | テクノロジー(EN) | Ars Technica | `feeds.arstechnica.com/arstechnica/index` |
 | テクノロジー(EN) | Hacker News | `hnrss.org/frontpage?count=10` |
 | 経済(JP) | 日経ビジネス | `business.nikkei.com/rss/sns/nb.rdf` |
-| 経済(JP) | ロイター日本語 | `assets.wor.jp/rss/rdf/reuters/top.rdf` |
 | 経済(JP) | Yahoo経済 | `news.yahoo.co.jp/rss/topics/business.xml` |
 | 経済(JP) | 朝日新聞経済 | `www.asahi.com/rss/asahi/business.rdf` |
 

@@ -96,7 +96,7 @@
 
 **推奨: A（RSSフィード）**
 - 無料、安定、十分な情報量。現行実装をそのまま流用可能
-- 国内6ソース（テクノロジー）+ 海外3ソース（TechCrunch, Ars Technica, Hacker News）+ 国内4ソース（経済）= 計13ソース
+- 国内5ソース（テクノロジー）+ 海外3ソース（TechCrunch, Ars Technica, Hacker News）+ 国内3ソース（経済）= 計11ソース
 
 #### 4.1.1 RSSニュースソース採用・除外基準
 
@@ -121,6 +121,8 @@ RSS/Atomフィードが技術的に取得できることだけでは採用しな
 |------|------|------|----------|
 | NHKが提供するRSS（ホスト変更・カテゴリ別フィードを含む） | 除外 | 利用規約第11条(5)のボット自動生成禁止条項に抵触するリスクを回避するため。RSSの疎通成功だけを理由に再追加しない | 2026-02-18, commit [`106dacc`](https://github.com/necoha/auto-podcast/commit/106dacc8c3d2626e9213d04f3c530dea49feec68) |
 | gihyo.jp | 除外 | 連載・チュートリアル中心で日刊ニュースポッドキャストに不向きなため | 2026-02-18, commit [`106dacc`](https://github.com/necoha/auto-podcast/commit/106dacc8c3d2626e9213d04f3c530dea49feec68) |
+| CNET Japan | 除外 | 4X規約第13条は無許可の引用・転載・商業利用を制限し、元記事を参照せずに済む要約を認めない。旧RSS URLはHTTP 404 | 2026-09-27, [4Xサービス利用規約](https://4x-corp.com/privacy/terms/4x-terms-of-service.pdf) |
+| Reuters日本語（`assets.wor.jp`の第三者RSS） | 除外 | Reuters規約9.2・9.3はRSSを含むコンテンツの商用利用に事前書面同意を求め、自動取得を禁止。第三者フィードの許諾も確認できず、HTTP 403 | 2026-09-27, [Reuters利用規約](https://www.reuters.com/jp/info-pages/terms-of-use/) |
 
 **検討に値する拡張: D（LLM Web検索）**
 - 「今日のAIニュースをまとめて」と指示するだけで、収集・要約・構造化が一括で完了

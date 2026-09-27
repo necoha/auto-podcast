@@ -88,7 +88,7 @@ auto-podcast/
 | 設定 | 説明 | デフォルト |
 |------|------|-----------|
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
-| `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
+| `RSS_FEEDS` | 監視するRSSフィード一覧 | 国内技術5 + 海外技術3 + 国内経済3 = 11 |
 | `LLM_MODEL` | 台本生成・セルフレビュー用モデル | `gemini-3.8-flash` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_TEMPO` | 音程を保った音声再生速度 | `0.8`（元の速さは`1.0`） |

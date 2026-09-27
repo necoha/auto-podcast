@@ -41,11 +41,11 @@ uv run python -c "from content_manager import ContentManager; cm = ContentManage
 
 ```
 【速報版】
-RSS(13) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+RSS(11) → ContentManager → ScriptGenerator     → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
              (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed.xml)        (CI検証)       (GitHub Pages)
                                                                                                                             ↓
 【深掘り版】                                                                                                               Spotify / Apple Podcasts
-RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
+RSS(11) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGenerator → RSSFeedGenerator → ValidateFeeds → gh-pages
              (feedparser)    (Gemini LLM)         (Gemini LLM)     (Gemini TTS)   (feed_deep.xml)   (CI検証)       (GitHub Pages)
 ```
 
@@ -91,7 +91,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 ### Key Settings in `config.py`
 
-- `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 6 + 技術系EN 3 + 経済系JP 4 = 13ソース）
+- `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 5 + 技術系EN 3 + 経済系JP 3 = 11ソース）
 - `LLM_MODEL` — 台本生成・レビュー用モデル（default: `gemini-3.8-flash`）
 - `TTS_MODEL` — 音声生成モデル（default: `gemini-2.5-flash-preview-tts`）
 - `TTS_TEMPO` — WAV保存前の音程を保つ再生速度（default: `0.8`）

@@ -41,7 +41,6 @@ RSS_FEEDS = [
     "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml",  # ITmedia NEWS
     "https://www.publickey1.jp/atom.xml",  # Publickey（クラウド・開発）
     "https://gigazine.net/news/rss_2.0/",  # GIGAZINE
-    "https://japan.cnet.com/rss/index.rdf",  # CNET Japan
     "https://www.watch.impress.co.jp/data/rss/1.0/ipw/feed.rdf",  # Impress Watch
     "https://ascii.jp/rss.xml",  # ASCII.jp
 
@@ -52,7 +51,6 @@ RSS_FEEDS = [
 
     # 経済・ビジネス（日本語）
     "https://business.nikkei.com/rss/sns/nb.rdf",  # 日経ビジネス
-    "https://assets.wor.jp/rss/rdf/reuters/top.rdf",  # ロイター日本語
     "https://news.yahoo.co.jp/rss/topics/business.xml",  # Yahoo経済
     "https://www.asahi.com/rss/asahi/business.rdf",  # 朝日新聞経済
 ]

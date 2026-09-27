@@ -35,7 +35,7 @@ flowchart TD
     end
 
     subgraph External["外部サービス"]
-        RSS[("RSS Feeds<br/>テクノロジー6(JP) + 3(EN)<br/>+ 経済4(JP) = 13")]
+        RSS[("RSS Feeds<br/>テクノロジー5(JP) + 3(EN)<br/>+ 経済3(JP) = 11")]
         GeminiLLM["Gemini 3.8 Flash<br/>台本生成 API"]
         GeminiTTS["Gemini Flash TTS<br/>Multi-Speaker 音声生成"]
         GHP["GitHub Pages<br/>MP3 + RSS ホスティング"]
@@ -157,7 +157,7 @@ sequenceDiagram
         Note over Runner,RGEN: === 速報版 (podcast_generator.py) ===
         Runner->>Runner: get_daily_speakers() — 曜日ローテーションで出演者決定
         Runner->>CM: fetch_rss_feeds(max=5, hours=24)
-        CM->>RSS: 13フィード取得
+        CM->>RSS: 11フィード取得
         RSS-->>CM: 記事リスト
         CM->>CM: 日付フィルタ (24h) → 重複排除 (URL+タイトル類似度)
 
@@ -295,7 +295,7 @@ gh-pages/
 | **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成・音程を保つ0.8倍速（1番組最大5リクエスト） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
-| **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4） |
+| **RSS解析** | feedparser | 11フィード対応（テクノロジーJP 5 + EN 3 + 経済JP 3） |
 | **HTMLスクレイピング** | BeautifulSoup4 | 記事本文取得 |
 | **API SDK** | google-genai 2.25.0 | Gemini LLM + TTS 統合SDK |
 | **環境変数** | python-dotenv | ローカル開発用 |
