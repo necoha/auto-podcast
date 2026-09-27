@@ -7,7 +7,7 @@
 - **無料枠・有料枠に対応**: Gemini APIの利用料金・制限はプロジェクトのプランによる
 - **公式APIベース**: UIスクレイピング不要、安定動作
 - **自動化**: GitHub Actionsで毎日04:00 JSTに自動生成・配信
-- **高品質TTS**: Gemini 3.1 Flash TTS Previewによる自然な音声
+- **音声合成**: Gemini 2.5 Flash Preview TTSを0.8倍速で配信
 - **14人日替わりローテーション**: 曜日ごとに異なるホスト＋ゲストペア（7ペア）
 - **ポッドキャスト配信**: GitHub Pages + RSS → Spotify / Apple Podcastsで自動配信
 
@@ -90,16 +90,18 @@ auto-podcast/
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
 | `RSS_FEEDS` | 監視するRSSフィード一覧 | テクノロジー6 + 経済4 |
 | `LLM_MODEL` | 台本生成・セルフレビュー用モデル | `gemini-3.8-flash` |
-| `TTS_MODEL` | TTS使用モデル | `gemini-3.1-flash-tts-preview` |
+| `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
+| `TTS_TEMPO` | 音程を保った音声再生速度 | `0.8`（元の速さは`1.0`） |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
 | `TTS_MAX_REQUESTS_PER_PODCAST` | 1番組あたりのTTS API呼び出し上限 | `5` |
 | `DAILY_SPEAKERS` | 曜日ローテーションテーブル | 7ペア×14人 |
 | `PODCAST_BASE_URL` | GitHub Pages URL | `necoha.github.io/auto-podcast` |
 | `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 環境変数 |
 
-ローカルでは `.env` に `LLM_MODEL` と `TTS_MODEL` を設定してモデルを切り替えられます。
+ローカルでは `.env` に `LLM_MODEL`、`TTS_MODEL`、`TTS_TEMPO` を設定して切り替えられます。
 GitHub Actionsでは同名のRepository Variablesを設定します。未設定または空欄なら上記の既定値を使用します。
-`gemini-3.1-flash-tts-preview` はInteractions API経由で音声を生成します。ほかのTTSモデルはAPIの互換性を確認してから指定してください。
+既定の2.5 TTSはgenerateContent API、`gemini-3.1-flash-tts-preview` はInteractions APIで音声を生成します。
+音声はWAV保存前にffmpegで減速するため、MP3変換に失敗した場合も同じ速度です。
 モデル切替は自動フォールバックではなく手動設定です。利用可能モデル・料金・制限はAI Studioで確認してください。
 
 ## 利用枠と料金
@@ -107,7 +109,7 @@ GitHub Actionsでは同名のRepository Variablesを設定します。未設定�
 | サービス | 条件 |
 |----------|--------|
 | Gemini 3.8 Flash（LLM） | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
-| Gemini 3.1 Flash TTS Preview | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
+| Gemini 2.5 Flash Preview TTS | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |
 

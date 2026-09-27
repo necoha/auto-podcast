@@ -1,7 +1,9 @@
 # pyright: reportPrivateUsage=false
 
 import base64
+import tempfile
 import unittest
+import wave
 from array import array
 from math import pi, sin
 from types import SimpleNamespace
@@ -64,6 +66,19 @@ def _wave(seconds: float, seed: int = 0) -> bytes:
 
 
 class TTSResponseTests(unittest.TestCase):
+    def test_saved_audio_uses_configured_tempo(self):
+        generator = TTSGenerator.__new__(TTSGenerator)
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "tts_generator.config.TTS_TEMPO", 0.8, create=True
+        ):
+            audio_path = f"{directory}/slowed.wav"
+            generator._save_audio(_wave(2), audio_path)
+            with wave.open(audio_path, "rb") as audio:
+                self.assertAlmostEqual(
+                    audio.getnframes() / audio.getframerate(), 2.5, delta=0.12
+                )
+                self.assertEqual(audio.getframerate(), 24000)
+
     def test_31_model_uses_interactions_audio(self):
         generator, generate_content = _generator()
         generator.model = "gemini-3.1-flash-tts-preview"

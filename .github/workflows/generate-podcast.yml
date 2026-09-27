@@ -22,6 +22,7 @@ jobs:
     env:
       LLM_MODEL: ${{ vars.LLM_MODEL }}
       TTS_MODEL: ${{ vars.TTS_MODEL }}
+      TTS_TEMPO: ${{ vars.TTS_TEMPO }}
 
     steps:
       - name: Checkout

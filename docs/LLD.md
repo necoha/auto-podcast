@@ -286,6 +286,7 @@ classDiagram
 | `_save_audio` | audio_data, path | str | 音声データをWAVファイルに書き出し |
 
 #### Gemini TTS API 呼び出し仕様（Multi-Speaker）
+既定の`gemini-2.5-flash-preview-tts`は`models.generate_content`経路を使う。以下は`gemini-3.1-flash-tts-preview`に手動切替した場合の例。
 ```python
 import base64
 from google import genai
@@ -303,8 +304,6 @@ response = client.interactions.create(
 pcm_data = base64.b64decode(response.output_audio.data)
 ```
 
-旧`gemini-2.5-flash-preview-tts`指定時のみ`models.generate_content`経路を使う。
-
 #### 利用可能な音声（Gemini TTS）
 ```
 Aoede, Charon, Fenrir, Kore, Puck,
@@ -317,6 +316,7 @@ Leda, Orus, Zephyr, ...
 TTS方式: Multi-Speaker（25行単位でチャンク分割）
 末尾パディング: 2000ms の無音を挿入（SILENCE_PADDING_SEC=2.0）
 出力フォーマット: WAV (PCM 24kHz 16bit mono)
+再生速度: WAV保存前にffmpeg atempo=0.8を適用（音程を維持、TTS_TEMPOで変更可）
 後処理: pydub + ffmpeg で MP3 変換 (128kbps)
 リトライ: チャンクごとに最大4試行、30秒/60秒/120秒の指数バックオフ
 リクエスト予算: 1番組あたり最大5回
@@ -598,7 +598,8 @@ def generate(self) -> EpisodeMetadata | None:
 |--------|---|-----|------|
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
 | `LLM_MODEL` | str | `gemini-3.8-flash` | 台本生成・レビュー用モデル（環境変数で上書き可能） |
-| `TTS_MODEL` | str | `gemini-3.1-flash-tts-preview` | TTS用モデル（環境変数で上書き可能） |
+| `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル（環境変数で上書き可能） |
+| `TTS_TEMPO` | float | `0.8` | 音程を保つ再生速度（`1.0`は等速） |
 | `TTS_VOICE` | str | `Kore` | デフォルト音声（フォールバック用） |
 | `TTS_VOICE_A` | str | `Kore` | 話者A（ホスト）のデフォルト音声 |
 | `TTS_VOICE_B` | str | `Charon` | 話者B（ゲスト）のデフォルト音声 |
@@ -774,7 +775,7 @@ URL: {link}
 ライブラリ: google-genai
 エンドポイント: generativelanguage.googleapis.com
 認証: APIキー（台本生成と共通）
-モデル: gemini-3.1-flash-tts-preview
+モデル: gemini-2.5-flash-preview-tts（3.1 Flash TTS Previewへ手動切替可能）
 入力: Director's Notes + MultiSpeaker トランスクリプト
 出力: 音声バイナリ（WAV PCM 24kHz 16bit mono）
 レスポンスモダリティ: AUDIO

@@ -292,7 +292,7 @@ gh-pages/
 | **言語** | Python 3.11 | `.python-version` で固定 |
 | **パッケージ管理** | uv | pyproject.toml + uv.lock |
 | **LLM** | Gemini 3.8 Flash | 台本生成・レビュー（無料枠または従量課金） |
-| **TTS** | Gemini 3.1 Flash TTS Preview | Multi-Speaker 音声生成（1番組最大5リクエスト） |
+| **TTS** | Gemini 2.5 Flash Preview TTS | Multi-Speaker 音声生成・音程を保つ0.8倍速（1番組最大5リクエスト） |
 | **RSS生成** | xml.etree.ElementTree | Apple Podcasts RSS仕様準拠 |
 | **音声変換** | pydub + ffmpeg | WAV→MP3 (128kbps, 約5x圧縮) |
 | **RSS解析** | feedparser | 13フィード対応（テクノロジーJP 6 + EN 3 + 経済JP 4） |

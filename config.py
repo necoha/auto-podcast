@@ -7,7 +7,8 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # TTS設定
-TTS_MODEL = os.getenv("TTS_MODEL") or "gemini-3.1-flash-tts-preview"
+TTS_MODEL = os.getenv("TTS_MODEL") or "gemini-2.5-flash-preview-tts"
+TTS_TEMPO = float(os.getenv("TTS_TEMPO") or "0.8")
 TTS_VOICE = "Kore"    # デフォルト音声（フォールバック用）
 TTS_MAX_REQUESTS_PER_PODCAST = int(
     os.getenv("TTS_MAX_REQUESTS_PER_PODCAST", "5")

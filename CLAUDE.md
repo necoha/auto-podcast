@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Auto Podcast — 最新ニュースを自動収集し、Gemini AIで台本生成 → TTS音声合成 → GitHub Pages + RSSで配信するポッドキャスト自動生成システム（Gemini APIは無料枠または従量課金）。
 
-**採用プラン（Plan α）**: Gemini 3.8 Flash（LLM）+ Gemini 3.1 Flash TTS Preview + GitHub Actions + GitHub Pages + RSS → Spotify/Apple Podcasts
+**採用プラン（Plan α）**: Gemini 3.8 Flash（LLM）+ Gemini 2.5 Flash Preview TTS（0.8倍速）+ GitHub Actions + GitHub Pages + RSS → Spotify/Apple Podcasts
 
 ## Technology Stack
 
@@ -55,7 +55,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 2. **ScriptGenerator** (`script_generator.py`) — Gemini 3.8 Flashで速報版台本生成（PRONUNCIATION_MAP 306エントリ）
 3. **DeepScriptGenerator** (`deep_script_generator.py`) — ScriptGenerator継承、6次元分析の深掘り台本生成
 4. **ScriptReviewer** (`script_reviewer.py`) — 生成済み台本をGemini LLMで5項目セルフレビュー（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さバランス）
-5. **TTSGenerator** (`tts_generator.py`) — Gemini 3.1 Flash TTS Previewで音声合成（Multi-Speaker、曜日ローテーション）
+5. **TTSGenerator** (`tts_generator.py`) — Gemini 2.5 Flash Preview TTSで音声合成（Multi-Speaker、曜日ローテーション、0.8倍速）
 6. **RSSFeedGenerator** (`rss_feed_generator.py`) — RSS XML生成・更新（速報版/深掘り版共用、`_sync_channel_metadata`でconfig値自動同期）
 7. **PodcastUploader** (`podcast_uploader.py`) — メタデータ保存
 8. **PodcastGenerator** (`podcast_generator.py`) — 速報版オーケストレーション
@@ -86,13 +86,15 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 | `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
 | `PODCAST_OWNER_EMAIL` | Yes | RSS/Spotify登録用メールアドレス |
 | `LLM_MODEL` | No | 台本生成・レビュー用モデル（既定値 `gemini-3.8-flash`） |
-| `TTS_MODEL` | No | 音声生成モデル（既定値 `gemini-3.1-flash-tts-preview`） |
+| `TTS_MODEL` | No | 音声生成モデル（既定値 `gemini-2.5-flash-preview-tts`） |
+| `TTS_TEMPO` | No | 音声の再生速度（既定値 `0.8`。`1.0`で等速） |
 
 ### Key Settings in `config.py`
 
 - `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 6 + 技術系EN 3 + 経済系JP 4 = 13ソース）
 - `LLM_MODEL` — 台本生成・レビュー用モデル（default: `gemini-3.8-flash`）
-- `TTS_MODEL` — 音声生成モデル（default: `gemini-3.1-flash-tts-preview`）
+- `TTS_MODEL` — 音声生成モデル（default: `gemini-2.5-flash-preview-tts`）
+- `TTS_TEMPO` — WAV保存前の音程を保つ再生速度（default: `0.8`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）
 - `DAILY_SPEAKERS` — 曜日ローテーションテーブル（7ペア×14人）
 - `AUDIO_OUTPUT_DIR` — 音声ファイル出力先
@@ -103,7 +105,7 @@ RSS(13) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 ## Free Tier Limits
 
 - **Gemini 3.8 Flash（LLM）**: 無料枠あり。有料枠の料金・制限はAI Studio参照
-- **Gemini 3.1 Flash TTS Preview**: 無料枠あり。有料枠の料金・制限はAI Studio参照
+- **Gemini 2.5 Flash Preview TTS**: 無料枠あり。有料枠の料金・制限はAI Studio参照
 - **GitHub Actions**: 2000分/月
 - **GitHub Pages**: 1GB推奨、帯域100GB/月
 

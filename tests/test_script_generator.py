@@ -12,17 +12,18 @@ from tts_generator import TTSGenerator
 class ModelConfigurationTests(unittest.TestCase):
     def test_model_overrides_and_empty_defaults(self):
         model_cases = (
-            ("", "", "gemini-3.8-flash gemini-3.1-flash-tts-preview"),
+            ("", "", "", "gemini-3.8-flash gemini-2.5-flash-preview-tts 0.8"),
             (
                 "gemini-2.5-flash",
-                "gemini-2.5-flash-preview-tts",
-                "gemini-2.5-flash gemini-2.5-flash-preview-tts",
+                "gemini-3.1-flash-tts-preview",
+                "1.0",
+                "gemini-2.5-flash gemini-3.1-flash-tts-preview 1.0",
             ),
         )
-        for llm_model, tts_model, expected in model_cases:
-            environment = dict(os.environ, LLM_MODEL=llm_model, TTS_MODEL=tts_model)
+        for llm_model, tts_model, tempo, expected in model_cases:
+            environment = dict(os.environ, LLM_MODEL=llm_model, TTS_MODEL=tts_model, TTS_TEMPO=tempo)
             output = subprocess.check_output(
-                [sys.executable, "-c", "import config; print(config.LLM_MODEL, config.TTS_MODEL)"],
+                [sys.executable, "-c", "import config; print(config.LLM_MODEL, config.TTS_MODEL, config.TTS_TEMPO)"],
                 env=environment,
                 text=True,
             )

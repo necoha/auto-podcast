@@ -10,6 +10,7 @@ import binascii
 import io
 import logging
 import re
+import subprocess
 import sys
 import time
 import wave
@@ -611,6 +612,20 @@ Pronunciation:
 
     def _save_audio(self, pcm_data: bytes, output_path: str) -> str:
         """PCMデータをWAVファイルとして保存する"""
+        if config.TTS_TEMPO != 1.0:
+            result = subprocess.run(
+                [
+                    "ffmpeg", "-hide_banner", "-loglevel", "error",
+                    "-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", "1", "-i", "pipe:0",
+                    "-filter:a", f"atempo={config.TTS_TEMPO}",
+                    "-f", "s16le", "pipe:1",
+                ],
+                input=pcm_data, capture_output=True, check=True,
+            )
+            pcm_data = result.stdout
+            if not pcm_data:
+                raise ValueError("音声の速度調整結果が空です")
+
         with wave.open(output_path, 'wb') as wf:
             wf.setnchannels(1)        # mono
             wf.setsampwidth(SAMPLE_WIDTH)  # 16-bit
