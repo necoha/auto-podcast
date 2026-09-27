@@ -78,6 +78,21 @@ class PronunciationTests(unittest.TestCase):
             "クニの制度、中国、米国、各国、国際関係、国家戦略",
         )
 
+    def test_news_pronunciation_distinguishes_rice_from_country(self):
+        generator = TTSGenerator.__new__(TTSGenerator)
+
+        prepared = generator._prepare_for_tts(
+            "今日も米価格、米の値段、米不足、米価、傘下を紹介します。米国と米中の話題もあります。"
+        )
+
+        self.assertIn("キョウモ", prepared)
+        self.assertIn("コメ価格", prepared)
+        self.assertIn("コメの値段", prepared)
+        self.assertIn("コメ不足", prepared)
+        self.assertIn("ベイカ", prepared)
+        self.assertIn("サンカ", prepared)
+        self.assertIn("米国と米中", prepared)
+
 
 if __name__ == "__main__":
     unittest.main()
