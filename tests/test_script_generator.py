@@ -82,7 +82,7 @@ class PronunciationTests(unittest.TestCase):
         generator = TTSGenerator.__new__(TTSGenerator)
 
         prepared = generator._prepare_for_tts(
-            "今日も米価格、米の値段、米不足、米価、傘下を紹介します。米国と米中の話題もあります。"
+            "今日も米価格、米の値段、米不足、米価、傘下を紹介します。製品の輪郭と米国と米中の話題もあります。"
         )
 
         self.assertIn("キョウモ", prepared)
@@ -91,6 +91,7 @@ class PronunciationTests(unittest.TestCase):
         self.assertIn("コメ不足", prepared)
         self.assertIn("ベイカ", prepared)
         self.assertIn("サンカ", prepared)
+        self.assertIn("リンカク", prepared)
         self.assertIn("米国と米中", prepared)
 
 
