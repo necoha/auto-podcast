@@ -5,7 +5,6 @@
 
 import logging
 import os
-import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 
@@ -84,24 +83,10 @@ class PodcastGenerator:
         logger.info("2. 台本生成中...")
         script = None
         is_fallback = False
-        max_retries = 4
-        for attempt in range(max_retries + 1):
-            try:
-                script = self.script_generator.generate_script(articles)
-                break
-            except Exception as e:
-                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
-                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_503 or is_truncated) and attempt < max_retries:
-                    wait = 60 * (attempt + 1)
-                    logger.warning(
-                        "台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
-                        attempt + 1, max_retries + 1, wait, e,
-                    )
-                    time.sleep(wait)
-                else:
-                    logger.warning("台本生成失敗（リトライ上限）: %s", e)
-                    break
+        try:
+            script = self.script_generator.generate_script(articles)
+        except Exception as error:
+            logger.warning("台本生成失敗: %s", error)
 
         if script is None:
             logger.warning("台本生成不可、お休み告知に切り替え")
@@ -116,6 +101,7 @@ class PodcastGenerator:
             logger.info("2.5. お休み告知のため台本レビューをスキップ")
         else:
             logger.info("2.5. 台本レビュー中...")
+            self.script_reviewer.model = self.script_generator.model
             script = self.script_reviewer.review(script, articles)
             logger.info("  レビュー後: %d行", len(script))
 
@@ -303,23 +289,23 @@ def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
     today = datetime.now(JST).strftime("%Y年%m月%d日")
     return [
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text=f"おはようございます、{host_name}です。{today}のテック速報です。",
         ),
         ScriptLine(
-            speaker=guest_name,
+            speaker="B",
             text=f"{guest_name}です。",
         ),
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text="本日はシステムの都合により、テック速報はお休みとさせていただきます。",
         ),
         ScriptLine(
-            speaker=guest_name,
+            speaker="B",
             text="申し訳ございません。明日はまたニュースをお届けできると思います。",
         ),
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text="それではまた明日お会いしましょう。",
         ),
     ]

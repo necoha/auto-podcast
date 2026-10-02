@@ -90,6 +90,7 @@ auto-podcast/
 | `GEMINI_API_KEY` | Google AI Studio APIキー | 環境変数 |
 | `RSS_FEEDS` | 監視するRSSフィード一覧 | 国内技術5 + 海外技術3 + 国内経済3 = 11 |
 | `LLM_MODEL` | 台本生成・セルフレビュー用モデル | `gemini-3.8-flash` |
+| `LLM_FALLBACK_MODELS` | 503継続時に試す予備モデル（カンマ区切り、優先順） | `gemini-2.5-flash` |
 | `TTS_MODEL` | TTS使用モデル | `gemini-2.5-flash-preview-tts` |
 | `TTS_TEMPO` | 音程を保った音声再生速度 | `0.8`（元の速さは`1.0`） |
 | `TTS_VOICE` | デフォルトTTS音声名 | `Kore` |
@@ -98,17 +99,20 @@ auto-podcast/
 | `PODCAST_BASE_URL` | GitHub Pages URL | `necoha.github.io/auto-podcast` |
 | `PODCAST_OWNER_EMAIL` | RSS/Spotify登録用メール | 環境変数 |
 
-ローカルでは `.env` に `LLM_MODEL`、`TTS_MODEL`、`TTS_TEMPO` を設定して切り替えられます。
+ローカルでは `.env` に `LLM_MODEL`、`LLM_FALLBACK_MODELS`、`TTS_MODEL`、`TTS_TEMPO` を設定できます。
 GitHub Actionsでは同名のRepository Variablesを設定します。未設定または空欄なら上記の既定値を使用します。
+台本生成は各モデルを最大5回試し、503の再試行上限時だけ予備モデルへ自動切り替えします。待機は60/120/180/240秒で、既定の2候補では最大10試行・待機合計20分/番組です。両版の実行と音声生成のため、Actionsのジョブ上限は60分です。
+認証・設定エラーや429では切り替えません。短すぎる台本は同じモデルで再試行します。全候補で失敗した場合はお休み告知を配信し、台本生成に成功した場合は同じモデルでセルフレビューします。
+候補の重複は除き、次の生成では主モデルから開始します。自動切り替えを無効にする場合は `LLM_FALLBACK_MODELS` に `LLM_MODEL` と同じモデル名だけを指定します。
 既定の2.5 TTSはgenerateContent API、`gemini-3.1-flash-tts-preview` はInteractions APIで音声を生成します。
 音声はWAV保存前にffmpegで減速するため、MP3変換に失敗した場合も同じ速度です。
-モデル切替は自動フォールバックではなく手動設定です。利用可能モデル・料金・制限はAI Studioで確認してください。
+TTSモデルの切り替えは引き続き手動設定です。主モデルと予備モデルの利用可否・料金・制限はAI Studioで確認してください。
 
 ## 利用枠と料金
 
 | サービス | 条件 |
 |----------|--------|
-| Gemini 3.8 Flash（LLM） | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
+| Gemini 3.8 Flash（主LLM）/ Gemini 2.5 Flash（予備LLM） | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
 | Gemini 2.5 Flash Preview TTS | 無料枠または有料枠。実際の制限・料金はAI Studioで確認 |
 | GitHub Actions | 2000分/月 |
 | GitHub Pages | 1GB推奨、1GB以上は外部ストレージ移行を検討 |

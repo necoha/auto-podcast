@@ -183,9 +183,10 @@ response = client.models.generate_content(
 - 出力形式: JSON配列 [{"speaker": "A", "text": "..."}, ...]
 ```
 
-#### LLMリトライ + お休み告知
-台本生成で503エラー発生時、最大2回リトライ（30秒/60秒間隔）。
-リトライ失敗時は `_休止告知スクリプト()` で「本日はお休みです」の短い告知（5行）を配信。
+#### LLMリトライ + モデル切り替え + お休み告知
+`ScriptGenerator.generate_script()` が速報版・深掘り版共通で再試行とモデル選択を制御する。`LLM_MODEL`、`LLM_FALLBACK_MODELS` の順に重複を除去し、生成のたびに主モデルから開始する。
+各モデル最大5試行、待機60秒/120秒/180秒/240秒。SDKのエラーコードが503の場合だけ、再試行上限時に次のモデルへ進む。短すぎる台本は同じモデルで再試行するが、それだけを理由に別モデルへ切り替えない。認証・設定エラーや429も切り替え対象外。
+成功時の `script_generator.model` を両版の `script_reviewer.model` に引き継ぐ。全候補失敗時は例外を送出し、両版のオーケストレーターは外側で再試行せず `_休止告知スクリプト()` の5行を配信する。告知の話者IDは通常台本と同じ `A`/`B` とし、本文の人物名と曜日別音声は維持する。
 旧 `deep_fallback_script()` は使用廃止。
 
 ---
@@ -568,9 +569,9 @@ def generate(self) -> EpisodeMetadata | None:
     # 1. コンテンツ収集（速報版と同じソースから全記事取得）
     articles = self.content_manager.fetch_rss_feeds(max_articles=5, hours=24)
 
-    # 2. 深掘り台本生成（503時は最大2回リトライ）
+    # 2. 深掘り台本生成（共通処理で各モデル最大5試行、503継続時のみ予備へ切替）
     script = self.script_generator.generate_script(articles)
-    # リトライ失敗時: _休止告知スクリプト(host_name, guest_name)
+    # 全候補失敗時: _休止告知スクリプト(host_name, guest_name)
 
     # 3. TTS音声生成（速報版と同じMulti-Speaker TTS）
     audio_filename = f"deep_{episode_num}_{today}.wav"
@@ -598,6 +599,7 @@ def generate(self) -> EpisodeMetadata | None:
 |--------|---|-----|------|
 | `GEMINI_API_KEY` | str | env | Gemini APIキー（台本 + TTS 共通） |
 | `LLM_MODEL` | str | `gemini-3.8-flash` | 台本生成・レビュー用モデル（環境変数で上書き可能） |
+| `LLM_FALLBACK_MODELS` | List[str] | `["gemini-2.5-flash"]` | 503継続時の予備モデル（環境変数はカンマ区切り、優先順） |
 | `TTS_MODEL` | str | `gemini-2.5-flash-preview-tts` | TTS用モデル（環境変数で上書き可能） |
 | `TTS_TEMPO` | float | `0.8` | 音程を保つ再生速度（`1.0`は等速） |
 | `TTS_VOICE` | str | `Kore` | デフォルト音声（フォールバック用） |
@@ -729,7 +731,7 @@ URL: {link}
 - 各モジュールは自身のエラーをキャッチしログ出力
 - `logging` モジュールを使用（`print()` から移行）
 - メソッドは成功時に結果、失敗時に例外を送出
-- オーケストレーター（PodcastGenerator）がフォールバックを判断
+- ScriptGeneratorがLLMの再試行・503限定モデル切り替えを判断し、両版のオーケストレーターが失敗時の休止告知を判断
 
 ### 3.2 フォールバック一覧
 
@@ -737,7 +739,7 @@ URL: {link}
 |---------|--------------|
 | RSS取得失敗（一部） | 取得できたフィードで続行 |
 | RSS取得失敗（全部） | 処理中止。次回実行に委ねる |
-| 台本生成失敗(503) | 最大2回リトライ（30秒/60秒間隔）→ 失敗時は「お休み告知」5行スクリプトを配信 |
+| 台本生成失敗(503) | 各モデル最大5試行（60秒/120秒/180秒/240秒待機）→ 予備モデルへ自動切替 → 全候補失敗時は「お休み告知」5行を配信 |
 | Gemini TTS失敗 | リトライ（最大3回、30秒間隔）→ 失敗時は生成中止 |
 | アップロード失敗 | ローカル保存。次回実行で自然リトライ |
 | レート制限到達 | ログ出力してスキップ。次回実行で再試行 |

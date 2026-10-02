@@ -8,7 +8,6 @@
 
 import logging
 import os
-import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -97,28 +96,13 @@ class DeepDivePodcastGenerator:
         logger.info("[Deep]   %d件の記事を取得（ここからAIが厳選）", len(articles))
 
         # 2. 深掘り台本生成（AIが記事を厳選＋深い分析台本を生成）
-        #    503エラー時はリトライ（LLMは500 req/日なので余裕あり）
         logger.info("[Deep] 2. 深掘り台本生成中...")
         script = None
         is_fallback = False
-        max_retries = 4
-        for attempt in range(max_retries + 1):
-            try:
-                script = self.script_generator.generate_script(articles)
-                break
-            except Exception as e:
-                is_503 = "503" in str(e) or "UNAVAILABLE" in str(e)
-                is_truncated = "台本が短すぎます" in str(e) or "トークン上限" in str(e)
-                if (is_503 or is_truncated) and attempt < max_retries:
-                    wait = 60 * (attempt + 1)
-                    logger.warning(
-                        "[Deep] 台本生成失敗 (attempt %d/%d), %d秒後にリトライ: %s",
-                        attempt + 1, max_retries + 1, wait, e,
-                    )
-                    time.sleep(wait)
-                else:
-                    logger.warning("[Deep] 台本生成失敗（リトライ上限）: %s", e)
-                    break
+        try:
+            script = self.script_generator.generate_script(articles)
+        except Exception as error:
+            logger.warning("[Deep] 台本生成失敗: %s", error)
 
         if script is None:
             # リトライしても失敗 → お休み告知を生成して配信
@@ -134,6 +118,7 @@ class DeepDivePodcastGenerator:
             logger.info("[Deep] 2.5. お休み告知のため台本レビューをスキップ")
         else:
             logger.info("[Deep] 2.5. 台本レビュー中...")
+            self.script_reviewer.model = self.script_generator.model
             script = self.script_reviewer.review(script, articles)
             logger.info("[Deep]   レビュー後: %d行", len(script))
 
@@ -300,23 +285,23 @@ def _休止告知スクリプト(host_name: str, guest_name: str) -> Script:
     today = datetime.now(JST).strftime("%Y年%m月%d日")
     return [
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text=f"おはようございます、{host_name}です。{today}のテック深掘り解説ラジオです。",
         ),
         ScriptLine(
-            speaker=guest_name,
+            speaker="B",
             text=f"{guest_name}です。",
         ),
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text="本日はシステムの都合により、深掘り解説はお休みとさせていただきます。",
         ),
         ScriptLine(
-            speaker=guest_name,
+            speaker="B",
             text="通常のテック速報は配信しておりますので、そちらをお楽しみください。",
         ),
         ScriptLine(
-            speaker=host_name,
+            speaker="A",
             text="明日はまた深掘り解説をお届けできると思います。それではまた明日お会いしましょう。",
         ),
     ]

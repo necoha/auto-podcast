@@ -6,11 +6,12 @@ Gemini Flash APIを使い、記事情報から対話形式の台本を生成す�
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 import config
 
@@ -93,7 +94,9 @@ class ScriptGenerator:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY が設定されていません")
         self.client = genai.Client(api_key=self.api_key)
-        self.model = config.LLM_MODEL
+        self.primary_model = config.LLM_MODEL
+        self.model = self.primary_model
+        self.fallback_models = config.LLM_FALLBACK_MODELS
         self.host_name = host_name or "アオイ"
         self.guest_name = guest_name or "タクミ"
         self.system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
@@ -102,10 +105,49 @@ class ScriptGenerator:
         )
 
     def generate_script(self, articles: List[Dict[str, Any]]) -> Script:
-        """記事リストから対話形式の台本を生成する"""
+        """台本を生成し、503の再試行上限時は予備モデルへ切り替える。"""
         if not articles:
             raise ValueError("記事リストが空です")
 
+        models = list(dict.fromkeys([self.primary_model, *self.fallback_models]))
+        max_retries = 4
+        for model_index, model in enumerate(models):
+            self.model = model
+            for attempt in range(max_retries + 1):
+                try:
+                    return self._generate_script_once(articles)
+                except Exception as error:
+                    message = str(error)
+                    if isinstance(error, errors.APIError):
+                        is_503 = error.code == 503
+                    else:
+                        is_503 = isinstance(error, RuntimeError) and (
+                            "503" in message or "UNAVAILABLE" in message
+                        )
+                    is_truncated = isinstance(error, ValueError) and (
+                        "台本が短すぎます" in message or "トークン上限" in message
+                    )
+                    if not (is_503 or is_truncated):
+                        raise
+                    if attempt < max_retries:
+                        wait = 60 * (attempt + 1)
+                        logger.warning(
+                            "台本生成失敗 (モデル: %s, attempt %d/%d), %d秒後にリトライ: %s",
+                            model, attempt + 1, max_retries + 1, wait, error,
+                        )
+                        time.sleep(wait)
+                    elif is_503 and model_index + 1 < len(models):
+                        logger.warning(
+                            "LLMモデルを自動切り替え: %s -> %s (503リトライ上限): %s",
+                            model, models[model_index + 1], error,
+                        )
+                        break
+                    else:
+                        raise
+
+        raise RuntimeError("すべての台本モデルで生成に失敗しました")
+
+    def _generate_script_once(self, articles: List[Dict[str, Any]]) -> Script:
         prompt = self._build_prompt(articles)
         logger.info("台本生成を開始 (モデル: %s, 記事数: %d)", self.model, len(articles))
 

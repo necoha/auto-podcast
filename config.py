@@ -32,6 +32,11 @@ TTS_VOICE_B = "Charon"
 
 # LLM設定（台本生成）
 LLM_MODEL = os.getenv("LLM_MODEL") or "gemini-3.8-flash"
+LLM_FALLBACK_MODELS = [
+    model.strip()
+    for model in (os.getenv("LLM_FALLBACK_MODELS") or "gemini-2.5-flash").split(",")
+    if model.strip()
+]
 
 # コンテンツソース設定
 # 追加・変更前に docs/CRD.md「4.1.1 RSSニュースソース採用・除外基準」を確認する。

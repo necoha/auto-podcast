@@ -66,9 +66,9 @@ RSS(11) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 - **Single API Key**: `GEMINI_API_KEY` のみで LLM + TTS 両方を利用
 - **UIスクレイピング禁止**: 全て公式APIベースで安定動作
-- **LLMリトライ**: 台本生成で503エラー時に最大2回リトライ（30秒/60秒間隔）。失敗時は「お休み告知」を配信
+- **LLMリトライ**: ScriptGeneratorで各モデル最大5試行（60秒/120秒/180秒/240秒待機）。503の再試行上限時のみ予備モデルへ進み、全候補失敗時は「お休み告知」を配信。両版の外側では再試行しない
 - **台本セルフレビュー**: 生成後にGemini LLMで5項目自動チェック（フォーマット/会話品質/記事カバレッジ/TTS適合性/長さバランス）。レビュー失敗時は元の台本をそのまま使用
-- **モデル切替**: `LLM_MODEL`・`TTS_MODEL`の環境変数で手動切替。TTS一時障害時は同じモデルで再試行し、失敗時は生成中止
+- **モデル切替**: LLMは`LLM_MODEL`から`LLM_FALLBACK_MODELS`（既定値`gemini-2.5-flash`）へ503継続時のみ自動切替。成功モデルをレビューにも引き継ぐ。認証・設定エラーや429では切替しない。TTSは`TTS_MODEL`で手動切替し、一時障害時は同じモデルで再試行
 - **事実確認**: 旧台本フローはRSSのタイトル・媒体名・URLを入力とし、元記事本文との事実照合は行わない
 - **重複記事統合**: 速報版プロンプトで全記事に触れつつ同一トピックの重複は統合して紹介
 - **発音正規化**: LLMが付けた漢字語の未検証ルビを除去後、`PRONUNCIATION_MAP`の承認済み読みを再適用。単独の「国」は「くに」と読む
@@ -86,6 +86,7 @@ RSS(11) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 | `GEMINI_API_KEY` | Yes | Google AI Studio APIキー |
 | `PODCAST_OWNER_EMAIL` | Yes | RSS/Spotify登録用メールアドレス |
 | `LLM_MODEL` | No | 台本生成・レビュー用モデル（既定値 `gemini-3.8-flash`） |
+| `LLM_FALLBACK_MODELS` | No | 503継続時の予備モデル（カンマ区切り、既定値 `gemini-2.5-flash`） |
 | `TTS_MODEL` | No | 音声生成モデル（既定値 `gemini-2.5-flash-preview-tts`） |
 | `TTS_TEMPO` | No | 音声の再生速度（既定値 `0.8`。`1.0`で等速） |
 
@@ -93,6 +94,7 @@ RSS(11) → ContentManager → DeepScriptGenerator → ScriptReviewer → TTSGen
 
 - `RSS_FEEDS` — 監視するRSSフィード一覧（技術系JP 5 + 技術系EN 3 + 経済系JP 3 = 11ソース）
 - `LLM_MODEL` — 台本生成・レビュー用モデル（default: `gemini-3.8-flash`）
+- `LLM_FALLBACK_MODELS` — 予備モデルの優先順（default: `["gemini-2.5-flash"]`）。重複を除去し、毎回主モデルから開始
 - `TTS_MODEL` — 音声生成モデル（default: `gemini-2.5-flash-preview-tts`）
 - `TTS_TEMPO` — WAV保存前の音程を保つ再生速度（default: `0.8`）
 - `TTS_VOICE` — デフォルト音声名（default: `Kore`）

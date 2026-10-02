@@ -18,9 +18,10 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       LLM_MODEL: ${{ vars.LLM_MODEL }}
+      LLM_FALLBACK_MODELS: ${{ vars.LLM_FALLBACK_MODELS }}
       TTS_MODEL: ${{ vars.TTS_MODEL }}
       TTS_TEMPO: ${{ vars.TTS_TEMPO }}
 

@@ -10,6 +10,9 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock, call, patch
 
+import config
+from deep_podcast_generator import _休止告知スクリプト as deep_rest_script
+from podcast_generator import _休止告知スクリプト as brief_rest_script
 from tts_generator import (
     TTSGenerator,
     TTSRequestBudgetExceeded,
@@ -66,6 +69,52 @@ def _wave(seconds: float, seed: int = 0) -> bytes:
 
 
 class TTSResponseTests(unittest.TestCase):
+    def test_rest_announcements_preserve_daily_speaker_voices(self):
+        for script_factory in (brief_rest_script, deep_rest_script):
+            for weekday, speakers in config.DAILY_SPEAKERS.items():
+                with self.subTest(edition=script_factory.__module__, weekday=weekday):
+                    host_name, host_voice, guest_name, guest_voice = speakers
+                    script = script_factory(host_name, guest_name)
+
+                    self.assertEqual(
+                        [line.speaker for line in script],
+                        ["A", "B", "A", "B", "A"],
+                    )
+                    self.assertIn(host_name, script[0].text)
+                    self.assertIn(guest_name, script[1].text)
+
+                    generator, generate_content = _generator(
+                        _response(_audio_part(b"pcm"))
+                    )
+                    generator.host_name = host_name
+                    generator.voice_a = host_voice
+                    generator.guest_name = guest_name
+                    generator.voice_b = guest_voice
+
+                    prompt = generator._build_multi_speaker_prompt(script)
+                    transcript = prompt.partition("### TRANSCRIPT\n")[2]
+                    self.assertEqual(
+                        [line.partition(": ")[0] for line in transcript.splitlines()],
+                        [host_name, guest_name, host_name, guest_name, host_name],
+                    )
+
+                    self.assertEqual(generator._call_tts_api(prompt), b"pcm")
+                    generate_content.assert_called_once()
+                    request = generate_content.call_args
+                    assert request is not None
+                    speech_config = request.kwargs["config"].model_dump()["speech_config"]
+                    voice_configs = speech_config["multi_speaker_voice_config"]["speaker_voice_configs"]
+                    self.assertEqual(
+                        [
+                            (
+                                entry["speaker"],
+                                entry["voice_config"]["prebuilt_voice_config"]["voice_name"],
+                            )
+                            for entry in voice_configs
+                        ],
+                        [(host_name, host_voice), (guest_name, guest_voice)],
+                    )
+
     def test_saved_audio_uses_configured_tempo(self):
         generator = TTSGenerator.__new__(TTSGenerator)
         with tempfile.TemporaryDirectory() as directory, patch(
