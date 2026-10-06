@@ -795,7 +795,7 @@ APIコール数: 通常1〜2回/エピソード（25行単位で分割）、再�
 name: Generate Podcast
 on:
  schedule:
-    - cron: "0 19 * * *"    # 毎日 04:00 JST = 前日19:00 UTC
+    - cron: "17 18 * * *"   # 毎日 03:17 JST開始予定 = 前日18:17 UTC
  workflow_dispatch:
   inputs:
    hours:

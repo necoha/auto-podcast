@@ -2,8 +2,8 @@ name: Generate Podcast
 
 on:
   schedule:
-    # 毎日 04:00 JST = 前日19:00 UTC（海外ニュースも朝に配信）
-    - cron: "0 19 * * *"
+    # 毎日 03:17 JST = 前日18:17 UTC（正時の混雑を避ける）
+    - cron: "17 18 * * *"
   workflow_dispatch:
     inputs:
       hours:
