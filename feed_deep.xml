@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Fri, 23 Oct 2026 07:12:03 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第212話 - テック深掘り AI 解説ラジオ (2026-10-23)</title><description>配信日: 2026-10-23
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sat, 24 Oct 2026 06:53:19 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第213話 - テック深掘り AI 解説ラジオ (2026-10-24)</title><description>配信日: 2026-10-24
+出演: シオリ &amp; ユウマ
+
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
+（45件の記事からAIが厳選して深掘り解説）
+
+Gemini AIで自動生成された深掘り解説ポッドキャストです。
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_213_20261024.mp3" length="11387181" type="audio/mpeg" /><guid isPermaLink="false">episode-213-20261024</guid><pubDate>Sat, 24 Oct 2026 06:50:03 +0900</pubDate><itunes:episode>213</itunes:episode><itunes:duration>711</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第212話 - テック深掘り AI 解説ラジオ (2026-10-23)</title><description>配信日: 2026-10-23
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -321,11 +328,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
 （57件の記事からAIが厳選して深掘り解説）
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_166_20260826.mp3" length="8798253" type="audio/mpeg" /><guid isPermaLink="false">episode-166-20260826</guid><pubDate>Wed, 26 Aug 2026 23:42:17 +0900</pubDate><itunes:episode>166</itunes:episode><itunes:duration>549</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第165話 - テック深掘り AI 解説ラジオ (2026-08-24)</title><description>配信日: 2026-08-24
-出演: アオイ &amp; タクミ
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（51件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_165_20260824.mp3" length="14318253" type="audio/mpeg" /><guid isPermaLink="false">episode-165-20260824</guid><pubDate>Mon, 24 Aug 2026 23:43:09 +0900</pubDate><itunes:episode>165</itunes:episode><itunes:duration>894</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_166_20260826.mp3" length="8798253" type="audio/mpeg" /><guid isPermaLink="false">episode-166-20260826</guid><pubDate>Wed, 26 Aug 2026 23:42:17 +0900</pubDate><itunes:episode>166</itunes:episode><itunes:duration>549</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
