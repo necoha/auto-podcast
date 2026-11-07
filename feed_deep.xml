@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sat, 07 Nov 2026 08:33:54 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第225話 - テック深掘り AI 解説ラジオ (2026-11-07)</title><description>配信日: 2026-11-07
-出演: シオリ &amp; ユウマ
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>テック深掘り AI 解説ラジオ</title><link>https://necoha.github.io/auto-podcast</link><description>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</description><language>ja</language><lastBuildDate>Sun, 08 Nov 2026 07:12:00 +0900</lastBuildDate><atom:link href="https://necoha.github.io/auto-podcast/feed_deep.xml" rel="self" type="application/rss+xml" /><itunes:author>Auto Podcast Generator</itunes:author><itunes:summary>最新ニュースの背景・影響・技術解説・今後の展望までAIが深掘り解説。元記事の著作権は各メディアに帰属します。</itunes:summary><itunes:category text="Technology" /><itunes:explicit>false</itunes:explicit><itunes:image href="https://necoha.github.io/auto-podcast/cover_deep.jpg" /><itunes:owner><itunes:name>Auto Podcast Generator</itunes:name><itunes:email>cloha.mikage@gmail.com</itunes:email></itunes:owner><item><title>第225話 - テック深掘り AI 解説ラジオ (2026-11-08)</title><description>配信日: 2026-11-08
+出演: ナツキ &amp; リュウセイ
 
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（50件の記事からAIが厳選して深掘り解説）
+本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、Impress Watch、TechCrunch、Yahoo!ニュース・トピックス - 経済、経済・マネー - 朝日新聞
+（40件の記事からAIが厳選して深掘り解説）
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_225_20261107.mp3" length="9242924" type="audio/mpeg" /><guid isPermaLink="false">episode-225-20261107</guid><pubDate>Sat, 07 Nov 2026 08:31:23 +0900</pubDate><itunes:episode>225</itunes:episode><itunes:duration>577</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第224話 - テック深掘り AI 解説ラジオ (2026-11-06)</title><description>配信日: 2026-11-06
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_225_20261108.mp3" length="11651372" type="audio/mpeg" /><guid isPermaLink="false">episode-225-20261108</guid><pubDate>Sun, 08 Nov 2026 07:08:44 +0900</pubDate><itunes:episode>225</itunes:episode><itunes:duration>728</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第224話 - テック深掘り AI 解説ラジオ (2026-11-06)</title><description>配信日: 2026-11-06
 出演: リコ &amp; カイト
 
 本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
@@ -349,11 +349,4 @@ Gemini AIで自動生成された深掘り解説ポッドキャストです。
 （57件の記事からAIが厳選して深掘り解説）
 
 Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_175_20260910.mp3" length="15381165" type="audio/mpeg" /><guid isPermaLink="false">episode-175-20260910</guid><pubDate>Thu, 10 Sep 2026 02:35:53 +0900</pubDate><itunes:episode>175</itunes:episode><itunes:duration>961</itunes:duration><itunes:explicit>false</itunes:explicit></item><item><title>第174話 - テック深掘り AI 解説ラジオ (2026-09-09)</title><description>配信日: 2026-09-09
-出演: ミオ &amp; ハルト
-
-本日のニュースソース: ASCII.jp － トップ、Ars Technica - All content、CNET Japan 最新情報　総合、GIGAZINE、Hacker News: Front Page、ITmedia NEWS 最新記事一覧、Impress Watch、Publickey、TechCrunch、Yahoo!ニュース・トピックス - 経済、日経ビジネス電子版　最新記事、経済・マネー - 朝日新聞
-（57件の記事からAIが厳選して深掘り解説）
-
-Gemini AIで自動生成された深掘り解説ポッドキャストです。
-元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_174_20260909.mp3" length="10519341" type="audio/mpeg" /><guid isPermaLink="false">episode-174-20260909</guid><pubDate>Wed, 09 Sep 2026 02:52:10 +0900</pubDate><itunes:episode>174</itunes:episode><itunes:duration>657</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
+元記事の著作権は各メディアに帰属します。</description><enclosure url="https://necoha.github.io/auto-podcast/episodes_deep/deep_175_20260910.mp3" length="15381165" type="audio/mpeg" /><guid isPermaLink="false">episode-175-20260910</guid><pubDate>Thu, 10 Sep 2026 02:35:53 +0900</pubDate><itunes:episode>175</itunes:episode><itunes:duration>961</itunes:duration><itunes:explicit>false</itunes:explicit></item></channel></rss>
